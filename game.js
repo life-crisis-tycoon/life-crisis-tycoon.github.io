@@ -1575,7 +1575,9 @@ function visitorUpdate(v, dt) {
   const showProg = ['treat', 'checkin'].includes(v.state), val = showProg ? v.prog : v.pat;
   v.fg.scale.x = Math.max(0.001, 0.6 * clamp(val, 0, 1));
   v.fg.material = barMat(showProg ? '#5AB8F0' : v.pat > 0.5 ? '#7ACB4E' : v.pat > 0.25 ? '#FFB800' : '#E5484D');
-  v.fg.visible = v.bg.visible = !['exit', 'angry'].includes(v.state);
+  // Two Point style: heads stay clean; the icon + bar only show when the visitor needs attention, or is selected (Settings can show all)
+  { const need = v.known && needOf(v), attn = ICONS_ALL || v === sel || v.em || v.vip || v.caseK || v.urgent || v.pat < 0.35 || v.state === 'toLoo' || v.state === 'loo' || (need && !hasRoom(need)) || v.state === 'treat';
+    v.icon.visible = attn && !['exit', 'angry'].includes(v.state); v.fg.visible = v.bg.visible = attn && v.icon.visible; }
   { const pa = v.av.userData.p.anim, standWait = v.state === 'queue' || (v.state === 'wait' && v.spot && !v.spot.sit);
     if (pa && standWait && v.pat < 0.25) pa.set('angry'); else if (pa && standWait && pa.state === '~angry' && v.pat > 0.35) posePhone(v.av.userData.p); }
   const kid = v.gag && v.gag.userData.kid; if (kid && kid.userData.p.anim) { const pa = v.av.userData.p.anim; kid.userData.p.anim.set(pa && /walk/.test(pa.state) ? 'walk' : 'idle', 1); }
@@ -1639,7 +1641,7 @@ function updateMessIcons() { // 🤢 over a puddle, 🗑️ over litter, 🐀 ov
   const live = new Set([...R.litter, ...R.rats]), now = performance.now();
   for (const [o, sp] of messIcons) if (!live.has(o)) { scene.remove(sp); messIcons.delete(o); }
   for (const o of live) {
-    let sp = messIcons.get(o); if (!sp) { sp = new THREE.Sprite(iconTex(R.rats.includes(o) ? '🐀' : o.heavy ? '🤢' : '🗑️')); sp.scale.set(0.5, 0.5, 1); sp.renderOrder = 9; scene.add(sp); messIcons.set(o, sp); }
+    let sp = messIcons.get(o); if (!sp) { sp = new THREE.Sprite(iconTex(R.rats.includes(o) ? '🐀' : o.heavy ? '🤢' : '🗑️')); sp.scale.set(0.38, 0.38, 1); sp.renderOrder = 9; scene.add(sp); messIcons.set(o, sp); }
     const p = o.mesh.position; sp.position.set(p.x, 1.05 + Math.sin(now / 300 + p.x) * 0.06, p.z);
   }
 }
@@ -2061,6 +2063,7 @@ function openGoals() {
   $('gMap').onclick = () => { closeSheet(); toMap(); };
 }
 let chatTab = 'imp';
+let ICONS_ALL = (() => { try { return localStorage.getItem('ahq_icons') === 'all'; } catch (e) { return false; } })();
 function openChat() {
   S.unread = 0; updateBadge();
   const list = S.chat.filter((m) => chatTab === 'all' || !m.fun);
@@ -3381,11 +3384,13 @@ function openAudio() { // ⚙️ Settings
   const game = inGame && S && S.mode === 'career';
   openSheet(`<h2>⚙️ ${t('set.title')}</h2>` + `<div class="lbl" style="margin:4px 0 6px">🔊 ${t('au.title')}</div>` + row('music', '🎵') + row('sfx', '🔔') + row('voice', '📢')
     + `<div class="opt w" style="display:block"><div class="ot"><b>🖥️ ${t('gfx.title')}</b><div>${t('gfx.D', { m: t('gfx.' + GFX.mode) })}</div></div><div style="display:flex;gap:6px;margin-top:8px">${gb('auto')}${gb('high')}${gb('low')}</div></div>`
+    + `<div class="opt w"><div class="oi" style="background:#EEF2F7">🏷️</div><div class="ot"><b>${t('set.icons')}</b><div>${t('set.iconsD')}</div></div><button class="btn ${ICONS_ALL ? 'g' : 'y'}" id="stIcons">${ICONS_ALL ? t('set.iconsAll') : t('set.iconsNeed')}</button></div>`
     + `<div class="row2" style="margin-top:8px"><button class="btn w" id="stLang">🌐 ${t('set.lang')}</button><button class="btn w" id="stAcc">👤 ${t('set.acc')}</button></div>`
     + (game ? `<div class="lbl" style="margin:12px 0 6px">💾 ${t('set.save')}</div><div class="row2"><button class="btn w" id="gSave">💾 ${t('sv.export')}</button><button class="btn w" id="gLoad">📥 ${t('sv.import')}</button><button class="btn w" id="gTut">${t('tut.replay')}</button><button class="btn y" id="gQuit">${t('menu.quit')}</button></div>` : '')
     + `<button class="btn w" id="scBtn" style="width:100%;margin-top:10px;font-size:13px">✨ Showcase</button>`);
   $('scBtn').onclick = () => { closeSheet(); startShowcase().catch((e) => toast(String(e))); };
   $('stLang').onclick = () => { closeSheet(); openLang(); };
+  $('stIcons').onclick = () => { ICONS_ALL = !ICONS_ALL; try { localStorage.setItem('ahq_icons', ICONS_ALL ? 'all' : 'need'); } catch (e) {} openAudio(); };
   $('stAcc').onclick = () => { closeSheet(); window.MLT_ACCOUNT && window.MLT_ACCOUNT.open(); };
   if (game) {
     $('gTut').onclick = () => { closeSheet(); S.pepUsed = false; S.tutGoals = false; S.tut = 0; tutDrawn = null; };
