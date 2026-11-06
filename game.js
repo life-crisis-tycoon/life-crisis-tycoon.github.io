@@ -425,8 +425,8 @@ function markObstacles(blk) {
   if (!S) return;
   box(1.15, 4.2, 2.9, 0.9, Math.PI / 2);
   if (S.desk) for (const D of desks()) box(D.x, D.z, 2.5, 0.9, D.r);
-  for (const [x, z] of [[6.1, 2.6], [1.0, 6.0], [2.6, 1.0]]) box(x, z, 0.5, 0.5, 0);
-  for (const d of S.decor || []) box(d.x, d.z, 0.7, 0.7, d.r || 0);
+  for (const [x, z] of LOBBY_PLANTS) box(x, z, 0.5, 0.5, 0);
+  for (const d of S.decor || []) box(d.x, d.z, d.k === 'sofa' ? 2.2 : 0.7, d.k === 'sofa' ? 0.9 : 0.7, d.r || 0);
 }
 function makeGrid(rooms) {
   const blk = new Uint8Array(GW * GH);
@@ -2585,7 +2585,7 @@ function poachCheck() {
 }
 
 // ---------------- equipment, decor, kudos ----------------
-const DECOR = { radiator: { cost: 400, e: '🔥', calm: 1, vibe: 0, temp: 1 }, aircon: { cost: 600, e: '❄️', calm: 1, vibe: 0, temp: -1 }, plant: { cost: 150, e: '🪴', calm: 0.94, vibe: 0.0015 }, neon: { cost: 300, e: '💡', calm: 0.96, vibe: 0.002 }, vending: { cost: 600, e: '🥤', calm: 0.9, vibe: 0 }, massage: { kd: 15, e: '💆', calm: 0.8, vibe: 0.001 }, gold: { kd: 10, e: '🌟', calm: 0.92, vibe: 0.005 } };
+const DECOR = { sofa: { cost: 500, e: '🛋️', calm: 0.95, vibe: 0.001, seats: 2 }, radiator: { cost: 400, e: '🔥', calm: 1, vibe: 0, temp: 1 }, aircon: { cost: 600, e: '❄️', calm: 1, vibe: 0, temp: -1 }, plant: { cost: 150, e: '🪴', calm: 0.94, vibe: 0.0015 }, neon: { cost: 300, e: '💡', calm: 0.96, vibe: 0.002 }, vending: { cost: 600, e: '🥤', calm: 0.9, vibe: 0 }, massage: { kd: 15, e: '💆', calm: 0.8, vibe: 0.001 }, gold: { kd: 10, e: '🌟', calm: 0.92, vibe: 0.005 } };
 function profile() { try { return JSON.parse(localStorage.getItem('ahq_profile')) || { kudos: 0 }; } catch (e) { return { kudos: 0 }; } }
 function kudos() { return profile().kudos || 0; }
 function addKudos(n) { if (S.mode !== 'career') return; const p = profile(); p.kudos = (p.kudos || 0) + n; try { localStorage.setItem('ahq_profile', JSON.stringify(p)); } catch (e) {} toast(t('kd.got', { n }), 1800); }
@@ -2596,11 +2596,19 @@ function decorMesh(k) {
   if (k === 'aircon') { put(rbox(0.55, 1.5, 0.4, '#F4F2EE', 0.08), 0, 0.8, 0, g); for (let i = 0; i < 5; i++) put(rbox(0.42, 0.03, 0.02, '#BFC6CE', 0.01), 0, 1.15 + i * 0.07, 0.21, g); put(rbox(0.4, 0.06, 0.02, '#5AB8F0', 0.01, { e: '#5AB8F0', ei: 0.9 }), 0, 0.55, 0.21, g); glbSwap(g, 'aircon', { h: 1.15 }); }
   if (k === 'neon') { put(rbox(1.3, 0.5, 0.08, '#2F3A52', 0.04), 0, 1.7, 0, g); put(rbox(1.1, 0.12, 0.05, '#FF8FAB', 0.02, { e: '#FF8FAB', ei: 1.5 }), 0, 1.75, 0.05, g); put(cyl(0.03, 0.03, 1.5, '#2F3A52'), 0, 0.8, 0, g); }
   if (k === 'vending') { put(rbox(0.9, 1.8, 0.7, '#E9785F', 0.06), 0, 0.95, 0, g); put(rbox(0.6, 1.0, 0.04, '#BFE6F6', 0.02, { e: '#BFE6F6', ei: 0.4 }), -0.08, 1.15, 0.36, g); for (let i = 0; i < 6; i++) put(cyl(0.05, 0.05, 0.16, ['#FFD25E', '#7ACB4E', '#5AB8F0'][i % 3]), -0.25 + (i % 3) * 0.17, 0.85 + Math.floor(i / 3) * 0.35, 0.3, g); }
+  if (k === 'sofa') { put(rbox(2.0, 0.42, 0.85, '#FF8FAB', 0.15), 0, 0.3, 0, g); put(rbox(2.0, 0.62, 0.26, '#FF8FAB', 0.12), 0, 0.62, -0.32, g); for (const sx of [-1.0, 1.0]) put(rbox(0.24, 0.55, 0.85, '#F07C9A', 0.1), sx, 0.42, 0, g); glbSwap(g, 'sofa', { len: 2.2, h: 0.8 }); }
   if (k === 'massage') { put(rbox(0.8, 0.5, 0.9, '#3B4A6B', 0.15), 0, 0.35, 0, g); put(rbox(0.8, 0.9, 0.25, '#3B4A6B', 0.12), 0, 0.85, -0.35, g); put(rbox(0.3, 0.15, 0.6, '#B57BE8', 0.06), 0.45, 0.65, 0, g); }
   g.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
   return g;
 }
-function buildDecor(d) { if (world.decor[d.id]) scene.remove(world.decor[d.id]); const m = decorMesh(d.k); m.position.set(d.x, 0.1, d.z); m.rotation.y = d.r || 0; m.traverse((o) => { o.userData.decorId = d.id; }); scene.add(m); world.decor[d.id] = m; }
+// a built sofa is real waiting seating: two seats join the waiting spots (seat height is found by settle)
+const SOFA_SEATS = (d) => [-0.5, 0.5].map((lx) => ({ x: d.x + lx * Math.cos(d.r || 0) + 0.12 * Math.sin(d.r || 0), z: d.z - lx * Math.sin(d.r || 0) + 0.12 * Math.cos(d.r || 0), rot: d.r || 0, sit: true, y: 0.02, busy: null, dec: d.id }));
+function syncDecorSeats() {
+  const want = new Map((S.decor || []).filter((d) => DECOR[d.k] && DECOR[d.k].seats).map((d) => [d.id, d]));
+  for (let i = WAIT_SPOTS.length - 1; i >= 0; i--) { const w = WAIT_SPOTS[i]; if (w.dec == null) continue; const d = want.get(w.dec); if (!d || Math.hypot(w.x - d.x, w.z - d.z) > 0.8) { if (w.busy && w.busy.spot === w) w.busy.spot = null; WAIT_SPOTS.splice(i, 1); } }
+  for (const d of want.values()) if (!WAIT_SPOTS.some((w) => w.dec === d.id)) WAIT_SPOTS.splice(3, 0, ...SOFA_SEATS(d)); // seats are taken before standing places
+}
+function buildDecor(d) { if (world.decor[d.id]) scene.remove(world.decor[d.id]); const m = decorMesh(d.k); m.position.set(d.x, 0.1, d.z); m.rotation.y = d.r || 0; m.traverse((o) => { o.userData.decorId = d.id; }); scene.add(m); world.decor[d.id] = m; syncDecorSeats(); }
 function decorCalm(v) { let f = 1; for (const d of S.decor || []) if (Math.hypot(d.x - v.av.position.x, d.z - v.av.position.z) < 2.6) f *= DECOR[d.k].calm; return Math.max(0.55, f); }
 let decorT = 0;
 function decorUpdate(dt) {
@@ -2608,21 +2616,28 @@ function decorUpdate(dt) {
   decorT += dt; if (decorT < 8) return; decorT = 0;
   for (const d of S.decor || []) if (d.k === 'vending') { const near = R.visitors.filter((v) => ['wait', 'queue'].includes(v.state) && Math.hypot(d.x - v.av.position.x, d.z - v.av.position.z) < 3.5).length; if (near) { const m = near * 4; S.cash += m; S.earned += m; floatAt({ x: d.x, y: 0.5, z: d.z }, '+' + money(m)); } }
 }
-function decorValid(x, z, id) {
-  if (!inFloor(x, z) || !inFloor(x + 0.3, z) || !inFloor(x - 0.3, z) || !inFloor(x, z + 0.3) || !inFloor(x, z - 0.3)) return false;
-  if (S.rooms.some((r) => { const q = roomRect(r); return x > q.x0 - 0.3 && x < q.x1 + 0.3 && z > q.z0 - 0.3 && z < q.z1 + 0.3; })) return false;
-  if (Math.hypot(x - S.desk.x, z - S.desk.z) < 1.6) return false;
-  return !(S.decor || []).some((d) => d.id !== id && Math.hypot(d.x - x, d.z - z) < 0.9);
+const DECOR_HALF = (k) => (k === 'sofa' ? [1.15, 0.5] : [0.3, 0.3]);
+function decorValid(x, z, id, k = placingD ? placingD.k : 'plant', r = placingD ? placingD.mesh.rotation.y : 0) { // the whole footprint, rotated, must be clear
+  const [hx, hz] = DECOR_HALF(k), c = Math.cos(r), sn = Math.sin(r), pts = [[0, 0]];
+  for (const u of [-hx, 0, hx]) for (const w of [-hz, hz]) pts.push([u, w]);
+  for (const [u, w] of pts) { const px = x + u * c + w * sn, pz = z - u * sn + w * c;
+    if (!inFloor(px, pz)) return false;
+    if (S.rooms.some((rm) => { const q = roomRect(rm); return px > q.x0 - 0.3 && px < q.x1 + 0.3 && pz > q.z0 - 0.3 && pz < q.z1 + 0.3; })) return false;
+    if (px > SOFA_BOX[0] && px < SOFA_BOX[1] && pz > SOFA_BOX[2] && pz < SOFA_BOX[3]) return false;
+    if (desks().some((D, di) => Array.from({ length: QMAX }, (_, i) => QUEUE(i, di)).some((q) => Math.hypot(px - q.x, pz - q.z) < 0.55))) return false; // keep the queue line free
+    if (desks().some((D) => Math.hypot(px - D.x, pz - D.z) < 1.4) || LOBBY_PLANTS.some(([a, b]) => Math.hypot(px - a, pz - b) < 0.5)) return false;
+    if ((S.decor || []).some((d) => d.id !== id && Math.hypot(d.x - px, d.z - pz) < (d.k === 'sofa' ? 1.2 : 0.6))) return false; }
+  return true;
 }
 let placingD = null;
 function startDecor(k, edit) { resumeForBuild();
   closeSheet(); selectVisitor(null);
-  const c = edit ? { x: edit.x, z: edit.z } : [[5.8, 0.8], [0.7, 0.7], [5.8, 3.6], [3.5, 0.7], [0.7, 6.0], [6.0, 6.0]].map(([x, z]) => ({ x, z })).find((p) => decorValid(p.x, p.z)) || { x: 3, z: 1 };
+  const c = edit ? { x: edit.x, z: edit.z } : [[5.8, 0.8], [0.7, 0.7], [5.8, 3.6], [3.5, 0.7], [0.7, 6.0], [6.0, 6.0]].map(([x, z]) => ({ x, z })).concat(Array.from({ length: 625 }, (_, i) => ({ x: 0.5 + (i % 25) * 0.25, z: 0.5 + Math.floor(i / 25) * 0.25 }))).find((p) => decorValid(p.x, p.z, undefined, k, 0)) || { x: 3, z: 1 };
   placingD = { k, x: c.x, z: c.z, edit, mesh: decorMesh(k) }; scene.add(placingD.mesh);
   if (edit) world.decor[edit.id].visible = false;
   $('movebar').classList.add('on'); $('nav').style.visibility = $('pep').style.visibility = 'hidden';
   $('mvRot').textContent = t('move.rotate'); $('mvOk').textContent = t('move.ok'); $('mvCancel').textContent = t('move.cancel');
-  $('mvOk').onclick = () => endDecor(true); $('mvCancel').onclick = () => endDecor(false); $('mvRot').onclick = () => { placingD.mesh.rotation.y += Math.PI / 2; };
+  $('mvOk').onclick = () => endDecor(true); $('mvCancel').onclick = () => endDecor(false); $('mvRot').onclick = () => { placingD.mesh.rotation.y += Math.PI / 2; decorShow(); };
   decorShow();
 }
 function decorShow() { const p = placingD; p.mesh.position.set(p.x, 0.16, p.z); const ok = decorValid(p.x, p.z, p.edit && p.edit.id); $('mvOk').disabled = !ok; $('moveHint').textContent = DECOR[p.k].e + ' ' + (ok ? t('dc.hint') : t('dc.bad')); }
@@ -2632,7 +2647,7 @@ function endDecor(ok) {
   $('movebar').classList.remove('on'); $('nav').style.visibility = $('pep').style.visibility = '';
   $('mvOk').onclick = () => endMove(true); $('mvCancel').onclick = () => endMove(false); $('mvRot').onclick = () => { moving.r = (moving.r + Math.PI / 4) % (Math.PI * 2); moveShow(); };
   if (p.edit) world.decor[p.edit.id].visible = true;
-  if (!ok || !decorValid(p.x, p.z, p.edit && p.edit.id)) return;
+  if (!ok || !decorValid(p.x, p.z, p.edit && p.edit.id, p.k, p.mesh.rotation.y)) return;
   const D = DECOR[p.k];
   if (p.edit) { Object.assign(p.edit, { x: p.x, z: p.z, r: p.mesh.rotation.y }); buildDecor(p.edit); rebuildGrid(); save(); return; }
   if (D.kd) { const pr = profile(); if ((pr.kudos || 0) < D.kd) { toast(t('kd.need')); return; } pr.kudos -= D.kd; localStorage.setItem('ahq_profile', JSON.stringify(pr)); }
@@ -2645,7 +2660,7 @@ function openDecorMenu(id) {
   const d = (S.decor || []).find((x) => x.id === id); if (!d) return; const D = DECOR[d.k], refund = D.cost ? Math.round(D.cost / 2) : 0;
   openSheet(`<h2>${D.e} ${t('dc.' + d.k)}</h2><p class="sub">${t('dc.' + d.k + 'D')}</p><div class="row2"><button class="btn g" id="dMove">✋ ${t('dc.move')}</button><button class="btn y" id="dSell">${t('dc.sell', { m: D.kd ? '✨' + Math.round(D.kd / 2) : money(refund) })}</button></div>`);
   $('dMove').onclick = () => startDecor(d.k, d);
-  $('dSell').onclick = () => { closeSheet(); if (D.kd) addKudos(Math.round(D.kd / 2)); else S.cash += refund; S.decor = S.decor.filter((x) => x !== d); scene.remove(world.decor[d.id]); delete world.decor[d.id]; rebuildGrid(); save(); };
+  $('dSell').onclick = () => { closeSheet(); if (D.kd) addKudos(Math.round(D.kd / 2)); else S.cash += refund; S.decor = S.decor.filter((x) => x !== d); scene.remove(world.decor[d.id]); delete world.decor[d.id]; syncDecorSeats(); rebuildGrid(); save(); };
 }
 function buildExtras() {
   let h = `<div class="lbl" style="margin:12px 0 6px">🔧 ${t('eq.title')}</div>`;
