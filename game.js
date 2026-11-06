@@ -1159,14 +1159,27 @@ const DQ = (di = 0) => (R.deskQs[di] || (R.deskQs[di] = []));
 const allQ = () => R.deskQs.reduce((a, q) => a + q.length, 0);
 const deskHost = (di = 0, there) => R.staff.find((rs) => rs.at === 'desk' && (rs.desk || 0) === di && (!there || rs.mode === 'there'));
 function deskF(di = 0) { const D = desks()[di] || S.desk; return { x: Math.sin(D.r), z: Math.cos(D.r) }; }
-function deskSpot(di = 0) { const D = desks()[di] || S.desk, f = deskF(di); return { x: D.x - f.x * 0.74, z: D.z - f.z * 0.74, rot: D.r, sit: true, y: 0.04 }; } // the host sits on the chair behind the counter
+// each station of a counter = one chair + one monitor, lined up; the host sits exactly on that chair
+const ST_X = -0.3, ST_BACK = 0.98, CHAIR_P = ['cback', 'cbase', 'cpost', 'cseat'], MON_P = ['mbase', 'mneck', 'mon', 'scr'];
+function deskSpot(di = 0) { const D = desks()[di] || S.desk, f = deskF(di), ox = di >= deskBase() || !S.desk.segs ? ST_X : 0; return { x: D.x + ox * Math.cos(D.r) - f.x * ST_BACK, z: D.z - ox * Math.sin(D.r) - f.z * ST_BACK, rot: D.r, sit: true, y: 0.04 }; }
+const PART_OX = {}; // the model's own x of each chair / monitor part (same model for every desk)
+function dressDesk(g, segs) { // move the model's chair and monitor to the station(s); a double counter gets a second set (not one stretched set)
+  const m = g.children.find((c) => c.getObjectByName && c.getObjectByName('cseat')); if (!m) return false;
+  const names = [...CHAIR_P, ...MON_P], sx = segs ? 1.5 : 1, xs = segs ? [-DESK_HALF / sx, DESK_HALF / sx] : [ST_X];
+  const all = names.map((n) => { const a = []; m.traverse((o) => { if (o.name === n) a.push(o); }); if (PART_OX[n] == null) PART_OX[n] = a[0].position.x; return a; });
+  if (all[0].length < 2) all.forEach((a) => { const c = a[0].clone(); a[0].parent.add(c); a.push(c); });
+  for (let i = 0; i < 2; i++) names.forEach((n, j) => { const o = all[j][i], on = i < xs.length; o.visible = on; if (!on) return; o.position.x = PART_OX[n] - (j < CHAIR_P.length ? 0.44 : -0.48) + xs[i]; o.scale.x = 1 / sx; });
+  return true;
+}
+let dressTry = 0;
+function dressDesks() { const ok = dressDesk(world.desk, !!S.desk.segs); (world.desks2 || []).forEach((m) => { m.scale.x = 1; dressDesk(m, false); }); if (!ok && dressTry++ < 40) setTimeout(dressDesks, 500); }
 function QUEUE(i, di = 0) { const D = desks()[di] || S.desk, f = deskF(di); const k = di ? i : Math.min(i, 2); const b = { x: D.x + f.x * (0.95 + k * 0.72), z: D.z + f.z * (0.95 + k * 0.72) }; if (!di && i > 2) b.z += (i - 2) * 0.72; if (i > 0) { b.x += Math.sin(i * 2.7) * 0.16; b.z += Math.cos(i * 1.9) * 0.08; } return b; } // a loose line, not a parade
 function deskMesh() { const m = world.desk.clone(true); m.traverse((o) => { if (o.isMesh) o.userData.desk = true; }); m.children.forEach((c) => { if (c === world.deskRing || c.geometry && c.geometry.type === 'RingGeometry') c.visible = false; }); scene.add(m); return m; }
 function placeDesk() {
   const D = S.desk; world.desk.position.set(D.x, 0, D.z); world.desk.rotation.y = D.r; world.desk.scale.x = D.segs ? 1.5 : 1;
   world.desks2 = world.desks2 || []; while (world.desks2.length > (S.desks2 || []).length) scene.remove(world.desks2.pop());
   (S.desks2 || []).forEach((E, i) => { const m = world.desks2[i] || (world.desks2[i] = deskMesh()); m.position.set(E.x, 0, E.z); m.rotation.y = E.r; m.userData.di = i + deskBase(); });
-  if (S.rooms) rebuildGrid();
+  if (S.rooms) rebuildGrid(); dressTry = 0; dressDesks();
   const hs = deskSpot(), q0 = QUEUE(0);
   const extra = D.segs ? [deskSpot(1), QUEUE(0, 1), QUEUE(1, 1)] : [];
   for (const s of WAIT_SPOTS) s.blocked = Math.hypot(s.x - D.x, s.z - D.z) < (D.segs ? 2.0 : 1.5) || Math.hypot(s.x - hs.x, s.z - hs.z) < 0.8 || Math.hypot(s.x - q0.x, s.z - q0.z) < 0.8 || extra.some((e) => Math.hypot(s.x - e.x, s.z - e.z) < 0.8);
@@ -3194,7 +3207,7 @@ function deskUpRow(di) { const lv = deskLv(di); if (lv >= 3) return `<div class=
 function bindDeskUp(di, reopen) { const b = $('dkUp'); if (!b) return; b.onclick = () => { const lv = deskLv(di); if (S.cash < DESK_UP[lv]) return; S.cash -= DESK_UP[lv]; if (di === 0 && S.desk.segs) S.desk.segs.forEach((sg) => (sg.lv = lv + 1)); else desks()[di].lv = lv + 1; AU.sfx('build'); toast('⚡ ' + t('dk.up', { x: lv + 1 }), 2000); save(); reopen(); }; }
 const DESK_LONG = 2500;
 function lengthenDesk() {
-  const lv = S.desk.lv || 1; S.desk.segs = [{ lv }, { lv }];
+  const lv = S.desk.lv || 1; S.desk.segs = [{ lv }, { lv }]; fixDesk(); // longer counter: keep it clear of the walls
   // extra desks shift up one index: move their hosts and lines along
   for (const rs of R.staff) if (rs.at === 'desk' && (rs.desk || 0) >= 1) rs.desk++;
   R.deskQs.splice(1, 0, []);
