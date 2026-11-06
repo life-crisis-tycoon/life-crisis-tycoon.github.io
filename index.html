@@ -54,9 +54,17 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 .lbl{font-size:12px;font-weight:900;letter-spacing:.6px;color:var(--muted)}
 /* briefing */
 #brief{background:transparent}
-#brief .bimg{height:34%;position:relative}
+#brief .bimg{height:clamp(96px,26vh,300px);position:relative}
 #brief .bbody{flex:1;overflow:auto;margin-top:-24px;background:var(--bg);border-radius:26px 26px 0 0;padding:20px 18px;display:flex;flex-direction:column;gap:10px;position:relative}
 .rule{display:flex;gap:10px;align-items:center;border-radius:14px;padding:8px 12px;font-size:14px}
+#brief .bbody{gap:8px;padding:16px 16px 0}
+#brief .bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 14px;align-items:start}
+#brief .bgrid>div{display:flex;flex-direction:column;gap:6px}
+#brief .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}
+#brief .rule{padding:7px 10px;font-size:13px;line-height:1.25;align-items:flex-start}
+#brief .goal{margin:2px 0;font-size:14px}
+#brief .bfoot{position:sticky;bottom:0;background:var(--bg);padding:6px 0 12px;margin-top:4px;display:flex;flex-direction:column;gap:6px}
+#brief h1{font-size:clamp(24px,4vh,32px)!important}
 .goal{display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:3px 0}
 .stars{color:#FFB800}
 /* HUD */

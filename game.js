@@ -127,7 +127,7 @@ let S;
 function newState() {
   return { v: 2, mode: 'career', cash: 15000, vibes: 60, day: 1, t: 0, served: 0, left: 0, earned: 0, stars: 0, annex: 'locked', annexDay: 0,
     rooms: [], staff: [], chat: [], unread: 0, nextId: 1, rainy: false,
-    research: { done: [], active: null, pts: 0 }, nextInspect: 3, inspectAt: -1, nextEm: 2, emAt: -1, em: null, qt: QUICK_LEN, pepT: 0, pepCd: 0, tut: -1, tips: {}, desk: { x: 5.25, z: 5.25, r: Math.PI / 4 } };
+    research: { done: [], active: null, pts: 0 }, nextInspect: 3, inspectAt: -1, nextEm: 2, emAt: -1, em: null, qt: QUICK_LEN, pepT: 0, pepCd: 0, tut: -1, tips: {}, desk: { x: 4.6, z: 2.8, r: 0 } }; // against the back wall, facing the entrance; the waiting sofa is beside it, not behind it
 }
 function save() { if (!S || S.mode !== 'career') return; try { if (inGame) S.vis = R.visitors.filter((v) => !['exit', 'angry', 'toShop', 'shopping'].includes(v.state)).map(snapVisitor); localStorage.setItem(saveKey(S.city), JSON.stringify(S)); const p = profile(); p.last = S.city || 'london'; p.stars = p.stars || {}; p.stars[S.city || 'london'] = Math.max(p.stars[S.city || 'london'] || 0, S.stars); localStorage.setItem('ahq_profile', JSON.stringify(p)); } catch (e) {} }
 function load(c) { try { const s = JSON.parse(localStorage.getItem(saveKey(c))); if (s && s.v === 2) return s; } catch (e) {} return null; }
@@ -531,7 +531,7 @@ function buildWorld() {
   put(rbox(2.6, 0.45, 0.9, '#FF8FAB', 0.16), 0, 0.33, 0, sofa); put(rbox(2.6, 0.7, 0.3, '#FF8FAB', 0.14), 0, 0.7, -0.35, sofa);
   put(rbox(0.3, 0.6, 0.9, '#F07C9A', 0.12), -1.3, 0.5, 0, sofa); put(rbox(0.3, 0.6, 0.9, '#F07C9A', 0.12), 1.3, 0.5, 0, sofa); glbSwap(sofa, 'sofa', { len: 2.7, h: 1.0, y: 0.1 });
   const rug = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.02, 40), mat('#2BB5A6', { r: 1 })); rug.position.set(2.6, 0.13, 3.6); rug.receiveShadow = true; scene.add(rug);
-  plant(6.1, 2.6, 1.1, '#FFFFFF'); plant(1.0, 6.0, 1, '#E9785F'); plant(2.6, 1.0, 0.9, '#FFD25E');
+  plant(6.1, 1.1, 1.1, '#FFFFFF'); plant(1.0, 6.0, 1, '#E9785F'); plant(2.6, 1.0, 0.9, '#FFD25E');
   buildCityDecor('london');
   buildAnnexLot();
 }
@@ -574,8 +574,8 @@ function gardenBuild(g, pa, pb) { // grass, planters and benches on both sides o
     floorPlane(a, b, 7.2, 11.6, mat('#8DBF6A', { r: 1 }), 0.09, g);
     const n = Math.min(4, Math.floor((b - a) / 2.6));
     for (let k = 0; k < n; k++) { const bx = a + 1.3 + k * ((b - a - 2.6) / Math.max(1, n - 1 || 1)); const bz = 9.2;
-      const bench = grp(bx, bz, Math.PI, g); put(rbox(1.5, 0.08, 0.45, '#B5793A', 0.03), 0, 0.45, 0, bench); put(rbox(1.5, 0.45, 0.07, '#B5793A', 0.03), 0, 0.7, 0.22, bench); for (const sx of [-0.65, 0.65]) put(rbox(0.07, 0.42, 0.4, '#5A3A22', 0.02), sx, 0.24, 0, bench);
-      for (const sx of [-0.38, 0.38]) spots.push({ x: bx + sx, z: bz - 0.05, rot: Math.PI, sit: true, y: 0.02, out: true, busy: null });
+      const bench = grp(bx, bz, 0, g); put(rbox(1.5, 0.08, 0.95, '#B5793A', 0.03), 0, 0.45, 0, bench); put(rbox(1.5, 0.45, 0.07, '#B5793A', 0.03), 0, 0.7, 0, bench); for (const sx of [-0.65, 0.65]) put(rbox(0.07, 0.42, 0.85, '#5A3A22', 0.02), sx, 0.24, 0, bench);
+      for (const sx of [-0.38, 0.38]) for (const side of [-1, 1]) spots.push({ x: bx + sx, z: bz + side * 0.26, rot: side > 0 ? 0 : Math.PI, sit: true, y: 0.02, out: true, busy: null }); // double-sided: back to back
       if (S.gardenRoof) { for (const [px, pz] of [[-1.1, -0.6], [1.1, -0.6], [-1.1, 0.8], [1.1, 0.8]]) put(cyl(0.05, 0.05, 2.3, '#5A6470'), bx + px, 1.25, bz + pz, g); const gl = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.05, 1.8), mat('#BFE6F6', { r: 0.1, op: 0.45 })); gl.position.set(bx, 2.42, bz + 0.1); g.add(gl); put(rbox(2.7, 0.06, 0.08, '#5A6470', 0.02), bx, 2.44, bz + 1.0, g); put(rbox(2.7, 0.06, 0.08, '#5A6470', 0.02), bx, 2.44, bz - 0.8, g); }
       if (S.gardenHeat) { const hx = bx + (k % 2 ? -1.0 : 1.0); put(cyl(0.05, 0.12, 1.8, '#4A4F57'), hx, 1.0, bz + 0.9, g); put(new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.25, 12), mat('#8A8E96', { m: 0.5 })), hx, 2.0, bz + 0.9, g); put(sph(0.08, '#FF8A3D', { e: '#FF6A1A', ei: 1.4 }), hx, 1.8, bz + 0.9, g); }
       if (S.gardenCool) { const fx = bx + (k % 2 ? 1.0 : -1.0); put(cyl(0.04, 0.04, 2.1, '#C9CED6'), fx, 1.05, bz + 0.9, g); put(cyl(0.25, 0.25, 0.08, '#5AB8F0', { op: 0.8 }), fx, 2.1, bz + 0.9, g); const um = new THREE.Mesh(new THREE.ConeGeometry(1.0, 0.35, 16), mat('#F4EFE6', { r: 0.9 })); um.position.set(fx, 2.35, bz + 0.9); g.add(um); }
@@ -1156,7 +1156,7 @@ const DQ = (di = 0) => (R.deskQs[di] || (R.deskQs[di] = []));
 const allQ = () => R.deskQs.reduce((a, q) => a + q.length, 0);
 const deskHost = (di = 0, there) => R.staff.find((rs) => rs.at === 'desk' && (rs.desk || 0) === di && (!there || rs.mode === 'there'));
 function deskF(di = 0) { const D = desks()[di] || S.desk; return { x: Math.sin(D.r), z: Math.cos(D.r) }; }
-function deskSpot(di = 0) { const D = desks()[di] || S.desk, f = deskF(di); return { x: D.x - f.x * 0.78, z: D.z - f.z * 0.78, rot: D.r, sit: false, y: 0 }; }
+function deskSpot(di = 0) { const D = desks()[di] || S.desk, f = deskF(di); return { x: D.x - f.x * 0.74, z: D.z - f.z * 0.74, rot: D.r, sit: true, y: 0.04 }; } // the host sits on the chair behind the counter
 function QUEUE(i, di = 0) { const D = desks()[di] || S.desk, f = deskF(di); const k = di ? i : Math.min(i, 2); const b = { x: D.x + f.x * (0.95 + k * 0.72), z: D.z + f.z * (0.95 + k * 0.72) }; if (!di && i > 2) b.z += (i - 2) * 0.72; if (i > 0) { b.x += Math.sin(i * 2.7) * 0.16; b.z += Math.cos(i * 1.9) * 0.08; } return b; } // a loose line, not a parade
 function deskMesh() { const m = world.desk.clone(true); m.traverse((o) => { if (o.isMesh) o.userData.desk = true; }); m.children.forEach((c) => { if (c === world.deskRing || c.geometry && c.geometry.type === 'RingGeometry') c.visible = false; }); scene.add(m); return m; }
 function placeDesk() {
@@ -1170,8 +1170,7 @@ function placeDesk() {
 }
 const WAIT_SPOTS = [
   { x: 1.3, z: 3.4, rot: Math.PI / 2, sit: true, y: 0.02 }, { x: 1.3, z: 4.2, rot: Math.PI / 2, sit: true, y: 0.02 }, { x: 1.3, z: 5.0, rot: Math.PI / 2, sit: true, y: 0.02 },
-  { x: 2.4, z: 2.0, rot: Math.PI / 4 }, { x: 3.2, z: 2.0, rot: Math.PI / 4 }, { x: 4.0, z: 2.0, rot: Math.PI / 4 }, { x: 4.8, z: 2.0, rot: Math.PI / 4 },
-  { x: 2.4, z: 2.8, rot: Math.PI / 4 }, { x: 3.4, z: 3.4, rot: Math.PI / 4 }, { x: 2.8, z: 4.6, rot: Math.PI / 4 }, { x: 3.8, z: 4.4, rot: Math.PI / 4 }, { x: 2.0, z: 5.6, rot: Math.PI / 4 },
+  ...[[2.2, 1.5], [3.0, 1.6], [2.0, 2.3], [6.0, 4.0], [6.0, 4.8], [6.0, 5.6], [2.2, 5.9], [2.9, 2.5]].map(([x, z]) => ({ x, z, rot: Math.atan2(4.6 - x, 3.6 - z) })), // standing: by the walls, clear of the sofa and the queue, facing the desk
 ].map((s) => ({ ...s, busy: null, sit: !!s.sit, y: s.y || 0 }));
 const iconCache = {};
 function iconTex(e) {
@@ -3023,13 +3022,19 @@ function openBrief() {
   const C = CITIES[mapCity], s = load(mapCity);
   buildCityDecor(mapCity); view.tx = 19; view.tz = 18; view.half = 24; placeCam();
   GOALS = mkGoals(C.goals);
-  $('briefBody').innerHTML = `<div><h1 class="f" style="margin:0;font-size:32px">${t('city.' + mapCity)}</h1><div style="font-weight:700;color:#2D3748">${t(C.brief)}</div></div>
-    <div class="lbl">${t('brief.rules')}</div>${C.rules.map(([e, k]) => `<div class="rule w">${e} <span>${t(k)}</span></div>`).join('')}
-    ${(() => { const lp = Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].city === mapCity); return lp.length ? `<div class="lbl" style="margin-top:4px">${t('br.probs')}</div><div class="w" style="border-radius:16px;padding:8px 12px">${lp.map((k) => `<div style="font-size:13px;margin:3px 0"><b>${PROBLEMS[k].e} ${t('p.' + k)}</b> → ${ROOMS[PROBLEMS[k].room].e} ${rn(PROBLEMS[k].room)}<div style="color:#4A5568;font-weight:700">${t('pd.' + k)}</div></div>`).join('')}</div>` : ''; })()}
-    ${(() => { const lv = CITIES[mapCity].lvl || 0, nb = Object.keys(BEH).filter((k) => BEH[k] === lv); return nb.length ? `<div class="lbl" style="margin-top:4px">${t('br.new')}</div><div class="w" style="border-radius:16px;padding:8px 12px">${nb.map((k) => `<div style="font-size:13px;margin:3px 0"><b>${BEH_E[k]} ${t('bh.' + k)}</b><div style="color:#4A5568;font-weight:700">${t('bh.' + k + '.d')}</div></div>`).join('')}</div>` : ''; })()}
-    <div class="lbl" style="margin-top:4px">${t('brief.goals')}</div><div class="w" style="border-radius:16px;padding:8px 12px">${GOALS.map((g, i) => `<div class="goal"><span><span class="stars">${'★'.repeat(i + 1)}</span> ${goalText(g)}</span><span style="color:${s && s.stars > i ? '#1E8A3A' : 'var(--muted)'}">${s && s.stars > i ? t('goals.done') : ''}</span></div>`).join('')}</div>
-    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;color:#2D3748"><span>${t('brief.budgetC', { m: money(C.cash) })}</span><span>${t('brief.rentC', { m: money(Math.round(C.rent * BILL_K / 50) * 50) })}</span></div>
-    <button class="btn g" id="bOpen" style="font-size:21px;margin-top:auto">${t('brief.open')}</button>`;
+  const lp = Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].city === mapCity), lv = CITIES[mapCity].lvl || 0, nb = Object.keys(BEH).filter((k) => BEH[k] === lv);
+  const box = (rows) => `<div class="w" style="border-radius:16px;padding:6px 12px">${rows}</div>`;
+  const item = (title, desc) => `<div style="font-size:13px;margin:3px 0"><b>${title}</b><div style="color:#4A5568;font-weight:700">${desc}</div></div>`;
+  // one screen, no scrolling: rules sit side by side, extra sections share a two-column grid, the start button stays visible
+  $('briefBody').innerHTML = `<div><h1 class="f" style="margin:0">${t('city.' + mapCity)}</h1><div style="font-weight:700;color:#2D3748;font-size:14px">${t(C.brief)}</div></div>
+    <div class="lbl">${t('brief.rules')}</div><div class="rules">${C.rules.map(([e, k]) => `<div class="rule w">${e} <span>${t(k)}</span></div>`).join('')}</div>
+    <div class="bgrid">
+      <div><div class="lbl">${t('brief.goals')}</div>${box(GOALS.map((g, i) => `<div class="goal"><span><span class="stars">${'★'.repeat(i + 1)}</span> ${goalText(g)}</span><span style="color:${s && s.stars > i ? '#1E8A3A' : 'var(--muted)'}">${s && s.stars > i ? t('goals.done') : ''}</span></div>`).join(''))}</div>
+      ${lp.length ? `<div><div class="lbl">${t('br.probs')}</div>${box(lp.map((k) => item(`${PROBLEMS[k].e} ${t('p.' + k)}</b> → <b>${ROOMS[PROBLEMS[k].room].e} ${rn(PROBLEMS[k].room)}`, t('pd.' + k))).join(''))}</div>` : ''}
+      ${nb.length ? `<div><div class="lbl">${t('br.new')}</div>${box(nb.map((k) => item(`${BEH_E[k]} ${t('bh.' + k)}`, t('bh.' + k + '.d'))).join(''))}</div>` : ''}
+    </div>
+    <div class="bfoot"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;color:#2D3748"><span>${t('brief.budgetC', { m: money(C.cash) })}</span><span>${t('brief.rentC', { m: money(Math.round(C.rent * BILL_K / 50) * 50) })}</span></div>
+    <button class="btn g" id="bOpen" style="font-size:21px">${t('brief.open')}</button></div>`;
   $('briefTag').textContent = t(C.tag);
   $('bOpen').onclick = () => { const sv = load(mapCity); if (sv) { RNG = Math.random; S = sv; S.city = S.city || mapCity; startGame(); } else startNew(mapCity); };
   show('brief');

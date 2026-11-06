@@ -658,7 +658,7 @@ en: {
   'lg.c1': 'Frequent power cuts', 'lg.c2': 'Hustle culture', 'lg.c3': 'Emergency: grid blackout', 'lg.landlord': 'Welcome to Lekki! Rent is {r} every week 😇 Light may go off sometimes o, buy a generator.',
   'p.hustle': 'Side Hustle Overload', 'p.fuel': 'Generator Fuel Panic', 'p.goslow': 'Go-Slow Rage', 'p.aunty': '"When Are You Marrying?" Aunty Attack',
   'r.garage': 'Hustle Garage', 'r.garage.d': 'Fixes Side Hustle Overload: one dream at a time, please', 'em.blackout': 'Grid blackout!', 'em.blackout.d': 'The whole city lost power and 6 hustlers lost a week of work. Help 4 of them in 2:30 (Hustle Garage, Budget).',
-  'unl.city': 'New city unlocked: {city}! Check the world map.', 'new.confirmT': 'Start a new career?', 'new.confirmP': 'This erases your HQs in every city. Your manager and Kudos stay.', 'new.yes': 'Start over', 'new.no': 'Cancel', 'brief.budgetC': 'Starting budget {m}', 'brief.rentC': 'Rent {m} every 4 days',
+  'unl.city': 'New city unlocked: {city}! Check the world map.', 'new.confirmT': 'Start a new career?', 'new.confirmP': 'This erases your HQs in every city. Your manager and Kudos stay.', 'new.yes': 'Start over', 'new.no': 'Cancel', 'brief.budgetC': 'Starting budget {m}', 'brief.rentC': 'Rent {m} every week (7 days)',
 },
 fr: {
   'gp.helped': 'Aider {n} clients', 'gp.vibes': '{n} % de vibes', 'gp.cash': 'Avoir {n}', 'city.lagos': 'Lagos', 'city.cairo': 'Le Caire', 'city.mumbai': 'Mumbai', 'rg.europe': 'EUROPE', 'rg.africa': 'AFRIQUE',
@@ -668,7 +668,7 @@ fr: {
   'lg.c1': 'Coupures fréquentes', 'lg.c2': 'Culture du hustle', 'lg.c3': 'Urgence : blackout géant', 'lg.landlord': 'Bienvenue à Lekki ! Le loyer est de {r} chaque semaine 😇 Le courant peut couper parfois o, achète un générateur.',
   'p.hustle': 'Surcharge de side-hustles', 'p.fuel': 'Panique du carburant de générateur', 'p.goslow': 'Rage des embouteillages', 'p.aunty': 'Attaque de tantine « Tu te maries quand ? »',
   'r.garage': 'Garage du hustle', 'r.garage.d': 'Soigne la Surcharge de side-hustles : un rêve à la fois, s’il te plaît', 'em.blackout': 'Blackout géant !', 'em.blackout.d': 'Toute la ville a perdu le courant et 6 hustlers ont perdu une semaine de travail. Aide-en 4 en 2:30 (Garage du hustle, Budget).',
-  'unl.city': 'Nouvelle ville débloquée : {city} ! Regarde la carte du monde.', 'new.confirmT': 'Nouvelle carrière ?', 'new.confirmP': 'Cela efface tes QG dans toutes les villes. Ton manager et tes Kudos restent.', 'new.yes': 'Recommencer', 'new.no': 'Annuler', 'brief.budgetC': 'Budget de départ {m}', 'brief.rentC': 'Loyer {m} tous les 4 jours',
+  'unl.city': 'Nouvelle ville débloquée : {city} ! Regarde la carte du monde.', 'new.confirmT': 'Nouvelle carrière ?', 'new.confirmP': 'Cela efface tes QG dans toutes les villes. Ton manager et tes Kudos restent.', 'new.yes': 'Recommencer', 'new.no': 'Annuler', 'brief.budgetC': 'Budget de départ {m}', 'brief.rentC': 'Loyer {m} chaque semaine (7 jours)',
 },
 es: {
   'gp.helped': 'Ayudar a {n} visitantes', 'gp.vibes': '{n} % de vibes', 'gp.cash': 'Tener {n}', 'city.lagos': 'Lagos', 'city.cairo': 'El Cairo', 'city.mumbai': 'Bombay', 'rg.europe': 'EUROPA', 'rg.africa': 'ÁFRICA',
@@ -678,7 +678,7 @@ es: {
   'lg.c1': 'Apagones frecuentes', 'lg.c2': 'Cultura del hustle', 'lg.c3': 'Emergencia: apagón total', 'lg.landlord': '¡Bienvenido a Lekki! El alquiler es de {r} cada semana 😇 La luz se va a veces, cómprate un generador.',
   'p.hustle': 'Exceso de trabajos extra', 'p.fuel': 'Pánico por el combustible del generador', 'p.goslow': 'Furia del atasco', 'p.aunty': 'Ataque de tía "¿Cuándo te casas?"',
   'r.garage': 'Garaje del hustle', 'r.garage.d': 'Cura el Exceso de trabajos extra: un sueño a la vez, por favor', 'em.blackout': '¡Apagón total!', 'em.blackout.d': 'Toda la ciudad se quedó sin luz y 6 emprendedores perdieron una semana de trabajo. Ayuda a 4 en 2:30 (Garaje, Presupuesto).',
-  'unl.city': '¡Nueva ciudad desbloqueada: {city}! Mira el mapa del mundo.', 'new.confirmT': '¿Nueva carrera?', 'new.confirmP': 'Esto borra tus sedes en todas las ciudades. Tu mánager y tus Kudos se quedan.', 'new.yes': 'Empezar de nuevo', 'new.no': 'Cancelar', 'brief.budgetC': 'Presupuesto inicial {m}', 'brief.rentC': 'Alquiler {m} cada 4 días',
+  'unl.city': '¡Nueva ciudad desbloqueada: {city}! Mira el mapa del mundo.', 'new.confirmT': '¿Nueva carrera?', 'new.confirmP': 'Esto borra tus sedes en todas las ciudades. Tu mánager y tus Kudos se quedan.', 'new.yes': 'Empezar de nuevo', 'new.no': 'Cancelar', 'brief.budgetC': 'Presupuesto inicial {m}', 'brief.rentC': 'Alquiler {m} cada semana (7 días)',
 },
 pt: {
   'gp.helped': 'Ajudar {n} visitantes', 'gp.vibes': '{n}% de vibes', 'gp.cash': 'Ter {n}', 'city.lagos': 'Lagos', 'city.cairo': 'Cairo', 'city.mumbai': 'Mumbai', 'rg.europe': 'EUROPA', 'rg.africa': 'ÁFRICA',
@@ -688,7 +688,7 @@ pt: {
   'lg.c1': 'Quedas frequentes', 'lg.c2': 'Cultura do corre', 'lg.c3': 'Emergência: apagão geral', 'lg.landlord': 'Bem-vindo a Lekki! O aluguel é {r} por semana 😇 A luz pode cair às vezes, compra um gerador.',
   'p.hustle': 'Sobrecarga de bicos', 'p.fuel': 'Pânico do combustível do gerador', 'p.goslow': 'Raiva do engarrafamento', 'p.aunty': 'Ataque da tia "Quando você vai casar?"',
   'r.garage': 'Garagem do corre', 'r.garage.d': 'Cura a Sobrecarga de bicos: um sonho por vez, por favor', 'em.blackout': 'Apagão geral!', 'em.blackout.d': 'A cidade toda ficou sem luz e 6 empreendedores perderam uma semana de trabalho. Ajude 4 em 2:30 (Garagem, Orçamento).',
-  'unl.city': 'Nova cidade liberada: {city}! Veja o mapa-múndi.', 'new.confirmT': 'Nova carreira?', 'new.confirmP': 'Isso apaga suas sedes em todas as cidades. Seu gerente e seus Kudos ficam.', 'new.yes': 'Recomeçar', 'new.no': 'Cancelar', 'brief.budgetC': 'Orçamento inicial {m}', 'brief.rentC': 'Aluguel {m} a cada 4 dias',
+  'unl.city': 'Nova cidade liberada: {city}! Veja o mapa-múndi.', 'new.confirmT': 'Nova carreira?', 'new.confirmP': 'Isso apaga suas sedes em todas as cidades. Seu gerente e seus Kudos ficam.', 'new.yes': 'Recomeçar', 'new.no': 'Cancelar', 'brief.budgetC': 'Orçamento inicial {m}', 'brief.rentC': 'Aluguel {m} por semana (7 dias)',
 },
 de: {
   'gp.helped': '{n} Besuchern helfen', 'gp.vibes': '{n} % Vibes', 'gp.cash': '{n} haben', 'city.lagos': 'Lagos', 'city.cairo': 'Kairo', 'city.mumbai': 'Mumbai', 'rg.europe': 'EUROPA', 'rg.africa': 'AFRIKA',
@@ -698,7 +698,7 @@ de: {
   'lg.c1': 'Häufige Stromausfälle', 'lg.c2': 'Hustle-Kultur', 'lg.c3': 'Notfall: Netz-Blackout', 'lg.landlord': 'Willkommen in Lekki! Die Miete beträgt {r} pro Woche 😇 Der Strom fällt manchmal aus, kauf dir einen Generator.',
   'p.hustle': 'Nebenjob-Überlastung', 'p.fuel': 'Generator-Sprit-Panik', 'p.goslow': 'Stau-Wut', 'p.aunty': 'Tanten-Attacke „Wann heiratest du?"',
   'r.garage': 'Hustle-Garage', 'r.garage.d': 'Hilft bei Nebenjob-Überlastung: ein Traum nach dem anderen, bitte', 'em.blackout': 'Netz-Blackout!', 'em.blackout.d': 'Die ganze Stadt hat keinen Strom, 6 Hustler haben eine Woche Arbeit verloren. Hilf 4 von ihnen in 2:30 (Garage, Budget).',
-  'unl.city': 'Neue Stadt freigeschaltet: {city}! Schau auf die Weltkarte.', 'new.confirmT': 'Neue Karriere?', 'new.confirmP': 'Das löscht deine HQs in allen Städten. Dein Manager und deine Kudos bleiben.', 'new.yes': 'Neu starten', 'new.no': 'Abbrechen', 'brief.budgetC': 'Startbudget {m}', 'brief.rentC': 'Miete {m} alle 4 Tage',
+  'unl.city': 'Neue Stadt freigeschaltet: {city}! Schau auf die Weltkarte.', 'new.confirmT': 'Neue Karriere?', 'new.confirmP': 'Das löscht deine HQs in allen Städten. Dein Manager und deine Kudos bleiben.', 'new.yes': 'Neu starten', 'new.no': 'Abbrechen', 'brief.budgetC': 'Startbudget {m}', 'brief.rentC': 'Miete {m} pro Woche (7 Tage)',
 },
 ja: {
   'gp.helped': '{n}人を助ける', 'gp.vibes': 'バイブス{n}%', 'gp.cash': '{n}を持つ', 'city.lagos': 'ラゴス', 'city.cairo': 'カイロ', 'city.mumbai': 'ムンバイ', 'rg.europe': 'ヨーロッパ', 'rg.africa': 'アフリカ',
@@ -708,7 +708,7 @@ ja: {
   'lg.c1': '停電が多い', 'lg.c2': 'ハッスル文化', 'lg.c3': '緊急：大停電', 'lg.landlord': 'レッキへようこそ！家賃は毎週{r} 😇 たまに停電するから発電機を買ってね。',
   'p.hustle': '副業オーバーロード', 'p.fuel': '発電機の燃料パニック', 'p.goslow': '渋滞イライラ', 'p.aunty': 'おばさんの「いつ結婚するの？」攻撃',
   'r.garage': 'ハッスルガレージ', 'r.garage.d': '副業オーバーロードに対応：夢は一つずつね', 'em.blackout': '大停電！', 'em.blackout.d': '街全体が停電、6人のハッスラーが1週間分の仕事を失った。2:30以内に4人助けよう（ガレージ、予算）。',
-  'unl.city': '新しい都市を解放：{city}！ワールドマップを見てね。', 'new.confirmT': '新しいキャリアを始める？', 'new.confirmP': '全都市のHQが消えます。マネージャーとKudosは残るよ。', 'new.yes': '最初から', 'new.no': 'キャンセル', 'brief.budgetC': '初期予算 {m}', 'brief.rentC': '家賃 {m}（4日ごと）',
+  'unl.city': '新しい都市を解放：{city}！ワールドマップを見てね。', 'new.confirmT': '新しいキャリアを始める？', 'new.confirmP': '全都市のHQが消えます。マネージャーとKudosは残るよ。', 'new.yes': '最初から', 'new.no': 'キャンセル', 'brief.budgetC': '初期予算 {m}', 'brief.rentC': '家賃 {m}（毎週・7日ごと）',
 },
 ko: {
   'gp.helped': '손님 {n}명 돕기', 'gp.vibes': '바이브 {n}%', 'gp.cash': '{n} 보유', 'city.lagos': '라고스', 'city.cairo': '카이로', 'city.mumbai': '뭄바이', 'rg.europe': '유럽', 'rg.africa': '아프리카',
@@ -718,7 +718,7 @@ ko: {
   'lg.c1': '잦은 정전', 'lg.c2': '허슬 문화', 'lg.c3': '긴급: 대정전', 'lg.landlord': '레키에 온 걸 환영해요! 월세는 매주 {r} 😇 가끔 정전되니까 발전기를 사요.',
   'p.hustle': '부업 과부하', 'p.fuel': '발전기 연료 패닉', 'p.goslow': '교통체증 분노', 'p.aunty': '이모의 "언제 결혼하니?" 공격',
   'r.garage': '허슬 차고', 'r.garage.d': '부업 과부하 해결: 꿈은 하나씩만요', 'em.blackout': '대정전!', 'em.blackout.d': '도시 전체가 정전되고 허슬러 6명이 일주일치 일을 날렸어요. 2:30 안에 4명을 도우세요 (차고, 예산).',
-  'unl.city': '새 도시 해금: {city}! 세계 지도를 확인하세요.', 'new.confirmT': '새 커리어를 시작할까요?', 'new.confirmP': '모든 도시의 HQ가 지워져요. 매니저와 Kudos는 남아요.', 'new.yes': '처음부터', 'new.no': '취소', 'brief.budgetC': '시작 예산 {m}', 'brief.rentC': '월세 {m} (4일마다)',
+  'unl.city': '새 도시 해금: {city}! 세계 지도를 확인하세요.', 'new.confirmT': '새 커리어를 시작할까요?', 'new.confirmP': '모든 도시의 HQ가 지워져요. 매니저와 Kudos는 남아요.', 'new.yes': '처음부터', 'new.no': '취소', 'brief.budgetC': '시작 예산 {m}', 'brief.rentC': '월세 {m} (매주·7일마다)',
 },
 };
 
