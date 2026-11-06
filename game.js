@@ -50,7 +50,8 @@ const ROOMS = {
   nap: { e: '😴', cost: 3000, role: 'guide', time: 10, pill: '#7F68C9', floor: '#D8CCF4' },
   detox: { e: '📵', cost: 2200, role: 'guide', time: 7, pill: '#1F74C4', floor: '#CFE6F7' },
   career: { e: '💼', cost: 2800, role: 'coach', time: 9, pill: '#C2577A', floor: '#F2D6DE' },
-  cafe: { e: '🍵', cost: 1800, role: 'barista', pill: '#2E7D4F', floor: '#E8C796' },
+  cafe: { e: '🍵', cost: 1800, role: 'host', // a Community Host runs the café (no separate barista profile)
+    pill: '#2E7D4F', floor: '#E8C796' },
   lab: { e: '🔬', cost: 4000, role: 'researcher', time: 0, pill: '#3B4A6B', floor: '#E3E8EE' },
   social: { e: '🥂', cost: 2600, role: 'guide', time: 9, pill: '#E0567F', floor: '#FBD9E3' },
   parent: { e: '🧸', cost: 2600, role: 'coach', time: 8, pill: '#E08A2E', floor: '#FFE6B8' },
@@ -77,7 +78,6 @@ const ROLES = {
   researcher: { uni: '#FFFFFF', pants: '#2F3A52', wage: [900, 1500], bg: '#E3ECF5', strip: '#5AB8F0' },
   pharmacist: { uni: '#FFFFFF', pants: '#2BB5A6', wage: [700, 1100], bg: '#DFF5F1', strip: '#2BB5A6' },
   therapist: { uni: '#0E6E2C', pants: '#3B4A6B', wage: [1000, 1600], bg: '#D7EBDD', strip: '#2E7D4F' },
-  barista: { uni: '#2E3A36', pants: '#2E3A36', wage: [450, 750], bg: '#E3F2EA', strip: '#7CC4A4' }, // runs the café: hired like everyone else
 };
 const TRAITS = [
   { n: 'Actually Reads Emails', t: 'good', speed: 1.2 }, { n: 'Spreadsheet Wizard', t: 'good', speed: 1.15 }, { n: 'Calm Voice', t: 'good', calm: 0.7 }, { n: 'Has a Dog', t: 'good', vibe: 1 },
@@ -180,8 +180,10 @@ function updateCutaway() {
   // Theme Hospital / Two Point style: a wall stays full height only when nothing walkable lies behind it from the camera
   // (outer back walls). Every other wall — and the door in it — drops to the same low stub, so heights stay coherent.
   const cut = (n, p) => { const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
-  for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? 0.22 : 1;
-  for (const d of world.doors || []) d.g.scale.y = cut(d.g.userData.n, [d.x, d.z]) ? 0.22 : 1;
+  // cut walls stop at chest height (~1.05 m) so rooms stay readable; a door is never cut: its frame stays taller than people
+  // (they visibly walk through a doorway), only the slab and the wall piece above it hide so they don't block the view
+  for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_CUT : 1;
+  for (const d of world.doors || []) { const c = cut(d.g.userData.n, [d.x, d.z]); d.g.scale.y = 1; if (d.top) d.top.visible = !c; for (const l of d.leaves) l.visible = !c; d.cut = c; }
   const tan = Math.tan(view.pitch);
   for (const b of world.cityB || []) {
     const dx = b.x - view.tx, dz = b.z - view.tz, along = dx * cx + dz * cz;
@@ -665,7 +667,7 @@ function lotOwned(i) {
 // ---------------- rooms ----------------
 const R = { rooms: {}, staff: [], visitors: [], deskQ: [], deskQs: [], litter: [], rats: [], inspector: null, later: [] }; R.deskQs[0] = R.deskQ;
 // Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional ivy + fairy lights.
-const WALL_CUT = 0.22, ROOM_H = 2.5, DOOR_H = 2.15, DOOR_W = 1.15; // walls taller than people (~1.75 m), one modern door per room
+const WALL_CUT = 0.42, ROOM_H = 2.5, DOOR_H = 2.15, DOOR_W = 1.15; // walls taller than people (~1.75 m), one modern door per room
 const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', ivy: true, lights: true, h: ROOM_H } };
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };
@@ -1024,7 +1026,6 @@ function makeCandidate(role) {
 function staffLook(st) {
   const r = ROLES[st.role], L = { ...st.look, role: st.role, shirt: r.uni, pants: r.pants, shoes: '#F4EFE6' };
   if (st.role === 'host') Object.assign(L, { apron: true, lanyard: true, headset: true });
-  if (st.role === 'barista') Object.assign(L, { apron: true });
   if (st.role === 'coach') Object.assign(L, { lanyard: true, inner: '#F4EFE6' });
   if (st.role === 'guide') Object.assign(L, { mat: true, shoes: '#8B6A45' });
   if (st.role === 'maint') Object.assign(L, { cap: '#E9785F', belt: true, inner: '#F4EFE6', shoes: '#8B6A45' });
@@ -2519,6 +2520,7 @@ function staffEnergy(rs, dt) {
   const d = rs.data; if (d.energy == null) d.energy = 1;
   if (d.sadT > 0) d.sadT -= dt;
   if (d.awayT > 0) {
+    if (rs.mode !== 'away' && patientOf(rs)) return; // life event, day off…: they finish the session in progress first, then go
     d.awayT -= dt; rs.av.visible = false; rs.mode = 'away';
     if (d.awayT <= 0) { d.awayT = 0; rs.av.visible = true; rs.av.position.set(3, 0.1, 11); d.energy = 1; goStaff(rs, postSpot(rs)); chat(d.name + ' · ' + roleN(d.role), t('life.back', { name: d.name.split(' ')[0] }), '👋'); }
     return;
@@ -2929,8 +2931,9 @@ function startGame() {
   for (const r of S.rooms) buildRoom(r);
   for (const k in world.decor) { scene.remove(world.decor[k]); delete world.decor[k]; } for (const d of S.decor || []) buildDecor(d);
   if (S.ev) { S.ev = null; } renderer.toneMappingExposure = 0.92;
-  // saves from before the café needed a barista: a café that was already running gets one, so nothing stops working
-  if (!S.baristaV) { S.baristaV = 1; if (S.rooms.some((r) => r.type === 'cafe') && !S.staff.some((x) => x.role === 'barista')) { const c = makeCandidate('barista'); c.id = S.nextId++; S.staff.push(c); setTimeout(() => chat(c.name + ' · ' + roleN('barista'), crnd(tList('hire.hello')), '🍵'), 1500); } }
+  // the café needs a host now: a save that already had a café gets one (once), so nothing stops working; a short-lived 'barista' role becomes a host
+  for (const x of S.staff) if (x.role === 'barista') x.role = 'host';
+  if (!S.baristaV) { S.baristaV = 1; if (S.rooms.some((r) => r.type === 'cafe')) { const c = makeCandidate('host'); c.id = S.nextId++; S.staff.push(c); setTimeout(() => chat(c.name + ' · ' + roleN('host'), crnd(tList('hire.hello')), '🍵'), 1500); } }
   for (const st of S.staff) spawnStaffAvatar(st);
   spawnManager();
   assignStaff(); restoreVisitors(); refreshCandidates(); updateBadge();
