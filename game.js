@@ -1219,6 +1219,7 @@ function spawnVisitor(prob, em, vip, look0) {
   const v = { gag, id: S.nextId++, name: rnd(CITY_NAMES[S.city] && RNG() < 0.75 ? CITY_NAMES[S.city] : FIRST), age: 19 + Math.floor(RNG() * 22), prob, known: false, av, hud, icon, bg, fg, pat: 1, prog: 0, state: 'toQueue', path: [], ph: Math.random() * 6, spot: null, room: null, look, em: !!em };
   if (vip) { v.vip = true; v.name = '@' + crnd(['glowwithjade', 'kaivibes', 'lunchbreaklena', 'mainchar.mo', 'softlifesam']); const cr = new THREE.Sprite(iconTex('👑')); cr.scale.set(0.45, 0.45, 1); cr.position.set(0.35, 2.5 * look.tall, -0.35); cr.renderOrder = 10; hud.add(cr); }
   if (em) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.08, 8, 32), mat('#FF2D2D', { e: '#FF2D2D', ei: 1.5 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; hud.add(ring); v.emRing = ring; const sb = new THREE.Sprite(iconTex('🚨')); sb.scale.set(0.42, 0.42, 1); sb.position.set(-0.4, 2.45 * look.tall, 0.4); sb.renderOrder = 10; hud.add(sb); v.prio = true; }
+  v.need = RNG() < 0.35 ? 0.3 + RNG() * 0.4 : 0; // some arrive already needing the loo
   R.visitors.push(v); if (!wavePending) behSpawn(v); if (!em && beh('nolines') && ['grind', 'rentshock'].includes(prob) && DQ(0).length >= 6 && desks().length <= 1) { behSeen('nolines'); floatAt(v.av.position, '🙅 nope'); joinQueue(v); leave(v, false); return v; } if (em) { finishCheckin(v, true); return v; } joinQueue(v); return v;
 }
 
@@ -1502,7 +1503,7 @@ function visitorUpdate(v, dt) {
     case 'toLoo': if (stepWalker(v, dt, walkSpeed * (v.urgent ? 1.7 : 1))) { settle(v, v.lspot); v.state = 'loo'; v.prog = 0; } break;
     case 'loo': {
       v.prog += dt / 3.5;
-      if (v.prog >= 1) { v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0;
+      if (v.prog >= 1) { v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '❔'); floatAt(v.av.position, '🧼');
         const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; AU.sfx('flush', hearVol(v.av.position)); }
       break; }
@@ -1514,7 +1515,7 @@ function visitorUpdate(v, dt) {
       }
       if (v.need >= 1) {
         const loo = Object.values(R.rooms).filter((r) => ROOMS[r.type].loo).map((r) => r.spots.find((s) => !s.busy)).find(Boolean);
-        if (loo) { loo.busy = v; if (v.spot) v.spot.busy = null; v.spot = null; v.lspot = loo; setPath(v, findPath(v.av.position, loo)); v.state = 'toLoo'; break; }
+        if (loo) { loo.busy = v; if (v.spot) v.spot.busy = null; v.spot = null; v.lspot = loo; setPath(v, findPath(v.av.position, loo)); v.state = 'toLoo'; v.icon.material = iconTex('🚻'); break; }
         if (!hasRoom('toilet')) { tip('toilet'); if (v.urgent) { dropPuddle(v.av.position.x + 0.3, v.av.position.z, '#A0784A'); v.noLoo = true; S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; S.st.acc++; leave(v, false); break; } }
       }
       if (RNG() < dt * (done('bins') ? 0.0012 : 0.0025)) dropLitter(v.av.position.x, v.av.position.z);
@@ -1565,6 +1566,7 @@ function visitorUpdate(v, dt) {
     case 'evac': stepWalker(v, dt, walkSpeed * 1.3); break;
   }
   if (beh('sleepy') && v.prob === 'burn' && !v.cured && (v.state === 'queue' || v.state === 'wait') && (v.waitT || 0) > 10 && (v.sleeps || 0) < 2 && RNG() < dt * 0.05) { v.asleep = true; v.sleepT = 0; v.sleeps = (v.sleeps || 0) + 1; v.iconPrev = v.icon.material; v.icon.material = iconTex('💤'); floatAt(v.av.position, '💤'); behSeen('sleepy'); AU.sfx('snore', hearVol(v.av.position)); return; }
+  if (['toQueue', 'queue', 'checkin', 'toWait'].includes(v.state)) v.need = (v.need || 0) + dt / 110; // needs build up from the moment they arrive
   if (['toQueue', 'queue', 'checkin', 'toWait', 'wait'].includes(v.state)) { v.pat -= patienceRate(v) * (v.need > 1 && !hasRoom('toilet') ? 1.6 : 1) * dt; v.waitT = (v.waitT || 0) + dt; if (v.pat <= 0) leave(v, false); }
   if (v.emRing) { const s = 1 + 0.2 * Math.sin(performance.now() / 150); v.emRing.scale.set(s, s, s); v.emRing.visible = !['exit', 'angry'].includes(v.state); }
   v.hud.position.copy(v.av.position);

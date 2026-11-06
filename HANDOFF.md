@@ -18,6 +18,20 @@ Read this first. The user (French or English; answer in the language she writes 
 3. **Verify end to end**: sign in by email code, play, wipe local storage, reload → progress restored; install to home screen; import old progress with the 💾 Export / 📥 Import code ("MLT1:…").
 4. Send her the live link and the Supabase/Google steps she must do herself.
 
+## Session 2026-11-06 (gameplay polish) — what changed
+- Placement rules: `deskValid` checks the whole counter footprint (+chair, +first queue places) vs lobby walls, lobby sofa (`SOFA_BOX`), plants (`LOBBY_PLANTS`), decor; `fixDesk()` relocates invalid desks on load / after lengthening. `decorValid` checks the rotated footprint (`DECOR_HALF`) vs floor, rooms, desks, plants, decor and every desk's queue line.
+- Reception: default desk {4.6, 2.8, r 0} (faces the entrance); old untouched default migrates (`S.deskV`). Chair+monitor parts of the desk GLB are moved to station(s) by `dressDesk` (double counter = 2 sets); host sits on the chair (`deskSpot`, `ST_X`, `ST_BACK`).
+- Sitting: `settle()` raycasts the real seat surface (`seatTop`) for GLB sitters (hips at seat + `HIP_PAD`).
+- Time: after the tutorial, Build menus/placement run in real time (`liveBuild`, `buildSheet`, `resumeForBuild`); pause is refused while placing.
+- UI: ⚙️ Settings (`openAudio`) separate from Goals; ✕ on every sheet; graphics change reloads straight back into the city (`sessionStorage.ahq_resume`).
+- Café is staffed by a Community Host (`ROOMS.cafe.role = 'host'`); café perks need `cafeOpen()`. Old saves with a café get a host once (`S.baristaV`).
+- Staff never leave mid-session (breaks, life events wait for `patientOf`); a client left alone returns to waiting.
+- Crowds: `OVERFLOW` rows on the plaza; full house → visitor leaves with a crowd complaint; queue capped at `QMAX = 11`.
+- Mess markers (`updateMessIcons`), broom icon while cleaning; toilets: need builds up from arrival, 🚻 head icon.
+- Waiting sofa decor (`DECOR.sofa`, 2 seats via `syncDecorSeats`). Cut walls at 0.42 height, door frames stay full height.
+- City intro: one screen, `assets/brief_london.jpg` header (rendered from a staged full HQ). Tutorial step 3 = tap a visitor.
+- Test harness (container): playwright + swiftshader, three.js from npm, service workers blocked; `node --check` must be run on a `.mjs` copy (plain .js check misses module syntax errors).
+
 ## How saves work
 - The game keeps everything in localStorage keys starting `ahq_` (`ahq_<city>_v2` per city, `ahq_profile`, `ahq_mgr`, `ahq_lang`, …). Never rename these: **updates must never reset saves**.
 - `game.js` → "online save" block: `Storage.prototype.setItem` is wrapped to timestamp `ahq_` writes (`ahq_sync_at`) and push changed keys (debounced, on pagehide/visibilitychange). Backend adapter `{uid, list(), put(k, v, at)}`:
