@@ -1119,7 +1119,7 @@ function maintUpdate(rs, dt) {
         const o = rs.task.obj; scene.remove(o.mesh);
         const list = rs.task.kind === 'rat' ? R.rats : R.litter; const ix = list.indexOf(o); if (ix >= 0) list.splice(ix, 1);
         if (rs.task.kind === 'rat') { S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; S.st.chased = (S.st.chased || 0) + 1; }
-        if (rs.task.kind === 'rat' && Math.random() < 0.5) chat(rs.data.name + ' · ' + roleN('maint'), t('maint.chat'), '🧹');
+        if (rs.task.kind === 'rat' && Math.random() < 0.5) chat(rs.data.name + ' · ' + roleN('maint'), t('maint.chat'), '🧹', { fun: true });
       }
       if (!ch) floatAt(rs.av.position, '✨'); if (rs.broom) { scene.remove(rs.broom); rs.broom = null; }
       rs.task = null; poseStand(rs.av.userData.p); rs.mode = 'free';
@@ -1240,6 +1240,7 @@ function finishCheckin(v, quiet) {
   if (!quiet && isMystK(v.prob)) { S.mystSeen = S.mystSeen || []; if (!S.mystSeen.includes(v.prob)) { S.mystSeen.push(v.prob); chat(t('research.title'), t('myst.chat'), '❓'); } }
   if (!quiet && cafeOpen()) { const tip = done('oat') ? 12 : 8; S.cash += tip; S.earned += tip; v.spent = (v.spent || 0) + tip; }
   v.target = pickRoomFor(v); seatVisitor(v);
+  const need = needOf(v); if (!quiet && need && !hasRoom(need) && S.mode === 'career' && S.tut < 0) { S.askNR = S.askNR || {}; if (S.askNR[need] !== S.day) { S.askNR[need] = S.day; chat(t('from.hq'), t('ct.r.msg', { name: v.name, prob: pn(v.prob), room: rn(need) }), '🚪', { act: { k: 'noRoom', room: need } }); } }
 }
 // when every seat and standing place inside is taken, people wait in tidy rows on the plaza outside the entrance (one place
 // each, never on top of each other); when those are full too, newcomers see the full house and turn back (a crowd complaint)
@@ -1333,7 +1334,7 @@ const T_LO = 19, T_HI = 24;
 function outsideT() { const [b, a] = CLIMATE[S.city] || [18, 3], v = b + a * Math.sin((S.t / DAY_LEN - 0.25) * Math.PI * 2) - (S.rainy ? 2 : 0); return S.ev && S.ev.k === 'heat' ? Math.max(v + 7, 32 + a * 0.5 * Math.sin((S.t / DAY_LEN - 0.25) * Math.PI * 2)) : v; } // a heatwave is a heatwave everywhere, even in London
 function targetT() {
   const size = Math.pow(Math.max(1, (S.rooms.length + 2) / 4), 0.6), dec = S.decor || [];
-  const heat = dec.filter((d) => d.k === 'radiator').length, cool = dec.filter((d) => d.k === 'aircon').length + (S.ac ? 1 : 0);
+  const heat = dec.filter((d) => d.k === 'radiator').length, cool = dec.filter((d) => d.k === 'aircon').length + (S.ac ? 1 : 0) + (S.acTemp ? 1 : 0); // acTemp: portable AC rented for a heatwave
   const base = outsideT() * 0.6 + 8 + Math.min(4, (R.visitors.length + R.staff.length) * 0.12), aim = 21.5; // thermostat: devices only push toward ~21.5 °C, up to their capacity
   return base < aim ? base + Math.min(3.5 * heat / size, aim - base) : base - Math.min(3.5 * cool / size, base - aim);
 }
@@ -1509,6 +1510,7 @@ function visitorUpdate(v, dt) {
       break; }
     case 'wait': {
       v.need = (v.need || 0) + dt / 95;
+      if (v.pat < 0.45 && !v.asked && S.mode === 'career' && S.tut < 0 && S.day * DAY_LEN + S.t - (S.askWaitT ?? -99) > 45) { v.asked = true; S.askWaitT = S.day * DAY_LEN + S.t; chat(t('from.review') + ' · ' + v.name + ', ' + v.age, t('ct.w.msg', { m: Math.max(1, Math.round((v.waitT || 0) / 60)) }), '⏳', { act: { k: 'wait', id: v.id } }); }
       if (v.pat < 0.25 && RNG() < dt * 0.006) {
         if (RNG() < 0.55) { dropPuddle(v.av.position.x + 0.35, v.av.position.z + 0.2, '#9BCB4E'); floatAt(v.av.position, '🤢', true); S.vibes = clamp(S.vibes - 0.6, 0, 100); for (const o of R.visitors) if (o !== v && Math.hypot(o.av.position.x - v.av.position.x, o.av.position.z - v.av.position.z) < 2) o.pat -= 0.05; tip('vomit'); }
         else { v.need = 1.5; v.urgent = true; floatAt(v.av.position, '💩', true); }
@@ -1555,7 +1557,7 @@ function visitorUpdate(v, dt) {
         if (v.gag) v.gag.visible = false;
         if (v.gid && S.gs && S.gs[v.gid] > 0) { S.gs[v.gid]--; if (S.gs[v.gid] === 0) { delete S.gs[v.gid]; incCnt(cityOf().groups ? cityOf().groups.kind : 'groups'); floatAt(v.av.position, cityOf().groups && cityOf().groups.kind === 'families' ? '👨‍👩‍👧 ✓' : '🥳 ✓'); } }
         if (v.prob === 'wedding') incCnt('wedding'); if (PROBLEMS[v.prob].room === 'yoga') incCnt('yoga'); if (PROBLEMS[v.prob].room === 'lucha') incCnt('lucha'); if (v.prob === 'quake') incCnt('quake'); if (v.wave) incCnt('wave'); if (PROBLEMS[v.prob].room === 'ahwa') incCnt('tea'); if (cityOf().evening && S.t > DAY_LEN * 0.6) incCnt('evening'); if (isNight()) incCnt('night'); if (PROBLEMS[v.prob].care) S.vibes = clamp(S.vibes + 1, 0, 100);
-        if (Math.random() < 0.25) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, crnd(tList('rev.good')), '⭐');
+        if (Math.random() < 0.25) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, crnd(tList('rev.good')), '⭐', { fun: true });
         v.rspot.busy = null; v.rspot = null; v.cured = true; if (p.anim && p.anim.calm) p.anim.calm(); // cured: back to a normal walk
         v.icon.material = iconTex('😊');
         const shop = Object.values(R.rooms).filter((r) => ROOMS[r.type].shop && !r.closed).map((r) => r.spots.find((s) => !s.busy && r.staff[s.st] && r.staff[s.st].mode === 'there')).find(Boolean);
@@ -1719,11 +1721,16 @@ function openResearch() {
 
 // ---------------- UI helpers ----------------
 function toast(html, ms = 2600) { const el = $('toast'); el.innerHTML = html; el.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => el.classList.remove('on'), ms); }
-function chat(from, text, icon = '💬') {
-  S.chat.unshift({ from, text, day: S.day }); S.chat = S.chat.slice(0, 40); S.unread++;
+// The HQ chat has two tabs: Important (decisions, problems, news that matters; the badge counts these) and All (adds jokes, hellos,
+// ambience). Messages with `act` carry real choices: each option has an effect in the game and the sender answers.
+function chat(from, text, icon = '💬', o = {}) {
+  const m = { from, text, day: S.day, icon, fun: !!o.fun }; if (o.act) m.act = o.act;
+  S.chat.unshift(m); S.chat = S.chat.slice(0, 50); if (!m.fun) S.unread++;
+  if (m.fun && $('banner').classList.contains('on')) return; // a joke never covers a real message
   $('bnFrom').textContent = from.toUpperCase(); $('bnText').innerHTML = text; $('banner').querySelector('.bi').textContent = icon; updateBadge();
   const bn = $('banner'); bn.classList.remove('on'); void bn.offsetWidth; bn.classList.add('on'); clearTimeout(chat.h); chat.h = setTimeout(() => bn.classList.remove('on'), 5000);
 }
+$('banner').onclick = () => { if (inGame) openChat(); };
 function updateBadge() { const b = $('chatBadge'); b.style.display = S.unread ? 'block' : 'none'; b.textContent = S.unread; }
 const proj = new THREE.Vector3();
 function toScreen(x, y, z) { proj.set(x, y, z).project(cam); return [(proj.x + 1) / 2 * innerWidth, (1 - proj.y) / 2 * innerHeight]; }
@@ -1926,7 +1933,7 @@ function endPlace(ok) {
     S.cash -= cost; const r = { id: S.nextId++, type: p.type, size: p.size, x: p.x, z: p.z, a: p.a }; S.rooms.push(r); buildRoom(r);
     const role = ROOMS[r.type].role;
     toast(t('build.done', { room: rn(r.type) }) + (role ? t('build.needStaff', { role: roleN(role) }) : ''));
-    if (role) setTimeout(() => { if (R.rooms[r.id] && !R.rooms[r.id].staff.some(Boolean)) chat(t('from.hq'), t('build.chatNeed', { room: rn(r.type), role: roleN(role) }), '🧑‍💼'); }, 800);
+    if (role) setTimeout(() => { if (R.rooms[r.id] && !R.rooms[r.id].staff.some(Boolean)) chat(t('from.hq'), t('build.chatNeed', { room: rn(r.type), role: roleN(role) }), '🧑‍💼', { act: { k: 'needStaff', room: r.id, role } }); }, 800);
     if (S.rooms.length === 2) tip('sizes');
   }
   rebuildGrid(); assignStaff(); save();
@@ -1980,7 +1987,7 @@ function hire(i, tab) {
   tab = tab || hireTab; const c = candidates[tab][i]; const img = portrait(c); c.id = S.nextId++; portraits['s' + c.id] = img;
   S.staff.push(c); candidates[tab][i] = makeCandidate(tab);
   spawnStaffAvatar(c); closeSheet(); assignStaff(); save(); AU.sfx('hire');
-  chat(c.name + ' · ' + roleN(c.role), crnd(tList('hire.hello')), '👋');
+  chat(c.name + ' · ' + roleN(c.role), crnd(tList('hire.hello')), '👋', { fun: true });
 }
 let staffFilter = 'all', staffOpen = null;
 function openStaffList(filter) {
@@ -2013,7 +2020,7 @@ function openStaffList(filter) {
   $('sheet').querySelectorAll('[data-fire]').forEach((b) => b.onclick = () => fire(+b.dataset.fire));
   $('sheet').querySelectorAll('[data-raise]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const st = S.staff.find((s) => s.id === +b.dataset.raise); if (!st) return;
     st.wage += Math.round(st.wage * 0.1 / 10) * 10; st.grumpy = 0; st.raiseDay = S.day; st.energy = Math.min(1, (st.energy ?? 1) + 0.5); save();
-    chat(st.name + ' · ' + roleN(st.role), t('staff.raisedChat'), '🥹'); toast(t('staff.raised', { name: st.name.split(' ')[0] })); const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
+    chat(st.name + ' · ' + roleN(st.role), t('staff.raisedChat'), '🥹', { fun: true }); toast(t('staff.raised', { name: st.name.split(' ')[0] })); const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
 }
 function fire(id, silent) {
   const st = S.staff.find((s) => s.id === id); if (!st) return;
@@ -2053,10 +2060,61 @@ function openGoals() {
   $('gWrap').onclick = () => { closeSheet(); showWrapped(false); };
   $('gMap').onclick = () => { closeSheet(); toMap(); };
 }
+let chatTab = 'imp';
 function openChat() {
   S.unread = 0; updateBadge();
-  openSheet(`<h2>${t('chat.title')}</h2><p class="sub">${t('chat.sub')}</p>` + (S.chat.map((m) => `<div class="msg"><small>${m.from} · ${dayN(m.day)}</small>${m.text}</div>`).join('') || `<div class="msg">${t('chat.empty')}</div>`));
+  const list = S.chat.filter((m) => chatTab === 'all' || !m.fun);
+  const row = (m, i) => { const A = m.act && ACTS[m.act.k], opts = A && !m.ans ? A.opts(m.act).filter((x) => !x.hide) : [], live = A && !m.ans && A.live(m.act);
+    return `<div class="msg${m.act && !m.ans && live ? ' ask' : ''}"><small>${m.icon || ''} ${m.from} · ${dayN(m.day)}</small>${m.text}`
+      + (m.ans ? `<div class="ans">↪ <b>${m.pick}</b><br>${m.ans}</div>` : m.act ? (live ? `<div class="acts">${opts.map((x) => `<button class="btn ${x.main ? 'g' : 'w'}" data-ci="${S.chat.indexOf(m)}" data-co="${x.id}" ${x.ok === false ? 'disabled' : ''}>${x.label}</button>`).join('')}</div>` : `<div class="ans" style="opacity:.6">⌛ ${t('ct.expired')}</div>`) : '') + '</div>'; };
+  openSheet(`<h2>${t('chat.title')}</h2><div class="tabs"><button class="${chatTab === 'imp' ? 'g' : 'y'}" data-ctab="imp">❗ ${t('ct.imp')}</button><button class="${chatTab === 'all' ? 'g' : 'y'}" data-ctab="all">💬 ${t('ct.all')}</button></div>`
+    + (list.map(row).join('') || `<div class="msg">${t('chat.empty')}</div>`));
+  $('sheet').querySelectorAll('[data-ctab]').forEach((b) => b.onclick = () => { chatTab = b.dataset.ctab; openChat(); });
+  $('sheet').querySelectorAll('[data-co]').forEach((b) => b.onclick = () => { const m = S.chat[+b.dataset.ci], A = m && m.act && ACTS[m.act.k]; if (!A || m.ans || !A.live(m.act)) { openChat(); return; }
+    const x = A.opts(m.act).find((y) => y.id === b.dataset.co); if (!x || x.ok === false) return; const keep = x.run(); m.pick = x.label; m.ans = x.reply || ''; save(); if (keep !== 'leave') openChat(); });
 }
+// ---- decisions in the chat: options with real effects (validated when tapped: the situation may have changed)
+const staffById = (id) => R.staff.find((rs) => rs.data.id === id);
+const visById = (id) => R.visitors.find((v) => v.id === id && ['toWait', 'wait', 'queue', 'toQueue', 'checkin'].includes(v.state));
+const ACTS = {
+  tired: { live: (a) => { const rs = staffById(a.id); return !!rs && !(rs.data.awayT > 0); },
+    opts: (a) => { const rs = staffById(a.id), d = rs && rs.data, first = d ? d.name.split(' ')[0] : '';
+      return [
+        { id: 'break', main: true, label: '☕ ' + t('ct.t.break'), reply: t('ct.t.breakR'), run: () => { const spot = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).map((r) => r.spots.find((x) => !x.busy)).find(Boolean); if (spot && !patientOf(rs)) { spot.busy = rs; rs.onBreak = spot; goStaff(rs, spot); } else { d.awayT = 25; d.energy = 1; } } },
+        { id: 'off', label: '🏖️ ' + t('ct.t.off'), reply: t('ct.t.offR'), run: () => { d.awayT = DAY_LEN * 0.6; d.sadT = 0; d.energy = 1; S.vibes = clamp(S.vibes + 1, 0, 100); } },
+        { id: 'bonus', label: '💰 ' + t('ct.t.bonus', { m: money(200) }), ok: S.cash >= 200, reply: t('ct.t.bonusR', { name: first }), run: () => { S.cash -= 200; d.energy = Math.min(1, d.energy + 0.35); d.sadT = 0; } },
+        { id: 'push', label: '💪 ' + t('ct.t.push'), reply: t('ct.t.pushR'), run: () => { d.energy = Math.max(d.energy, 0.6); d.pushT = DAY_LEN * 0.5; } },
+      ]; } },
+  wait: { live: (a) => !!visById(a.id),
+    opts: (a) => { const v = visById(a.id); return [
+      { id: 'mgr', main: true, label: '⭐ ' + t('ct.w.mgr', { name: MGR.name }), ok: !(S.mgrCd > 0), reply: t('ct.w.mgrR'), run: () => { mgrGo({ kind: 'v', v }); return 'leave'; } },
+      { id: 'matcha', label: '🍵 ' + t('ct.w.matcha', { m: money(15) }), ok: cafeOpen() && S.cash >= 15, hide: !hasRoom('cafe'), reply: t('ct.w.matchaR'), run: () => { S.cash -= 15; v.pat = Math.min(1, v.pat + 0.35); floatAt(v.av.position, '🍵💛'); } },
+      { id: 'prio', label: '🎟️ ' + t('ct.w.prio'), reply: t('ct.w.prioR'), run: () => { v.prio = true; v.pat = Math.min(1, v.pat + 0.15); for (const o of R.visitors) if (o !== v && o.state === 'wait' && o.target === v.target) o.pat = Math.max(0.05, o.pat - 0.06); } },
+      { id: 'sorry', label: '🙏 ' + t('ct.w.sorry'), reply: t('ct.w.sorryR'), run: () => { v.pat = Math.min(1, v.pat + 0.12); } },
+    ]; } },
+  noRoom: { live: (a) => !hasRoom(a.room),
+    opts: (a) => [
+      { id: 'build', main: true, label: '🔨 ' + t('ct.r.build', { room: rn(a.room), m: money(roomCost(a.room, 's')) }), ok: unlocked(a.room), reply: t('ct.r.buildR'), run: () => { closeSheet(); openSize(a.room); return 'leave'; } },
+      { id: 'refer', label: '🤝 ' + t('ct.r.refer'), reply: t('ct.r.referR'), run: () => { for (const v of R.visitors.filter((u) => u.known && needOf(u) === a.room && ['toWait', 'wait'].includes(u.state))) { floatAt(v.av.position, '🤝'); S.vibes = clamp(S.vibes + 0.5, 0, 100); leave(v, true); } } },
+      { id: 'later', label: t('ct.later'), reply: t('ct.laterR'), run: () => {} },
+    ] },
+  needStaff: { live: (a) => { const r = R.rooms[a.room]; return !!r && !r.staff.some(Boolean); },
+    opts: (a) => [
+      { id: 'hire', main: true, label: '👥 ' + t('ct.s.hire', { role: roleN(a.role) }), reply: t('ct.s.hireR'), run: () => { closeSheet(); openHire(a.role); return 'leave'; } },
+      { id: 'later', label: t('ct.later'), reply: t('ct.laterR'), run: () => {} },
+    ] },
+  leak: { live: () => !!(S.ev && S.ev.k === 'leak' && S.ev.obj && R.litter.includes(S.ev.obj)),
+    opts: () => [
+      { id: 'plumber', main: true, label: '🔧 ' + t('ct.l.plumber', { m: money(300) }), ok: S.cash >= 300, reply: t('ct.l.plumberR'), run: () => { S.cash -= 300; const o = S.ev.obj; if (o.mesh.userData.drip) scene.remove(o.mesh.userData.drip); scene.remove(o.mesh); R.litter.splice(R.litter.indexOf(o), 1); } },
+      { id: 'maint', label: '🧹 ' + t('ct.l.maint'), ok: R.staff.some((rs) => rs.data.role === 'maint'), reply: t('ct.l.maintR'), run: () => {} },
+    ] },
+  heat: { live: () => !!(S.ev && S.ev.k === 'heat'),
+    opts: () => [
+      { id: 'ac', main: true, label: '❄️ ' + t('ct.h.ac', { m: money(250) }), ok: S.cash >= 250 && !S.acTemp, reply: t('ct.h.acR'), run: () => { S.cash -= 250; S.acTemp = true; } },
+      { id: 'drinks', label: '🧊 ' + t('ct.h.drinks', { m: money(60) }), ok: S.cash >= 60, reply: t('ct.h.drinksR'), run: () => { S.cash -= 60; for (const v of R.visitors) if (['wait', 'queue'].includes(v.state)) v.pat = Math.min(1, v.pat + 0.2); } },
+      { id: 'endure', label: '🥵 ' + t('ct.h.endure'), reply: t('ct.h.endureR'), run: () => {} },
+    ] },
+};
 function selectVisitor(v) { if (v && v.caseK) { openCase(v); return; } if (v && v.asleep) wakeUp(v); if (v && v.prob === 'ghosted' && !v.seen && beh('ghost')) { v.seen = true; v.pat = Math.min(1, v.pat + 0.15); floatAt(v.av.position, '👀💛'); } sel = v; const el = $('vcard'); if (!v) { el.classList.remove('on'); selRing.visible = false; return; } el.classList.add('on'); selRing.visible = true; renderVCard(); }
 function renderVCard() {
   const v = sel; if (!v) return;
@@ -2195,14 +2253,14 @@ function dayTick(dt) {
       S.cash -= RENT + wages + loanPay + elec;
       modal(`<div style="font-size:44px">🧾</div><h2>${t('rent.title')}</h2><p>${t('rent.p')}</p><div class="receipt"><div><span>${t('rent.rent')}</span><span>-${money(RENT)}</span></div><div><span>${t('rent.wages')}</span><span>-${money(wages)}</span></div><div><span>⚡ ${t('bill.elec')}</span><span>-${money(elec)}</span></div>${loanPay ? `<div><span>${t('loan.pay')}</span><span>-${money(loanPay)}</span></div>` : ''}<div style="border-top:2px dashed var(--sh);margin-top:4px;padding-top:6px"><span>${t('rent.left')}</span><span>${money(S.cash)}</span></div></div><button class="btn g" id="mOk" style="width:100%">${t('rent.ok')}</button>`);
       $('mOk').onclick = closeModal;
-      chat(t('from.landlord'), t('landlord.thanks'), '🏠'); tip('rent');
+      chat(t('from.landlord'), t('landlord.thanks'), '🏠', { fun: true }); tip('rent');
       const wk = S.earned - (S.earnedAtBill || 0); S.earnedAtBill = S.earned;
       if (S.cash < -5000 && !S.bailout) { // first time under: the bank steps in once instead of ending the run
         S.bailout = true; const need = Math.round((-S.cash + 5000) / 500) * 500, owe = Math.round(need * 1.15 / 500) * 500; S.cash += need;
         S.loan = { left: (S.loan ? S.loan.left : 0) + owe, per: Math.round(((S.loan ? S.loan.left : 0) + owe) / 6) };
         setTimeout(() => { modal(`<div style="font-size:44px">🏦</div><h2>${t('bail.title')}</h2><p>${t('bail.p', { m: money(need), o: money(owe) })}</p><button class="btn g" id="mOk" style="width:100%">${t('tut.ok')}</button>`); $('mOk').onclick = closeModal; }, 600);
       } else if (S.cash < -5000) gameOver({ bill: RENT + wages + loanPay + elec, rent: RENT, wages, elec, loanPay, wk });
-    } else if (Math.random() < 0.5) chat(crnd([t('from.landlord'), t('from.hq'), t('from.group')]), crnd(tList('chat.random')), '💬');
+    } else if (Math.random() < 0.5) chat(crnd([t('from.landlord'), t('from.hq'), t('from.group')]), crnd(tList('chat.random')), '💬', { fun: true });
     save();
   }
 }
@@ -2417,7 +2475,7 @@ function pepTalk() {
   if (S.pepCd > 0) { toast(t('pep.cd', { s: Math.ceil(S.pepCd) }), 1200); return; }
   S.pepT = 30; S.pepCd = 120; S.pepUsed = true; R.mgr.cheer = 1.6;
   toast('📣 ' + t('pep.go'), 2200);
-  chat(t('pep.from', { name: MGR.name }), crnd(tList('pep.lines')), '📣');
+  chat(t('pep.from', { name: MGR.name }), crnd(tList('pep.lines')), '📣', { fun: true });
   for (const rs of R.staff) floatAt(rs.av.position, '💪');
 }
 function updatePep() {
@@ -2547,10 +2605,11 @@ function postSpot(rs) { if (rs.at === 'desk') return deskSpot(rs.desk || 0); con
 function staffEnergy(rs, dt) {
   const d = rs.data; if (d.energy == null) d.energy = 1;
   if (d.sadT > 0) d.sadT -= dt;
+  if (d.pushT > 0) { d.pushT -= dt; if (d.pushT <= 0 && RNG() < 0.35) { d.awayT = DAY_LEN * 1.5; chat(d.name + ' · ' + roleN(d.role), t('ct.t.burnout'), '🫠'); } }
   if (d.awayT > 0) {
     if (rs.mode !== 'away' && patientOf(rs)) return; // life event, day off…: they finish the session in progress first, then go
     d.awayT -= dt; rs.av.visible = false; rs.mode = 'away';
-    if (d.awayT <= 0) { d.awayT = 0; rs.av.visible = true; rs.av.position.set(3, 0.1, 11); d.energy = 1; goStaff(rs, postSpot(rs)); chat(d.name + ' · ' + roleN(d.role), t('life.back', { name: d.name.split(' ')[0] }), '👋'); }
+    if (d.awayT <= 0) { d.awayT = 0; rs.av.visible = true; rs.av.position.set(3, 0.1, 11); d.energy = 1; goStaff(rs, postSpot(rs)); chat(d.name + ' · ' + roleN(d.role), t('life.back', { name: d.name.split(' ')[0] }), '👋', { fun: true }); }
     return;
   }
   if (rs.onBreak) {
@@ -2560,7 +2619,8 @@ function staffEnergy(rs, dt) {
     if (d.energy < 0.25) {
       const spot = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).map((r) => r.spots.find((s) => !s.busy)).find(Boolean);
       if (spot && !rs.task && !patientOf(rs)) { spot.busy = rs; rs.onBreak = spot; /* never walk out mid-session */ rs.goingTo = null; goStaff(rs, spot); tip('break'); }
-      else if (!hasRoom('staffroom')) { tip('tired'); if (Math.random() < dt * 0.01) chat(d.name + ' · ' + roleN(d.role), t('staff.tiredChat'), '😮‍💨'); }
+      else if (!hasRoom('staffroom')) tip('tired');
+      if (d.askDay !== S.day && !rs.onBreak) { d.askDay = S.day; chat(d.name + ' · ' + roleN(d.role), t('staff.tiredChat'), '😮‍💨', { act: { k: 'tired', id: d.id } }); }
     }
   }
   if (!rs.zz) { rs.zz = new THREE.Sprite(iconTex('😮‍💨')); rs.zz.scale.set(0.5, 0.5, 1); rs.zz.position.y = 2.3; rs.zz.renderOrder = 10; rs.av.add(rs.zz); }
@@ -2694,12 +2754,12 @@ function startEvent() {
     const pd = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.02, 18), mat('#7FC7F0', { r: 0.1, op: 0.85 })); pd.position.set(room.cx + 0.6, 0.14, room.cz + 0.6); scene.add(pd);
     const drip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 8), mat('#7FC7F0')); drip.rotation.x = Math.PI; drip.position.set(room.cx + 0.6, 2.4, room.cz + 0.6); scene.add(drip); pd.userData.drip = drip;
     const leak = { mesh: pd, heavy: true, leak: r.id }; R.litter.push(leak); S.ev.obj = leak; S.ev.fixT = 45;
-    chat(t('from.hq'), t('ev.leak', { room: rn(r.type) }) + ' ' + t('ev.leakD'), '💧');
-  } else chat(t('from.hq'), t('ev.' + k) + ' ' + (k === 'heat' ? t('ev.heatD2', { o: Math.round(outsideT()) }) : t('ev.' + k + 'D')) + ({ wifi: 1, noise: 1, power: 1, heat: 1 }[k] ? ' ' + t('ev.fix.' + k) : ''), EVENTS[k].e);
+    chat(t('from.hq'), t('ev.leak', { room: rn(r.type) }) + ' ' + t('ev.leakD'), '💧', { act: { k: 'leak' } });
+  } else chat(t('from.hq'), t('ev.' + k) + ' ' + (k === 'heat' ? t('ev.heatD2', { o: Math.round(outsideT()) }) : t('ev.' + k + 'D')) + ({ wifi: 1, noise: 1, power: 1, heat: 1 }[k] ? ' ' + t('ev.fix.' + k) : ''), EVENTS[k].e, k === 'heat' ? { act: { k: 'heat' } } : {});
   if (k === 'power') renderer.toneMappingExposure = 0.5;
   toast(EVENTS[k].e + ' ' + (k === 'leak' ? t('ev.leak', { room: rn(R.rooms[S.ev.room].type) }) : t('ev.' + k)), 2600);
 }
-function endEvent() {
+function endEvent() { S.acTemp = false;
   const E = S.ev; if (!E) return;
   if (E.k === 'power') renderer.toneMappingExposure = 0.92;
   if (E.k === 'leak') { const room = R.rooms[E.room]; if (room) room.closed = false; if (E.obj && E.obj.mesh.userData.drip) scene.remove(E.obj.mesh.userData.drip); }
@@ -2977,7 +3037,7 @@ function startGame() {
   if (S.ev) { S.ev = null; } renderer.toneMappingExposure = 0.92;
   // the café needs a host now: a save that already had a café gets one (once), so nothing stops working; a short-lived 'barista' role becomes a host
   for (const x of S.staff) if (x.role === 'barista') x.role = 'host';
-  if (!S.baristaV) { S.baristaV = 1; if (S.rooms.some((r) => r.type === 'cafe')) { const c = makeCandidate('host'); c.id = S.nextId++; S.staff.push(c); setTimeout(() => chat(c.name + ' · ' + roleN('host'), crnd(tList('hire.hello')), '🍵'), 1500); } }
+  if (!S.baristaV) { S.baristaV = 1; if (S.rooms.some((r) => r.type === 'cafe')) { const c = makeCandidate('host'); c.id = S.nextId++; S.staff.push(c); setTimeout(() => chat(c.name + ' · ' + roleN('host'), crnd(tList('hire.hello')), '🍵', { fun: true }), 1500); } }
   for (const st of S.staff) spawnStaffAvatar(st);
   spawnManager();
   assignStaff(); restoreVisitors(); refreshCandidates(); updateBadge();
@@ -2993,12 +3053,12 @@ function startNew(city) {
   startGame();
   chat(t('from.landlord'), t(CITIES[S.city].start, { r: money(RENT) }), '🏠');
   let tutSeen = false; try { tutSeen = localStorage.getItem('ahq_tut_done') === '1'; } catch (e) {}
-  if (tutSeen) chat('Amara · ' + roleN('host'), t('start.amara'), '👋');
+  if (tutSeen) chat('Amara · ' + roleN('host'), t('start.amara'), '👋', { fun: true });
   S.unread = 1; updateBadge(); save();
   let tutDone = false; try { tutDone = localStorage.getItem('ahq_tut_done') === '1'; } catch (e) {}
   modal(`<img src="${amaraImg()}" style="width:84px;height:84px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 0 var(--sh)"><h2>${t('tut.askT')}</h2><p>${t('tut.askP', { name: MGR.name, g: MGR.pron })}</p><div class="row2" style="margin-top:12px"><button class="btn y" id="tNo">${t('tut.askNo')}</button><button class="btn g" id="tYes">${t('tut.askYes')}</button></div>`);
   $('tYes').onclick = () => { closeModal(); S.tut = 0; tutDrawn = null; S.unread = 0; updateBadge(); };
-  $('tNo').onclick = () => { closeModal(); try { localStorage.setItem('ahq_tut_done', '1'); } catch (e) {} chat('Amara · ' + roleN('host'), t('start.amara'), '👋'); toast(t('start.toast')); };
+  $('tNo').onclick = () => { closeModal(); try { localStorage.setItem('ahq_tut_done', '1'); } catch (e) {} chat('Amara · ' + roleN('host'), t('start.amara'), '👋', { fun: true }); toast(t('start.toast')); };
   if (tutDone) $('tYes').className = 'btn w';
 }
 $('camMap').onclick = () => { if (!inGame || placingR || moving) return; toMap(); };
