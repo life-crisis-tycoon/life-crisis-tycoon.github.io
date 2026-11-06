@@ -1109,6 +1109,8 @@ function maintUpdate(rs, dt) {
     const p = rs.av.userData.p, ch = rs.task.kind === 'chore';
     rs.work -= dt * boost() * energyF(rs);
     if (p.anim) p.anim.set(ch ? (rs.task.what === 'patrol' ? 'idle' : 'work') : 'clean');
+    if (!ch && !rs.broom) { rs.broom = new THREE.Sprite(iconTex(rs.task.kind === 'rat' ? '🪤' : '🧹')); rs.broom.scale.set(0.45, 0.45, 1); rs.broom.renderOrder = 10; scene.add(rs.broom); }
+    if (rs.broom) rs.broom.position.set(rs.av.position.x, 2.2 + Math.sin(performance.now() / 120) * 0.05, rs.av.position.z);
     if (!p.anim) { rs.ph += dt * 10; p.arms[1].rotation.x = -1 + Math.sin(rs.ph) * 0.5; }
     if (ch && mess && rs.task.what !== 'router') rs.work = 0; // drop the watering can, there's a mess
     if (rs.work <= 0) {
@@ -1119,6 +1121,7 @@ function maintUpdate(rs, dt) {
         if (rs.task.kind === 'rat') { S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; S.st.chased = (S.st.chased || 0) + 1; }
         if (rs.task.kind === 'rat' && Math.random() < 0.5) chat(rs.data.name + ' · ' + roleN('maint'), t('maint.chat'), '🧹');
       }
+      if (!ch) floatAt(rs.av.position, '✨'); if (rs.broom) { scene.remove(rs.broom); rs.broom = null; }
       rs.task = null; poseStand(rs.av.userData.p); rs.mode = 'free';
     }
     return;
@@ -1608,13 +1611,13 @@ function removeVisitor(v) { scene.remove(v.av); scene.remove(v.hud); R.visitors.
 
 // ---------------- litter & pests ----------------
 function dropPuddle(x, z, col) { AU.sfx('pop');
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.02, 18), mat(col, { r: 0.2 })); m.scale.set(1, 1, 0.7); m.position.set(x, 0.13, z); m.receiveShadow = true; scene.add(m);
-  for (let i = 0; i < 3; i++) { const b = sph(0.08, col, { r: 0.2 }); b.scale.y = 0.3; put(b, x + (Math.random() - 0.5) * 0.9, 0.13, z + (Math.random() - 0.5) * 0.6); m.attach(b); }
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.025, 18), mat(col, { r: 0.2 })); m.scale.set(1, 1, 0.7); m.position.set(x, 0.165, z); // above room floors and rugs, so it can be seen m.receiveShadow = true; scene.add(m);
+  for (let i = 0; i < 3; i++) { const b = sph(0.1, col, { r: 0.2 }); b.scale.y = 0.3; put(b, x + (Math.random() - 0.5) * 1.0, 0.17, z + (Math.random() - 0.5) * 0.7); m.attach(b); }
   R.litter.push({ mesh: m, heavy: true });
 }
 function dropLitter(x, z) {
   if (R.litter.length >= 10) return;
-  const m = Math.random() < 0.5 ? cyl(0.07, 0.05, 0.16, crnd(['#FFFFFF', '#7CC4A4'])) : sph(0.09, '#F4EFE6');
+  const m = Math.random() < 0.5 ? cyl(0.1, 0.07, 0.24, crnd(['#FFFFFF', '#7CC4A4'])) : sph(0.13, '#F4EFE6');
   if (m.geometry.type === 'CylinderGeometry') m.rotation.z = Math.PI / 2;
   m.position.set(x + (Math.random() - 0.5) * 0.6, 0.18, z + (Math.random() - 0.5) * 0.6); scene.add(m);
   R.litter.push({ mesh: m });
@@ -1627,7 +1630,16 @@ function spawnRat() {
   const r = { mesh: g, tx: 3, tz: 3, wait: 0 }; R.rats.push(r); S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; S.st.rats++;
   tip('rat'); if (!S.ratSeen) { S.ratSeen = true; chat(t('from.hq'), t('pest.chat'), '🐀'); }
 }
-function pestUpdate(dt) {
+const messIcons = new Map();
+function updateMessIcons() { // 🤢 over a puddle, 🗑️ over litter, 🐀 over a rat: the player sees where the centre is dirty
+  const live = new Set([...R.litter, ...R.rats]), now = performance.now();
+  for (const [o, sp] of messIcons) if (!live.has(o)) { scene.remove(sp); messIcons.delete(o); }
+  for (const o of live) {
+    let sp = messIcons.get(o); if (!sp) { sp = new THREE.Sprite(iconTex(R.rats.includes(o) ? '🐀' : o.heavy ? '🤢' : '🗑️')); sp.scale.set(0.5, 0.5, 1); sp.renderOrder = 9; scene.add(sp); messIcons.set(o, sp); }
+    const p = o.mesh.position; sp.position.set(p.x, 1.05 + Math.sin(now / 300 + p.x) * 0.06, p.z);
+  }
+}
+function pestUpdate(dt) { updateMessIcons();
   if (unlocked('maint') && R.litter.length >= 5 && !R.staff.some((rs) => rs.data.role === 'maint')) tip('litter');
   if (R.litter.length >= 6 && R.rats.length < 3 && RNG() < dt * (done('bins') ? 0.01 : 0.025)) spawnRat();
   for (const r of R.rats) {
@@ -2922,6 +2934,7 @@ function resetRuntime() {
   if (R.mgr) { scene.remove(R.mgr.av); R.mgr = null; } hideTut();
   for (const c of R.crew || []) scene.remove(c); R.crew = [];
   for (const v of R.visitors) { scene.remove(v.av); scene.remove(v.hud); } for (const rs of R.staff) scene.remove(rs.av);
+  for (const sp of messIcons.values()) scene.remove(sp); messIcons.clear(); for (const rs of R.staff) if (rs.broom) { scene.remove(rs.broom); rs.broom = null; }
   for (const l of R.litter) scene.remove(l.mesh); for (const r of R.rats) scene.remove(r.mesh); if (R.inspector) scene.remove(R.inspector.av);
   R.visitors.length = 0; R.staff.length = 0; R.deskQ.length = 0; R.deskQs = [R.deskQ]; R.litter.length = 0; R.rats.length = 0; R.later.length = 0; R.inspector = null; WAIT_SPOTS.forEach((s) => s.busy = null);
   for (const k of Object.keys(world.roomGroups)) { const g = world.roomGroups[k]; if (g && g.parent) g.parent.remove(g); delete world.roomGroups[k]; }
@@ -3364,5 +3377,5 @@ async function startShowcase() {
 }
 if (new URLSearchParams(location.search).get('showcase')) setTimeout(() => startShowcase().catch((e) => console.warn(e)), 600);
 
-window.__dbg = { settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; decorShow(); }, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
+window.__dbg = { settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; decorShow(); }, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
 requestAnimationFrame(loop);
