@@ -1690,7 +1690,12 @@ const proj = new THREE.Vector3();
 function toScreen(x, y, z) { proj.set(x, y, z).project(cam); return [(proj.x + 1) / 2 * innerWidth, (1 - proj.y) / 2 * innerHeight]; }
 function floatAt(pos, txt, bad) { const [x, y] = toScreen(pos.x, pos.y + 2.3, pos.z); const d = document.createElement('div'); d.className = 'float' + (bad ? ' bad' : ''); d.textContent = txt; d.style.left = x + 'px'; d.style.top = y + 'px'; $('labels').appendChild(d); setTimeout(() => d.remove(), 1300); }
 let sheetPaused = false, modalPaused = false;
-function openSheet(html) { AU.sfx('click'); $('sheet').innerHTML = '<div class="grab" style="margin:0 auto 8px"></div>' + html; $('sheet').classList.add('on'); $('shade').classList.add('on'); sheetPaused = true; }
+function openSheet(html) { AU.sfx('click'); $('sheet').innerHTML = `<div class="grab" style="margin:0 auto 8px"></div><button class="shx" aria-label="${t('ui.close')}" onclick="this.closest('#sheet') && document.getElementById('shade').click()">✕</button>` + html; $('sheet').classList.add('on'); $('shade').classList.add('on'); sheetPaused = true; }
+// After the tutorial, building happens in real time: the Build menus and placing a room or decor no longer freeze the clock,
+// and opening Build while paused resumes the game (otherwise pause + build skips the time pressure).
+const liveBuild = () => !!(S && S.mode === 'career' && S.tut < 0);
+function resumeForBuild() { if (liveBuild() && speedMul === 0) { setSpeed(lastSpeed || 1); toast('▶️ ' + t('build.live'), 2200); } }
+function buildSheet(html) { openSheet(html); if (!liveBuild()) return; sheetPaused = false; if (speedMul === 0) { setSpeed(lastSpeed || 1); toast('▶️ ' + t('build.live'), 2200); } }
 function closeSheet() { $('sheet').classList.remove('on'); $('shade').classList.remove('on'); sheetPaused = false; }
 $('shade').onclick = () => { closeSheet(); placing = null; };
 // ---- problem intro: the first time a problem shows up in a city, explain what it is and where it's treated ----
@@ -1760,7 +1765,7 @@ function openBuild() {
     h += hdr(c) + ks.map(([k, r]) => roomRow(k, r)).join('');
   }
   h += buildExtras();
-  openSheet(h);
+  buildSheet(h);
   $('bMoveDesk').onclick = () => { closeSheet(); startMove(); };
   if ($('bDesk2')) $('bDesk2').onclick = () => { closeSheet(); if (S.cash < DESK_COST) { toast(t('build.noCash'), 1600); return; } startMove(true); };
   $('sheet').querySelectorAll('[data-room]').forEach((b) => b.onclick = () => openSize(b.dataset.room));
@@ -1774,7 +1779,7 @@ function sizeCards(type, cur, onPick) {
   }).join('');
 }
 function openSize(type) {
-  openSheet(`<h2>${t('sz.title')}</h2><p class="sub">${t('sz.sub', { room: rn(type) })}</p>` + sizeCards(type, null));
+  buildSheet(`<h2>${t('sz.title')}</h2><p class="sub">${t('sz.sub', { room: rn(type) })}</p>` + sizeCards(type, null));
   $('sheet').querySelectorAll('[data-size]').forEach((b) => b.onclick = () => { closeSheet(); startPlace({ type, size: b.dataset.size }); });
 }
 function openRoomMenu(id) {
@@ -1823,7 +1828,7 @@ function placeValid(p) {
   if (!reach(blk, hub, { x: 3, z: 9 })) return false;
   return true;
 }
-function startPlace(spec, edit) {
+function startPlace(spec, edit) { resumeForBuild();
   if (!inGame) return; selectVisitor(null);
   placingR = { type: spec.type, size: spec.size, x: edit ? edit.x : 0, z: edit ? edit.z : 0, a: edit ? edit.a : 0, edit };
   if (edit) { const og = world.roomGroups[edit.id]; if (og) og.visible = false; }
@@ -1998,7 +2003,7 @@ function openGoals() {
     h += '</div>';
   });
   h += `<div class="lbl" style="margin:6px 0">👉 ${t('goals.nextSteps')}</div>` + (steps.length ? steps.map((s, i) => `<button class="stepbtn w" data-step="${i}">${s.icon} <span>${s.txt}</span></button>`).join('') : `<div class="msg">${t('goals.none')}</div>`);
-  h += receipt() + `<div class="row2"><button class="btn y" id="gWrap" style="grid-column:1/-1">🎁 ${t('wr.btn')}</button><button class="btn w" id="gAudio">🔊 ${t('au.title')}</button><button class="btn w" id="gTut">${t('tut.replay')}</button><button class="btn g" id="gMap">🌍 ${t('over.map')}</button><button class="btn w" id="gSave">💾 ${t('sv.export')}</button><button class="btn w" id="gLoad">📥 ${t('sv.import')}</button><button class="btn y" id="gQuit">${t('menu.quit')}</button></div>`;
+  h += receipt() + `<div class="row2"><button class="btn y" id="gWrap" style="grid-column:1/-1">🎁 ${t('wr.btn')}</button><button class="btn g" id="gMap" style="grid-column:1/-1">🌍 ${t('over.map')}</button></div>`;
   { // problem guide: every problem this city can bring, and the room that fixes it
     const c = S.city || 'london', ps = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && (!PROBLEMS[k].city || PROBLEMS[k].city === c));
     const byRoom = {}; for (const k of ps) (byRoom[PROBLEMS[k].room] = byRoom[PROBLEMS[k].room] || []).push(k);
@@ -2007,11 +2012,7 @@ function openGoals() {
   openSheet(h); $('sheet').querySelectorAll('[data-pi]').forEach((el) => el.onclick = () => { closeSheet(); probCard(el.dataset.pi, false); });
   $('sheet').querySelectorAll('[data-step]').forEach((b) => b.onclick = () => { closeSheet(); const a = steps[+b.dataset.step].act; if (a) a(); });
   $('gWrap').onclick = () => { closeSheet(); showWrapped(false); };
-  $('gAudio').onclick = () => openAudio();
-  $('gTut').onclick = () => { closeSheet(); S.pepUsed = false; S.tutGoals = false; S.tut = 0; tutDrawn = null; };
-  $('gQuit').onclick = () => { save(); closeSheet(); toTitle(); };
   $('gMap').onclick = () => { closeSheet(); toMap(); };
-  $('gSave').onclick = () => { closeSheet(); exportSave(); }; $('gLoad').onclick = () => { closeSheet(); importSave(); };
 }
 function openChat() {
   S.unread = 0; updateBadge();
@@ -2105,7 +2106,7 @@ function setSpeed(s) {
   $('spPause').classList.toggle('on', s === 0); $('icPause').style.display = s === 0 ? 'none' : ''; $('icPlay').style.display = s === 0 ? '' : 'none';
   $('spLbl').textContent = lastSpeed + '×'; $('spFast').classList.toggle('on', s > 1);
 }
-$('spPause').onclick = () => setSpeed(speedMul === 0 ? lastSpeed : 0);
+$('spPause').onclick = () => { if (speedMul > 0 && liveBuild() && (placingR || placingD || moving || $('sheet').classList.contains('on') && !sheetPaused)) { toast('⏸️ ' + t('build.noPause'), 1800); return; } setSpeed(speedMul === 0 ? lastSpeed : 0); };
 $('spFast').onclick = () => setSpeed(speedMul === 0 ? lastSpeed : speedMul >= 3 ? 1 : speedMul + 1);
 $('nBuild').onclick = openBuild; $('nStaff').onclick = openStaffList; $('nGoals').onclick = openGoals; $('nChat').onclick = openChat; $('nResearch').onclick = openResearch;
 $('banner').onclick = openChat;
@@ -2269,7 +2270,7 @@ function fpsWatch(rdt) {
 function loop(now) {
   const rdt = Math.min(0.1, (now - last) / 1000); last = now; fpsWatch(Math.min(0.5, rdt));
   if (inGame) {
-    const dt = sheetPaused || modalPaused || moving || placingR || placingD ? 0 : rdt * speedMul;
+    const dt = sheetPaused || modalPaused || (!liveBuild() && (moving || placingR || placingD)) ? 0 : rdt * speedMul;
     if (dt > 0) { const n = Math.ceil(dt / 0.1); for (let i = 0; i < n; i++) step(dt / n, now, i === 0 ? rdt : 0); }
     if (sel) { selRing.position.set(sel.av.position.x, 0.14, sel.av.position.z); if (Math.floor(now / 250) !== loop.vc) { loop.vc = Math.floor(now / 250); renderVCard(); } }
     camAnim(rdt);
@@ -2576,7 +2577,7 @@ function decorValid(x, z, id) {
   return !(S.decor || []).some((d) => d.id !== id && Math.hypot(d.x - x, d.z - z) < 0.9);
 }
 let placingD = null;
-function startDecor(k, edit) {
+function startDecor(k, edit) { resumeForBuild();
   closeSheet(); selectVisitor(null);
   const c = edit ? { x: edit.x, z: edit.z } : [[5.8, 0.8], [0.7, 0.7], [5.8, 3.6], [3.5, 0.7], [0.7, 6.0], [6.0, 6.0]].map(([x, z]) => ({ x, z })).find((p) => decorValid(p.x, p.z)) || { x: 3, z: 1 };
   placingD = { k, x: c.x, z: c.z, edit, mesh: decorMesh(k) }; scene.add(placingD.mesh);
@@ -2834,7 +2835,7 @@ function removeDesk2(di) {
   for (const rs of R.staff) if (rs.at === 'desk' && (rs.desk || 0) >= di) { rs.at = null; rs.desk = 0; }
   placeDesk(); assignStaff(); for (const v of moved) if (R.visitors.includes(v) && ['queue', 'toQueue', 'checkin'].includes(v.state)) joinQueue(v); save();
 }
-function startMove(extra) {
+function startMove(extra) { resumeForBuild();
   if (!inGame || moving || S.mode !== 'career' && S.mode !== 'quick' && S.mode !== 'daily') return;
   closeSheet(); selectVisitor(null);
   if (extra) { const m = deskMesh(), ring = m.children.find((c) => c.geometry && c.geometry.type === 'RingGeometry'); if (ring) { ring.visible = true; ring.material = ring.material.clone(); }
@@ -2923,6 +2924,7 @@ function startNew(city) {
   if (tutDone) $('tYes').className = 'btn w';
 }
 $('camMap').onclick = () => { if (!inGame || placingR || moving) return; toMap(); };
+$('camSet').onclick = () => { if (!inGame || placingR || moving) return; openAudio(); };
 // Save code: all progress (every city, profile, manager) as one text code — works across browsers, devices and new versions of the game
 function exportSave() {
   if (inGame) save(); const data = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('ahq_')) data[k] = localStorage.getItem(k); }
@@ -3077,6 +3079,8 @@ addEventListener('pagehide', () => { if (S && inGame) save(); }); addEventListen
 setLang(detectLang()); applyStatic();
 S = newState();
 buildWorld(); resize(); refreshTitle();
+{ let c = null; try { c = sessionStorage.getItem('ahq_resume'); sessionStorage.removeItem('ahq_resume'); } catch (e) {} // back into the game after a graphics change
+  const sv = c && CITIES[c] && load(c); if (sv) setTimeout(() => { buildCityDecor(c); mapCity = c; RNG = Math.random; S = sv; S.city = S.city || c; startGame(); }, 0); }
 // ---------------- manager actions ----------------
 const MGR_CD = 45, AURA_R = 3.5; let mgrPick = null;
 const auraRing = new THREE.Mesh(new THREE.RingGeometry(AURA_R - 0.1, AURA_R, 56), new THREE.MeshBasicMaterial({ color: '#FFD25E', transparent: true, opacity: 0.6, depthWrite: false }));
@@ -3230,12 +3234,25 @@ function restoreVisitors() {
 
 // ---------------- audio settings & PA ----------------
 function say(k, txt, cd = 45) { if (!S || !inGame || speedMul === 0 || sheetPaused || modalPaused && cd) return; AU.announce(k, txt, getLang(), cd); }
-function openAudio() {
+function openAudio() { // ⚙️ Settings
   const row = (k, ic) => `<div class="opt w"><div class="oi" style="background:#EEF2F7">${ic}</div><div class="ot"><b>${t('au.' + k)}</b><div>${t('au.' + k + 'D')}</div></div><button class="btn ${AU.st[k] ? 'g' : 'y'}" data-au="${k}">${AU.st[k] ? t('au.on') : t('au.off')}</button></div>`;
   const gb = (k) => `<button class="btn ${GFX.pref === k ? 'g' : 'w'}" data-gfx="${k}" style="flex:1;padding:8px 4px;font-size:14px">${t('gfx.' + k)}</button>`;
-  openSheet(`<h2>🔊 ${t('au.title')}</h2>` + row('music', '🎵') + row('sfx', '🔔') + row('voice', '📢') + `<div class="opt w" style="display:block"><div class="ot"><b>🖥️ ${t('gfx.title')}</b><div>${t('gfx.D', { m: t('gfx.' + GFX.mode) })}</div></div><div style="display:flex;gap:6px;margin-top:8px">${gb('auto')}${gb('high')}${gb('low')}</div></div><button class="btn w" id="scBtn" style="width:100%;margin-top:8px">🎨 ${t('sc.btn')}</button>`);
+  const game = inGame && S && S.mode === 'career';
+  openSheet(`<h2>⚙️ ${t('set.title')}</h2>` + `<div class="lbl" style="margin:4px 0 6px">🔊 ${t('au.title')}</div>` + row('music', '🎵') + row('sfx', '🔔') + row('voice', '📢')
+    + `<div class="opt w" style="display:block"><div class="ot"><b>🖥️ ${t('gfx.title')}</b><div>${t('gfx.D', { m: t('gfx.' + GFX.mode) })}</div></div><div style="display:flex;gap:6px;margin-top:8px">${gb('auto')}${gb('high')}${gb('low')}</div></div>`
+    + `<div class="row2" style="margin-top:8px"><button class="btn w" id="stLang">🌐 ${t('set.lang')}</button><button class="btn w" id="stAcc">👤 ${t('set.acc')}</button></div>`
+    + (game ? `<div class="lbl" style="margin:12px 0 6px">💾 ${t('set.save')}</div><div class="row2"><button class="btn w" id="gSave">💾 ${t('sv.export')}</button><button class="btn w" id="gLoad">📥 ${t('sv.import')}</button><button class="btn w" id="gTut">${t('tut.replay')}</button><button class="btn y" id="gQuit">${t('menu.quit')}</button></div>` : '')
+    + `<button class="btn w" id="scBtn" style="width:100%;margin-top:10px;font-size:13px">✨ Showcase</button>`);
   $('scBtn').onclick = () => { closeSheet(); startShowcase().catch((e) => toast(String(e))); };
-  $('sheet').querySelectorAll('[data-gfx]').forEach((b) => b.onclick = () => { const k = b.dataset.gfx; try { if (k === 'auto') { localStorage.removeItem('ahq_gfx'); localStorage.removeItem('ahq_gfx_hint2'); } else localStorage.setItem('ahq_gfx', k); } catch (e) {} save(); location.reload(); });
+  $('stLang').onclick = () => { closeSheet(); openLang(); };
+  $('stAcc').onclick = () => { closeSheet(); window.MLT_ACCOUNT && window.MLT_ACCOUNT.open(); };
+  if (game) {
+    $('gTut').onclick = () => { closeSheet(); S.pepUsed = false; S.tutGoals = false; S.tut = 0; tutDrawn = null; };
+    $('gQuit').onclick = () => { save(); closeSheet(); toTitle(); };
+    $('gSave').onclick = () => { closeSheet(); exportSave(); }; $('gLoad').onclick = () => { closeSheet(); importSave(); };
+  }
+  // graphics need a reload; the game reopens right where it was (same city, same save) instead of the title screen
+  $('sheet').querySelectorAll('[data-gfx]').forEach((b) => b.onclick = () => { const k = b.dataset.gfx; try { if (k === 'auto') { localStorage.removeItem('ahq_gfx'); localStorage.removeItem('ahq_gfx_hint2'); } else localStorage.setItem('ahq_gfx', k); if (game) { save(); sessionStorage.setItem('ahq_resume', S.city); } } catch (e) {} location.reload(); });
   $('sheet').querySelectorAll('[data-au]').forEach((b) => b.onclick = () => { const k = b.dataset.au; AU.set(k, !AU.st[k]); if (k === 'voice' && AU.st.voice) AU.announce('test', t('au.test'), getLang(), 0); openAudio(); });
 }
 for (const ev of ['pointerdown', 'touchend', 'click']) addEventListener(ev, () => { AU.ensure(); if (inGame) AU.startMusic(); }, { passive: true }); // iOS only unlocks audio on some of these
