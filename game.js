@@ -1330,7 +1330,7 @@ function quakeTick(dt) {
 // ---- temperature (Theme Hospital style): each city has its climate; radiators and air conditioners keep the centre comfortable, at a cost ----
 const CLIMATE = { newyork: [6, 4], mexico: [17, 6], london: [9, 3], lagos: [30, 3], mumbai: [31, 2], seoul: [4, 4], saopaulo: [22, 4], cairo: [33, 6] };
 const T_LO = 19, T_HI = 24;
-function outsideT() { const [b, a] = CLIMATE[S.city] || [18, 3]; return b + a * Math.sin((S.t / DAY_LEN - 0.25) * Math.PI * 2) - (S.rainy ? 2 : 0) + (S.ev && S.ev.k === 'heat' ? 7 : 0); }
+function outsideT() { const [b, a] = CLIMATE[S.city] || [18, 3], v = b + a * Math.sin((S.t / DAY_LEN - 0.25) * Math.PI * 2) - (S.rainy ? 2 : 0); return S.ev && S.ev.k === 'heat' ? Math.max(v + 7, 32 + a * 0.5 * Math.sin((S.t / DAY_LEN - 0.25) * Math.PI * 2)) : v; } // a heatwave is a heatwave everywhere, even in London
 function targetT() {
   const size = Math.pow(Math.max(1, (S.rooms.length + 2) / 4), 0.6), dec = S.decor || [];
   const heat = dec.filter((d) => d.k === 'radiator').length, cool = dec.filter((d) => d.k === 'aircon').length + (S.ac ? 1 : 0);
@@ -1342,7 +1342,7 @@ let gardenT = 0;
 function tempTick(dt) {
   if (!S || S.mode !== 'career') return;
   if (S.garden) { if (GARDEN_OK() && S.vibes < 95) S.vibes = clamp(S.vibes + 0.0015 * dt, 0, 100); if ((gardenT += dt) > 5) { gardenT = 0; gardenRain(); } }
-  if (S.temp == null) S.temp = targetT(); S.temp += (targetT() - S.temp) * Math.min(1, dt / 20);
+  if (S.temp == null) S.temp = targetT(); S.temp += (targetT() - S.temp) * Math.min(1, dt / (S.ev && S.ev.k === 'heat' ? 8 : 20)); // the centre warms up fast in a heatwave, so the thermometer matches the news
   const off = tempOff();
   if (off > 0) { S.vibes = clamp(S.vibes - 0.004 * Math.min(off, 10) * dt, 0, 100); if (off > 1.5 && (S.day >= 2 || S.t > DAY_LEN * 0.5)) behSeen('temp'); }
   else if (S.vibes < 90) S.vibes = clamp(S.vibes + 0.002 * dt, 0, 100);
@@ -2680,7 +2680,7 @@ function bindExtras() {
 // ---------------- mandatory events ----------------
 const EVENTS = { power: { dur: 25, e: '⚡' }, wifi: { dur: 40, e: '📶' }, leak: { dur: 45, e: '💧' }, noise: { dur: 40, e: '🔨' }, heat: { dur: 50, e: '🥵' } };
 const evSlow = (type) => (S.ev && S.ev.k === 'noise' && (type === 'nap' || type === 'therapy') ? 2 : S.ev && S.ev.k === 'wifi' && type === 'detox' ? 0.67 : 1);
-function evPatience() { if (!S.ev) return 1; const k = S.ev.k; return k === 'wifi' ? 1.4 : k === 'noise' ? 1.2 : k === 'heat' ? (S.ac ? 1 : 1.5) : k === 'power' ? 1.2 : 1; }
+function evPatience() { if (!S.ev) return 1; const k = S.ev.k; return k === 'wifi' ? 1.4 : k === 'noise' ? 1.2 : k === 'heat' ? 1 : k === 'power' ? 1.2 : 1; }
 function startEvent() {
   const keys = Object.keys(EVENTS).filter((k) => k !== 'leak' || S.rooms.some((r) => !ROOMS[r.type].staffOnly));
   const k = cityOf().power && RNG() < 0.5 ? 'power' : cityOf().hot && RNG() < 0.45 ? 'heat' : rnd(keys);
@@ -2695,7 +2695,7 @@ function startEvent() {
     const drip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 8), mat('#7FC7F0')); drip.rotation.x = Math.PI; drip.position.set(room.cx + 0.6, 2.4, room.cz + 0.6); scene.add(drip); pd.userData.drip = drip;
     const leak = { mesh: pd, heavy: true, leak: r.id }; R.litter.push(leak); S.ev.obj = leak; S.ev.fixT = 45;
     chat(t('from.hq'), t('ev.leak', { room: rn(r.type) }) + ' ' + t('ev.leakD'), '💧');
-  } else chat(t('from.hq'), t('ev.' + k) + ' ' + t('ev.' + k + 'D') + ({ wifi: 1, noise: 1, power: 1, heat: 1 }[k] ? ' ' + t('ev.fix.' + k) : ''), EVENTS[k].e);
+  } else chat(t('from.hq'), t('ev.' + k) + ' ' + (k === 'heat' ? t('ev.heatD2', { o: Math.round(outsideT()) }) : t('ev.' + k + 'D')) + ({ wifi: 1, noise: 1, power: 1, heat: 1 }[k] ? ' ' + t('ev.fix.' + k) : ''), EVENTS[k].e);
   if (k === 'power') renderer.toneMappingExposure = 0.5;
   toast(EVENTS[k].e + ' ' + (k === 'leak' ? t('ev.leak', { room: rn(R.rooms[S.ev.room].type) }) : t('ev.' + k)), 2600);
 }
