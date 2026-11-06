@@ -529,7 +529,7 @@ function buildWorld() {
   const dr = new THREE.Mesh(new THREE.RingGeometry(1.35, 1.55, 40), new THREE.MeshBasicMaterial({ color: '#7ACB4E', transparent: true, opacity: 0.85 })); dr.rotation.x = -Math.PI / 2; dr.position.y = 0.14; dr.visible = false; desk.add(dr); world.deskRing = dr;
   const sofa = grp(1.15, 4.2, Math.PI / 2);
   put(rbox(2.6, 0.45, 0.9, '#FF8FAB', 0.16), 0, 0.33, 0, sofa); put(rbox(2.6, 0.7, 0.3, '#FF8FAB', 0.14), 0, 0.7, -0.35, sofa);
-  put(rbox(0.3, 0.6, 0.9, '#F07C9A', 0.12), -1.3, 0.5, 0, sofa); put(rbox(0.3, 0.6, 0.9, '#F07C9A', 0.12), 1.3, 0.5, 0, sofa); glbSwap(sofa, 'sofa', { len: 2.7, h: 1.0, y: 0.1 });
+  put(rbox(0.3, 0.6, 0.9, '#F07C9A', 0.12), -1.3, 0.5, 0, sofa); put(rbox(0.3, 0.6, 0.9, '#F07C9A', 0.12), 1.3, 0.5, 0, sofa); glbSwap(sofa, 'sofa', { len: 2.7, h: 0.86, y: 0.1 }); // a little lower so seated feet reach the floor
   const rug = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.02, 40), mat('#2BB5A6', { r: 1 })); rug.position.set(2.6, 0.13, 3.6); rug.receiveShadow = true; scene.add(rug);
   plant(6.1, 1.1, 1.1, '#FFFFFF'); plant(1.0, 6.0, 1, '#E9785F'); plant(2.6, 1.0, 0.9, '#FFD25E');
   buildCityDecor('london');
@@ -1169,7 +1169,7 @@ function placeDesk() {
   for (const s of WAIT_SPOTS) s.blocked = Math.hypot(s.x - D.x, s.z - D.z) < (D.segs ? 2.0 : 1.5) || Math.hypot(s.x - hs.x, s.z - hs.z) < 0.8 || Math.hypot(s.x - q0.x, s.z - q0.z) < 0.8 || extra.some((e) => Math.hypot(s.x - e.x, s.z - e.z) < 0.8);
 }
 const WAIT_SPOTS = [
-  { x: 1.3, z: 3.4, rot: Math.PI / 2, sit: true, y: 0.02 }, { x: 1.3, z: 4.2, rot: Math.PI / 2, sit: true, y: 0.02 }, { x: 1.3, z: 5.0, rot: Math.PI / 2, sit: true, y: 0.02 },
+  { x: 1.24, z: 3.55, rot: Math.PI / 2, sit: true, y: 0.05 }, { x: 1.24, z: 4.2, rot: Math.PI / 2, sit: true, y: 0.05 }, { x: 1.24, z: 4.85, rot: Math.PI / 2, sit: true, y: 0.05 }, // back against the cushions, not on the armrests
   ...[[2.2, 1.5], [3.0, 1.6], [2.0, 2.3], [6.0, 4.0], [6.0, 4.8], [6.0, 5.6], [2.2, 5.9], [2.9, 2.5]].map(([x, z]) => ({ x, z, rot: Math.atan2(4.6 - x, 3.6 - z) })), // standing: by the walls, clear of the sofa and the queue, facing the desk
 ].map((s) => ({ ...s, busy: null, sit: !!s.sit, y: s.y || 0 }));
 const iconCache = {};
@@ -1255,7 +1255,24 @@ function stepWalker(o, dt, speed) {
   o.ph += dt * speed * 4.2; poseWalk(o.av.userData.p, o.ph, 0.55, speed); pos.y = 0.1;
   return !o.path.length;
 }
-function settle(o, spot) { o.av.position.set(spot.x, 0.1 + (spot.y || 0), spot.z); o.av.rotation.y = spot.rot || 0; const p = o.av.userData.p; poseStand(p); if (spot.sit) { poseSit(p, spot.lie); o.av.position.y -= 0.05; } }
+// Seats come in many heights (sofas, benches, booth chairs, the host's chair, models swapped in later), so a sitter is placed
+// on the real surface under the seat point instead of a hand-tuned number: hips rest on the cushion, never in it or above it.
+const seatRay = new THREE.Raycaster(), DOWN = new THREE.Vector3(0, -1, 0), HIP_SIT = 0.67, HIP_PAD = 0.09;
+function seatTop(x, z, self, guess) {
+  seatRay.set(new THREE.Vector3(x, 1.05, z), DOWN); seatRay.far = 1.0; seatRay.camera = cam; let best = null;
+  for (const h of seatRay.intersectObjects(scene.children, true)) {
+    const m = h.object; if (!m.isMesh || m.isSkinnedMesh || !m.visible || h.point.y < 0.3 || h.point.y > 0.9) continue;
+    let a = m, mine = false; while (a) { if (a === self || (a.userData.p && a.userData.p.body)) { mine = true; break; } a = a.parent; } if (mine) continue; // people are not seats
+    if (best == null || Math.abs(h.point.y - guess) < Math.abs(best - guess)) best = h.point.y; // a table edge above the seat loses to the cushion
+  }
+  return best != null && Math.abs(best - guess) < 0.25 ? best : null;
+}
+function settle(o, spot) {
+  o.av.position.set(spot.x, 0.1 + (spot.y || 0), spot.z); o.av.rotation.y = spot.rot || 0; const p = o.av.userData.p; poseStand(p);
+  if (!spot.sit) return;
+  poseSit(p, spot.lie); o.av.position.y -= 0.05;
+  if (!spot.lie && p.anim) { const top = seatTop(spot.x, spot.z, o.av, o.av.position.y + HIP_SIT * o.av.scale.y - HIP_PAD); if (top != null) o.av.position.y = top + HIP_PAD - HIP_SIT * o.av.scale.y; }
+}
 const hasRoom = (type) => S.rooms.some((r) => r.type === type);
 const POWER = { s: 20, m: 35, l: 55 }, POWER_X = { lab: 40, cafe: 20, glowup: 10, toilet: -10 };
 function elecPerDay() { let e = 0; for (const r of S.rooms) e += POWER[r.size] + (POWER_X[r.type] || 0); if (S.ac) e += 30; if (S.gen) e += 10; if (S.net) e += 8; if (S.gardenHeat) e += 15; if (S.gardenCool) e += 15; for (const d of S.decor || []) if (d.k === 'radiator') e += 20; else if (d.k === 'aircon') e += 30; e += 15 * (S.decor || []).filter((d) => d.k === 'vending' || d.k === 'neon' || d.k === 'massage').length; return e; }
@@ -2868,6 +2885,8 @@ function resetRuntime() {
 }
 function startGame() {
   S.tips = S.tips || {}; if (S.tut == null) S.tut = -1; S.pepT = S.pepT || 0; S.pepCd = S.pepCd || 0; S.desk = S.desk || { x: 5.25, z: 5.25, r: Math.PI / 4 };
+  // saves from before the reception redesign: a desk still at the old default (never moved by the player) goes to the new spot; nothing else in the save changes
+  { const D = S.desk, nd = { x: 4.6, z: 2.8, r: 0 }; if (!S.deskV && !D.segs && D.x === 5.25 && D.z === 5.25 && Math.abs(D.r - Math.PI / 4) < 1e-6 && !(S.decor || []).some((d) => Math.hypot(d.x - nd.x, d.z - nd.z) < 1.6)) S.desk = nd; S.deskV = 2; }
   if (!Array.isArray(S.rooms)) {
     const P = { A: [-3.5, -3.5, Math.PI / 2], B: [3.5, -3.5, 0], C: [-3.5, 3.5, Math.PI / 2], E: [9.75, -3.5, 0], F: [9.75, 3.5, Math.PI] }, old = S.rooms; S.rooms = [];
     for (const k in old) if (old[k] && P[k]) S.rooms.push({ id: S.nextId++, type: old[k], size: 'm', x: P[k][0], z: P[k][1], a: P[k][2] });
@@ -3281,5 +3300,5 @@ async function startShowcase() {
 }
 if (new URLSearchParams(location.search).get('showcase')) setTimeout(() => startShowcase().catch((e) => console.warn(e)), 600);
 
-window.__dbg = { buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; decorShow(); }, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
+window.__dbg = { settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; decorShow(); }, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
 requestAnimationFrame(loop);
