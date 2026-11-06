@@ -3132,6 +3132,9 @@ function openBrief() {
     </div>
     <div class="bfoot"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;color:#2D3748"><span>${t('brief.budgetC', { m: money(C.cash) })}</span><span>${t('brief.rentC', { m: money(Math.round(C.rent * BILL_K / 50) * 50) })}</span></div>
     <button class="btn g" id="bOpen" style="font-size:21px">${t('brief.open')}</button></div>`;
+  // a finished example centre in its city (only London has one so far); other cities keep the live view of their empty lot
+  { const bi = document.querySelector('#brief .bimg'), img = { london: 'assets/brief_london.jpg' }[mapCity];
+    bi.style.background = img ? `#E9E1D3 url(${img}) center 45% / cover no-repeat` : ''; }
   $('briefTag').textContent = t(C.tag);
   $('bOpen').onclick = () => { const sv = load(mapCity); if (sv) { RNG = Math.random; S = sv; S.city = S.city || mapCity; startGame(); } else startNew(mapCity); };
   show('brief');
