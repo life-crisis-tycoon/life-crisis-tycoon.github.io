@@ -1451,7 +1451,7 @@ function behSpawn(v) { // traffic: one stuck driver means more are right behind
 function laterTick(dt) { for (const L of R.later.slice()) { L.t -= dt; if (L.t > 0) continue; R.later.splice(R.later.indexOf(L), 1); if (R.visitors.length >= 26) continue; wavePending = !!L.wave; const nv = spawnVisitor(L.prob); wavePending = false; if (nv) { nv.wave = !!L.wave; nv.stage2 = !!L.stage2; if (nv.wave) floatAt(nv.av.position, '🚦'); } } }
 let wavePending = false;
 function patienceRate(v) {
-  if (S.tut >= 0 && S.tut <= 3) return 0;
+  if (S.tut >= 0 && S.tut <= 4) return 0; // nobody storms out while the tutorial is still explaining
   if (v.caseK) return 0; // a ⭐ case waits patiently for you
   let r = 1 / 75 / 1.2;
   if (v.spot && v.spot.out) r *= 0.75; // fresh air on the garden benches
@@ -2482,8 +2482,9 @@ const TUT = [
   { k: 'tut.0', ok: true },
   { k: 'tut.1', target: 'nBuild', inSheet: ['[data-size]:not([disabled])', '[data-room]'], place: true, done: () => S.rooms.length > 0 },
   { k: 'tut.2', target: 'nStaff', inSheet: ['[data-hire]:not([disabled])', '#toHire', '[data-role]'], done: () => Object.values(R.rooms).every((r) => !ROOMS[r.type].role || r.staff.some(Boolean)) },
-  { k: 'tut.3', done: () => S.served >= 1 },
-  { k: 'tut.4', target: 'pep', done: () => S.pepUsed },
+  { k: 'tut.3b', done: () => !!sel || S.served >= 1 }, // something to do, not just wait: tap a visitor
+  { k: 'tut.3c', ok: true, done: () => S.served >= 1 },
+  { k: 'tut.4b', target: 'pep', done: () => S.pepUsed },
   { k: 'tut.5', ok: true },
   { k: 'tut.6', target: 'nGoals', inSheet: [], done: () => S.tutGoals },
   // tour of the screen: what each card and tab is for
