@@ -180,10 +180,10 @@ function updateCutaway() {
   // Theme Hospital / Two Point style: a wall stays full height only when nothing walkable lies behind it from the camera
   // (outer back walls). Every other wall — and the door in it — drops to the same low stub, so heights stay coherent.
   const cut = (n, p) => { const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
-  // cut walls stop at chest height (~1.05 m) so rooms stay readable; a door is never cut: its frame stays taller than people
-  // (they visibly walk through a doorway), only the slab and the wall piece above it hide so they don't block the view
+  // Two Point style: walls facing the camera are cut low so rooms stay readable, and their door is cut to exactly the same
+  // height (jambs only: no lintel, no leaf), so the wall reads as one low line with an opening; back walls keep full doors
   for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_CUT : 1;
-  for (const d of world.doors || []) { const c = cut(d.g.userData.n, [d.x, d.z]); d.g.scale.y = 1; if (d.top) d.top.visible = !c; for (const l of d.leaves) l.visible = !c; d.cut = c; }
+  for (const d of world.doors || []) { const c = cut(d.g.userData.n, [d.x, d.z]); d.g.scale.y = c ? WALL_CUT : 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = !c; d.cut = c; }
   const tan = Math.tan(view.pitch);
   for (const b of world.cityB || []) {
     const dx = b.x - view.tx, dz = b.z - view.tz, along = dx * cx + dz * cz;
@@ -748,7 +748,7 @@ function buildRoom(r) {
   { g.updateMatrixWorld(true); const skip = new Set([...wallG, door.g]), bx = new THREE.Box3(), obs = [];
     const walk = (o) => { for (const c of o.children) { if (skip.has(c)) continue; if (c.isMesh) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) obs.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); } walk(c); } };
     walk(g); room.obs = obs; }
-  if (GFX.batch) { for (const w of wallG) batchNode(w, new Set(), { userData: { roomId: r.id } }); batchNode(door.g, new Set([...door.leaves, door.top].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
+  if (GFX.batch) { for (const w of wallG) batchNode(w, new Set(), { userData: { roomId: r.id } }); batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
   world.roomCut = (world.roomCut || []).filter((w) => w.parent && w.parent.parent).concat(wallG); updateCutaway();
   g.traverse((m) => { if (m.isMesh) m.userData.roomId = r.id; });
   R.rooms[r.id] = room; if (S && S.rooms) rebuildGrid();
@@ -760,7 +760,7 @@ function buildDoor(r, parent, RS, def) {
   const wallC = RS ? RS.wall : '#FFFFFF', frame = '#F4E9D2', leafC = '#7E9CC0', panelC = '#6F8FB6', th = RS ? 0.3 : T, fw = 0.12, ow = DOOR_W + 2 * fw;
   // cream architrave (two jambs + head), proud of the wall on both faces, and the wall piece above
   for (const sx of [-1, 1]) put(rbox(fw, DOOR_H + fw, th + 0.08, frame, 0.03, { r: 0.85 }), sx * (DOOR_W / 2 + fw / 2), (DOOR_H + fw) / 2 + 0.1, 0, g);
-  put(rbox(ow, fw, th + 0.08, frame, 0.03, { r: 0.85 }), 0, DOOR_H + fw / 2 + 0.1, 0, g);
+  const head = put(rbox(ow, fw, th + 0.08, frame, 0.03, { r: 0.85 }), 0, DOOR_H + fw / 2 + 0.1, 0, g);
   const top = H > DOOR_H + fw + 0.05 ? put(rbox(ow, H - DOOR_H - fw, th, wallC, 0.03, { r: 0.95 }), 0, (H + DOOR_H + fw) / 2 + 0.1, 0, g) : null;
   // one panel door hinged on the left: two raised panels per face, chrome lever handle, two hinges
   const piv = grp(-DOOR_W / 2, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.04;
@@ -768,7 +768,7 @@ function buildDoor(r, parent, RS, def) {
   for (const [py, ph] of [[0.62, 0.95], [1.62, 0.8]]) for (const fz of [-1, 1]) put(rbox(lw - 0.3, ph, 0.02, panelC, 0.008, { r: 0.7 }), lw / 2, py, fz * 0.038, piv);
   for (const fz of [-1, 1]) { put(rbox(0.16, 0.035, 0.035, '#C9CDD2', 0.012, { m: 0.6, r: 0.35 }), lw - 0.16, 1.0, fz * 0.065, piv); put(rbox(0.05, 0.09, 0.02, '#C9CDD2', 0.008, { m: 0.6, r: 0.35 }), lw - 0.1, 1.0, fz * 0.045, piv); }
   for (const hz of [0.25, DOOR_H - 0.3]) put(rbox(0.03, 0.12, 0.08, '#C9CDD2', 0.008, { m: 0.6, r: 0.35 }), 0.01, hz, 0, piv);
-  const d = { g, leaves: [piv], top, x: dp.x, z: dp.z, open: 0 };
+  const d = { g, leaves: [piv], top, head, x: dp.x, z: dp.z, open: 0 };
   (world.doors = (world.doors || []).filter((o) => o.g.parent && o.g.parent.parent)).push(d);
   return d;
 }
@@ -1330,7 +1330,9 @@ function elecPerDay() { let e = 0; for (const r of S.rooms) e += POWER[r.size] +
 const cafeF = () => Math.min(1, ...S.rooms.filter((r) => r.type === 'cafe').map((r) => SIZES[r.size].cafe));
 const UNLOCK = { pharmacy: 1, pharmacist: 1, glowup: 2, career: 1, social: 1, parent: 1, maint: 0, therapy: 2, therapist: 2, moving: 2, lab: 2, researcher: 2, annex: 0 };
 const localRoom = (k) => Object.values(PROBLEMS).some((p) => p.city && p.city === (S.city || 'london') && p.room === k);
-const unlocked = (k) => !S || S.mode !== 'career' || localRoom(k) || (UNLOCK[k] || 0) <= S.stars;
+// London is the simple first city: no Innovation Lab / research (and so no mystery cases) — they start in Lagos. A London save that already built a lab keeps it.
+const noResearch = () => !!(S && S.mode === 'career' && (S.city || 'london') === 'london' && !(S.rooms || []).some((r) => r.type === 'lab'));
+const unlocked = (k) => !S || S.mode !== 'career' || ((k === 'lab' || k === 'researcher') && noResearch() ? false : localRoom(k) || (UNLOCK[k] || 0) <= S.stars);
 const done = (k) => S.research.done.includes(k);
 // ---- earthquake alert (Mexico City): the siren sounds, waiting visitors evacuate to the street for 20 s, rooms pause; afterwards some come in anxious
 function quakeStart() {
@@ -2232,6 +2234,7 @@ function setSpeed(s) {
 }
 $('spPause').onclick = () => { if (speedMul > 0 && liveBuild() && (placingR || placingD || moving || $('sheet').classList.contains('on') && !sheetPaused)) { toast('⏸️ ' + t('build.noPause'), 1800); return; } setSpeed(speedMul === 0 ? lastSpeed : 0); };
 $('spFast').onclick = () => setSpeed(speedMul === 0 ? lastSpeed : speedMul >= 3 ? 1 : speedMul + 1);
+function navResearch() { const b = $('nResearch'); if (b) b.style.display = inGame && noResearch() ? 'none' : ''; }
 $('nBuild').onclick = openBuild; $('nStaff').onclick = openStaffList; $('nGoals').onclick = openGoals; $('nChat').onclick = openChat; $('nResearch').onclick = openResearch;
 $('banner').onclick = openChat;
 
@@ -2343,7 +2346,7 @@ function gameOver(why = {}) {
   $('mOk').onclick = () => { closeModal(); startNew(S.city); };
   $('mMap').onclick = () => { closeModal(); inGame = false; toMap(); };
 }
-function updateHUD() {
+function updateHUD() { navResearch();
   if (S && $('hTemp')) { const T = S.temp; if (S.mode !== 'career' || T == null) $('hTemp').textContent = ''; else { $('hTemp').textContent = '🌡️ ' + Math.round(T) + '°C'; $('hTemp').style.color = T < T_LO ? '#2F7FD1' : T > T_HI ? '#C0362C' : '#1E8A3A'; } }
   const q = S.mode !== 'career';
   if (q) {
@@ -2591,6 +2594,7 @@ function updateTut() {
   const blocked = sheetPaused || modalPaused || !inGame;
   const el = $('tut'), ar = $('tarrow');
   if (S.tut >= 0) {
+    if (TUT[S.tut] && TUT[S.tut].target === 'nResearch' && noResearch()) { S.tut++; tutDrawn = null; return; } // no research tab in London
     const st = TUT[S.tut];
     if (st.done && !tutPre && tutDrawn === S.tut && st.done()) { S.tut++; tutDrawn = null; if (S.tut >= TUT.length) { finishTut(); return; } return; }
     // inside a sheet or while placing: hide the bubble but keep pointing at the next thing to tap
