@@ -509,6 +509,19 @@ function wallSeg(x0, z0, x1, z1, h, c, parent) {
   put(rbox(alongX ? len : T, h, alongX ? T : len, c, 0.04), (x0 + x1) / 2, h / 2 + 0.1, (z0 + z1) / 2, parent);
   put(rbox(alongX ? len + 0.02 : T + 0.05, 0.07, alongX ? T + 0.05 : len + 0.02, '#FFFFFF', 0.03), (x0 + x1) / 2, h + 0.13, (z0 + z1) / 2, parent);
 }
+const FLOOR_KIND = { cafe: 'herring', budget: 'herring', career: 'herring', moving: 'herring', garage: 'herring', roda: 'herring', toilet: 'check', pharmacy: 'check', lab: 'check', jjim: 'check', lucha: 'check',
+  nap: 'carpet', detox: 'carpet', yoga: 'carpet', therapy: 'carpet', social: 'carpet', parent: 'carpet', staffroom: 'terrazzo', glowup: 'terrazzo', wedding: 'terrazzo', ahwa: 'terrazzo', lobby: 'terrazzo' };
+const FLOOR_TILE = { herring: 2.4, check: 2.0, carpet: 2.0, terrazzo: 2.0 }, floorTex = {};
+function floorMat(kind, w, d) { // one material per (kind, size) so the pattern keeps its real scale in every room
+  const key = 'fl|' + kind + '|' + w.toFixed(2) + 'x' + d.toFixed(2);
+  if (!MC[key]) {
+    const base = floorTex[kind] || (floorTex[kind] = new THREE.TextureLoader().load('assets/floor_' + kind + '.jpg', (tx) => { tx.needsUpdate = true; }));
+    base.colorSpace = THREE.SRGBColorSpace; const tx = base.clone(); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(w / FLOOR_TILE[kind], d / FLOOR_TILE[kind]);
+    if (kind === 'herring') { tx.center.set(0.5, 0.5); tx.rotation = Math.PI / 4; } // planks at 45°, like the reference
+    tx.anisotropy = 4; MC[key] = new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: kind === 'carpet' ? 1 : 0.8, map: tx });
+  }
+  return MC[key];
+}
 function floorPlane(x0, x1, z0, z1, m, y = 0.1, parent = scene) {
   const f = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.04, z1 - z0), m); f.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); f.receiveShadow = true; parent.add(f); return f;
 }
@@ -591,7 +604,7 @@ function buildShell(c) {
   if (world.shellG) scene.remove(world.shellG); const g = new THREE.Group(); scene.add(g); world.shellG = g; world.cutWalls = [];
   const own = ownedLots(c), P = plotOf(c), rs = P.main.concat(P.lots.filter((_, i) => own[i])), fl = mat('#EFEAE0', { r: 0.9 });
   for (const r of rs) { put(rbox(r[1] - r[0] + 0.3, 0.62, r[3] - r[2] + 0.3, '#E9E1D3', 0.06), (r[0] + r[1]) / 2, -0.25, (r[2] + r[3]) / 2, g); floorPlane(r[0], r[1], r[2], r[3], fl, 0.08, g); }
-  floorPlane(LOB, 6.5, LOB, 6.5, mat('#FFFFFF', { map: tileTex('#EAF6F4', '#D9EEEA', [6, 6]), r: 0.5, mapK: 'w' }), 0.1, g);
+  floorPlane(LOB, 6.5, LOB, 6.5, floorMat(FLOOR_KIND.lobby, 6.5 - LOB, 6.5 - LOB), 0.1, g); // terrazzo lobby (art kit, sheet C #9)
   const [pa, pb] = plazaX(c), pl = new THREE.Mesh(new THREE.BoxGeometry(pb - pa, 0.5, 6), mat('#FFFFFF', { r: 0.9, map: tileTex('#E4E7EB', '#DADFE4', [Math.round((pb - pa) / 2), 3]), mapK: 'p' + c })); pl.position.set((pa + pb) / 2, -0.17, 9.6); pl.receiveShadow = true; g.add(pl);
   if (S && S.garden && S.city === c) gardenBuild(g, pa, pb); else for (let i = WAIT_SPOTS.length - 1; i >= 0; i--) if (WAIT_SPOTS[i].out) WAIT_SPOTS.splice(i, 1);
   for (const h of P.holes || []) { floorPlane(h[0], h[1], h[2], h[3], mat('#8DBF6A', { r: 1 }), 0.09, g); const cx = (h[0] + h[1]) / 2, cz = (h[2] + h[3]) / 2; put(cyl(1.0, 1.1, 0.4, '#C9CED6'), cx, 0.3, cz, g); put(cyl(0.8, 0.8, 0.05, '#7EC8E3', { r: 0.2 }), cx, 0.5, cz, g); for (const [dx, dz] of [[-2.6, -1.8], [2.6, 1.8], [-2.6, 1.8], [2.6, -1.8]]) plant(cx + dx, cz + dz, 1.4, '#C9A06B', g); }
@@ -615,7 +628,7 @@ function buildShell(c) {
     const col = s.hz ? '#F3EEE6' : '#EDE6F6';
     if (s.hz) { wallSeg(s.a, s.line, s.b, s.line, W_H, col, wg); wallSeg(s.a, s.line, s.b, s.line, 0.35, col, g); } else { wallSeg(s.line, s.a, s.line, s.b, W_H, col, wg); wallSeg(s.line, s.a, s.line, s.b, 0.35, col, g); }
     const L = s.b - s.a, inn = -(T / 2 + 0.03);
-    for (let u = s.a + 3.2; u < s.b - 1.5; u += 6.5) { const wx = s.hz ? u : s.line + nx * inn, wz = s.hz ? s.line + nz * inn : u; put(rbox(s.hz ? 1.5 : 0.06, 1.2, s.hz ? 0.06 : 1.5, '#FFFFFF', 0.03), wx, 1.7, wz, wg); put(rbox(s.hz ? 1.3 : 0.05, 1.0, s.hz ? 0.05 : 1.3, '#A8D8EE', 0.02, { e: '#BFE6F6', ei: 0.3, r: 0.15 }), wx - nx * 0.03, 1.7, wz - nz * 0.03, wg); }
+    for (let u = s.a + 3.2; u < s.b - 1.5; u += 6.5) { const wx = s.hz ? u : s.line + nx * inn, wz = s.hz ? s.line + nz * inn : u; kitWindow(wg, wx - nx * 0.03, wz - nz * 0.03, s.hz ? 0 : Math.PI / 2); }
     for (let u = s.a + 0.5, i = 0; u < s.b - 0.3; u += 1.05, i++) for (let k = 0; k < 2 + (i * 7) % 3; k++) put(sph(0.11 - k * 0.012, k % 2 ? '#5DAE5E' : '#3F8A4D', { r: 0.85 }), s.hz ? u : s.line - nx * 0.1, W_H + 0.05 - k * 0.16, s.hz ? s.line - nz * 0.1 : u, wg);
     if (s.hz && s.n === -1 && (!best || L > best.L)) best = { s, wg, L };
   }
@@ -672,8 +685,8 @@ const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', fl
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };
 const WALL_TINT = { yoga: '#D3ECEE', lucha: '#F6D3E2', ahwa: '#F0DCC0', budget: '#F3D9B8', detox: '#D3E6F4', career: '#F2D6DE', cafe: '#D6EBDD', lab: '#DCE2EC', social: '#F8D7E2', parent: '#FBE2C0', moving: '#EADCC8', pharmacy: '#D2EDE6', glowup: '#F8DCE8', wedding: '#F8DCE6', jjim: '#F0D9C4', roda: '#D7EDD5', garage: '#F2E3BD', shop: '#F9DCCF', staffroom: '#EDE2CF', toilet: '#D9ECF8', therapy: '#D5E6D9' };
-for (const [k, c] of Object.entries(WALL_TINT)) ROOM_STYLE[k] = { wall: c, cap: '#FFF7EC', base: _mix(c, ROOMS[k] ? ROOMS[k].pill : '#8A8E96', 0.35), ivy: ['cafe', 'therapy', 'social', 'staffroom'].includes(k), lights: ['cafe', 'social', 'glowup'].includes(k), h: ROOM_H, posts: true };
-ROOM_STYLE.nap.posts = true;
+for (const [k, c] of Object.entries(WALL_TINT)) ROOM_STYLE[k] = { wall: c, cap: '#F4E9D2', base: _mix(c, '#4C5753', 0.62), ivy: ['cafe', 'therapy', 'social', 'staffroom'].includes(k), lights: ['cafe', 'social', 'glowup'].includes(k), h: ROOM_H, posts: true };
+ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4C5753', 0.62); ROOM_STYLE.nap.cap = '#F4E9D2';
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 function wallSegS(x0, z0, x1, z1, S, parent) {
   const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), th = 0.3, h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
@@ -681,11 +694,21 @@ function wallSegS(x0, z0, x1, z1, S, parent) {
   put(rbox(alongX ? len : th, h, alongX ? th : len, S.wall, 0.1, { r: 0.95 }), cx, h / 2 + 0.1, cz, parent);
   put(rbox(alongX ? len + 0.06 : th + 0.12, 0.12, alongX ? th + 0.12 : len + 0.06, S.cap, 0.06, { r: 0.9 }), cx, h + 0.15, cz, parent);
   put(rbox(alongX ? len + 0.02 : th + 0.06, 0.16, alongX ? th + 0.06 : len + 0.02, S.base, 0.05, { r: 0.95 }), cx, 0.2, cz, parent);
-  if (S.posts) for (const [px, pz] of [[x0, z0], [x1, z1]]) { put(cyl(0.21, 0.23, h + 0.08, S.cap, { r: 0.9 }), px, (h + 0.08) / 2 + 0.1, pz, parent); const top = sph(0.22, S.cap, { r: 0.9 }); top.scale.y = 0.45; put(top, px, h + 0.2, pz, parent); }
+  if (S.posts) for (const [px, pz] of [[x0, z0], [x1, z1]]) { put(rbox(0.38, h, 0.38, S.wall, 0.06, { r: 0.95 }), px, h / 2 + 0.1, pz, parent); put(rbox(0.48, 0.14, 0.48, S.cap, 0.06, { r: 0.9 }), px, h + 0.17, pz, parent); put(rbox(0.42, 0.2, 0.42, S.base, 0.05, { r: 0.95 }), px, 0.2, pz, parent); } // square pillar: cap + plinth
   if (S.ivy && len > 1.2) for (let u = 0.35; u < len - 0.2; u += 0.42) { const k = Math.floor(u * 7) % 3, px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u;
     put(leaf(0.12, ['#5E9E5A', '#4E8F4F', '#79B266'][k], { r: 0.95 }), px, h + 0.22, pz, parent);
     if (k !== 1) for (let d = 1; d <= 1 + (k === 2 ? 1 : 0); d++) put(leaf(0.075, '#5E9E5A', { r: 0.95 }), px + (alongX ? 0 : 0.17), h + 0.18 - d * 0.2, pz + (alongX ? 0.17 : 0), parent); }
   if (S.lights && len > 1.5) for (let u = 0.6; u < len - 0.3; u += 0.75) put(leaf(0.045, '#FFE2A8', { e: '#FFD27A', ei: 1.6 }), alongX ? Math.min(x0, x1) + u : cx, h + 0.02 - Math.abs(Math.sin(u * 2.1)) * 0.12, alongX ? cz : Math.min(z0, z1) + u, parent);
+}
+// sheet C #4: cream frame, four panes split by a cross mullion, a deep sill
+function kitWindow(parent, x, z, rot) {
+  const g = grp(x, z, rot, parent), fm = '#F4E9D2', W = 1.1, Hh = 1.15, y0 = 1.05, fw = 0.09;
+  put(rbox(W, Hh, 0.04, '#8DA3BE', 0.01, { r: 0.15, e: '#9FB7D6', ei: 0.18 }), 0, y0 + Hh / 2, 0, g);
+  for (const sx of [-1, 1]) put(rbox(fw, Hh, 0.1, fm, 0.02, { r: 0.85 }), sx * (W / 2 + fw / 2), y0 + Hh / 2, 0, g);
+  put(rbox(W + 2 * fw, fw, 0.1, fm, 0.02, { r: 0.85 }), 0, y0 + Hh + fw / 2, 0, g);
+  put(rbox(W + 2 * fw + 0.16, 0.07, 0.2, fm, 0.025, { r: 0.85 }), 0, y0 - 0.035, 0.04, g);
+  put(rbox(0.05, Hh, 0.07, fm, 0.01, { r: 0.85 }), 0, y0 + Hh / 2, 0, g); put(rbox(W, 0.05, 0.07, fm, 0.01, { r: 0.85 }), 0, y0 + Hh / 2, 0, g);
+  return g;
 }
 function wallWithGap(x0, z0, x1, z1, gap, g, S) {
   const seg = (a, b, c, d) => (S ? wallSegS(a, b, c, d, S, g) : wallSeg(a, b, c, d, ROOM_H, '#FFFFFF', g));
@@ -700,7 +723,7 @@ function buildRoom(r) {
   const def = ROOMS[r.type], Z = SIZES[r.size], q = roomRect(r), dp = doorPt(r, 0);
   const RS = ROOM_STYLE[r.type];
   const fm = RS && RS.floor ? mat(RS.floor, { r: 1 }) : r.type === 'budget' || r.type === 'cafe' ? mat('#FFFFFF', { map: woodTex(def.floor, '#D9AE78', [3, 3]), mapK: 'w' + r.type }) : mat(def.floor, { r: 0.9 });
-  floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, fm, 0.11, g);
+  floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
   const wallG = []; const side = (nx, nz) => { const sg = new THREE.Group(); g.add(sg); sg.userData.n = [nx, nz]; sg.userData.p = [nx ? (nx < 0 ? q.x0 : q.x1) : mx, nz ? (nz < 0 ? q.z0 : q.z1) : mz]; wallG.push(sg); return sg; };
@@ -734,16 +757,17 @@ function buildRoom(r) {
 const doorMats = {};
 function buildDoor(r, parent, RS, def) {
   const dp = doorPt(r, 0), H = RS ? RS.h : ROOM_H, g = grp(dp.x, dp.z, r.a, parent); g.userData.n = [Math.sin(r.a), Math.cos(r.a)];
-  const wallC = RS ? RS.wall : '#FFFFFF', frame = '#3B3F46', slab = RS ? RS.base : def.pill || '#7ACB4E', th = RS ? 0.3 : T, ow = DOOR_W + 0.16;
-  // frame (thin dark jambs + head) and the wall piece above the door
-  for (const sx of [-1, 1]) put(rbox(0.08, DOOR_H + 0.04, th + 0.04, frame, 0.02, { r: 0.6 }), sx * (DOOR_W / 2 + 0.04), (DOOR_H + 0.04) / 2 + 0.1, 0, g);
-  put(rbox(ow, 0.08, th + 0.04, frame, 0.02, { r: 0.6 }), 0, DOOR_H + 0.14, 0, g);
-  const top = H > DOOR_H + 0.2 ? put(rbox(ow, H - DOOR_H - 0.14, th, wallC, 0.03, { r: 0.95 }), 0, (H + DOOR_H + 0.14) / 2 + 0.1, 0, g) : null;
-  // one flush slab door, hinged on the left, with a narrow vision strip and a long bar handle
-  const piv = grp(-DOOR_W / 2, 0, 0, g); piv.position.y = 0.1;
-  put(rbox(DOOR_W - 0.04, DOOR_H - 0.02, 0.05, slab, 0.015, { r: 0.75 }), DOOR_W / 2, DOOR_H / 2, 0, piv);
-  put(rbox(0.14, DOOR_H * 0.55, 0.06, '#CFEFF7', 0.01, { r: 0.15, op: 0.7 }), DOOR_W * 0.3, DOOR_H * 0.58, 0, piv);
-  for (const sz of [-1, 1]) put(rbox(0.035, 0.55, 0.035, '#2B2E33', 0.015, { m: 0.7, r: 0.3 }), DOOR_W - 0.16, DOOR_H * 0.48, sz * 0.07, piv);
+  const wallC = RS ? RS.wall : '#FFFFFF', frame = '#F4E9D2', leafC = '#7E9CC0', panelC = '#6F8FB6', th = RS ? 0.3 : T, fw = 0.12, ow = DOOR_W + 2 * fw;
+  // cream architrave (two jambs + head), proud of the wall on both faces, and the wall piece above
+  for (const sx of [-1, 1]) put(rbox(fw, DOOR_H + fw, th + 0.08, frame, 0.03, { r: 0.85 }), sx * (DOOR_W / 2 + fw / 2), (DOOR_H + fw) / 2 + 0.1, 0, g);
+  put(rbox(ow, fw, th + 0.08, frame, 0.03, { r: 0.85 }), 0, DOOR_H + fw / 2 + 0.1, 0, g);
+  const top = H > DOOR_H + fw + 0.05 ? put(rbox(ow, H - DOOR_H - fw, th, wallC, 0.03, { r: 0.95 }), 0, (H + DOOR_H + fw) / 2 + 0.1, 0, g) : null;
+  // one panel door hinged on the left: two raised panels per face, chrome lever handle, two hinges
+  const piv = grp(-DOOR_W / 2, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.04;
+  put(rbox(lw, DOOR_H - 0.03, 0.06, leafC, 0.012, { r: 0.7 }), lw / 2, (DOOR_H - 0.03) / 2 + 0.01, 0, piv);
+  for (const [py, ph] of [[0.62, 0.95], [1.62, 0.8]]) for (const fz of [-1, 1]) put(rbox(lw - 0.3, ph, 0.02, panelC, 0.008, { r: 0.7 }), lw / 2, py, fz * 0.038, piv);
+  for (const fz of [-1, 1]) { put(rbox(0.16, 0.035, 0.035, '#C9CDD2', 0.012, { m: 0.6, r: 0.35 }), lw - 0.16, 1.0, fz * 0.065, piv); put(rbox(0.05, 0.09, 0.02, '#C9CDD2', 0.008, { m: 0.6, r: 0.35 }), lw - 0.1, 1.0, fz * 0.045, piv); }
+  for (const hz of [0.25, DOOR_H - 0.3]) put(rbox(0.03, 0.12, 0.08, '#C9CDD2', 0.008, { m: 0.6, r: 0.35 }), 0.01, hz, 0, piv);
   const d = { g, leaves: [piv], top, x: dp.x, z: dp.z, open: 0 };
   (world.doors = (world.doors || []).filter((o) => o.g.parent && o.g.parent.parent)).push(d);
   return d;
