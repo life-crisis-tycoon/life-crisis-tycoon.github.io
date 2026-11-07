@@ -172,6 +172,14 @@ function fadeNode(node, on) {
   if (node.userData.faded === on) return; node.userData.faded = on;
   node.traverse((o) => { if (!o.isMesh || Array.isArray(o.material)) return; if (!o.userData.solidMat) { o.userData.solidMat = o.material; o.userData.cs0 = o.castShadow; } o.material = on ? ghostOf(o.userData.solidMat) : o.userData.solidMat; o.castShadow = !on && o.userData.cs0 !== false; });
 }
+const SEE_MAT = new Map(); // material -> its see-through twin
+function seeThrough(g, on) {
+  if (g.userData.ghost === on) return; g.userData.ghost = on;
+  g.traverse((m) => { if (!m.isMesh) return; if (!m.userData.mat0) m.userData.mat0 = m.material; const base = m.userData.mat0;
+    if (!on) { m.material = base; m.castShadow = true; return; }
+    const one = (b) => { let t = SEE_MAT.get(b); if (!t) { t = b.clone(); t.transparent = true; t.opacity = 0.17; t.depthWrite = false; SEE_MAT.set(b, t); } return t; };
+    m.material = Array.isArray(base) ? base.map(one) : one(base); m.castShadow = false; });
+}
 function updateCutaway() {
   if (typeof world === 'undefined') return;
   const cx = Math.sin(view.yaw), cz = Math.cos(view.yaw);
@@ -180,10 +188,9 @@ function updateCutaway() {
   // Theme Hospital / Two Point style: a wall stays full height only when nothing walkable lies behind it from the camera
   // (outer back walls). Every other wall — and the door in it — drops to the same low stub, so heights stay coherent.
   const cut = (n, p) => { const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
-  // Two Point style: walls facing the camera are cut low so rooms stay readable, and their door is cut to exactly the same
-  // height (jambs only: no lintel, no leaf), so the wall reads as one low line with an opening; back walls keep full doors
-  for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_CUT : 1;
-  for (const d of world.doors || []) { const c = cut(d.g.userData.n, [d.x, d.z]); d.g.scale.y = c ? WALL_CUT : 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = !c; d.cut = c; }
+  // interior walls and their doors never shrink: the ones between the camera and a room turn see-through at full height
+  for (const w of world.roomCut || []) seeThrough(w, cut(w.userData.n, w.userData.p));
+  for (const d of world.doors || []) { const c = cut(d.g.userData.n, [d.x, d.z]); seeThrough(d.g, c); d.cut = c; }
   const tan = Math.tan(view.pitch);
   for (const b of world.cityB || []) {
     const dx = b.x - view.tx, dz = b.z - view.tz, along = dx * cx + dz * cz;
@@ -680,7 +687,7 @@ function lotOwned(i) {
 // ---------------- rooms ----------------
 const R = { rooms: {}, staff: [], visitors: [], deskQ: [], deskQs: [], litter: [], rats: [], inspector: null, later: [] }; R.deskQs[0] = R.deskQ;
 // Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional ivy + fairy lights.
-const WALL_CUT = 0.42, ROOM_H = 2.5, DOOR_H = 2.15, DOOR_W = 1.15; // walls taller than people (~1.75 m), one modern door per room
+const WALL_CUT = 0.42, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
 const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', ivy: true, lights: true, h: ROOM_H } };
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };
