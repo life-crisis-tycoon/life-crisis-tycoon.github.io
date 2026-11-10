@@ -1,5 +1,10 @@
 # Life Crisis Tycoon — handoff for the next session
 
+> **Single source of truth (since 10 Nov 2026): this repository → https://life-crisis-tycoon.github.io/.**
+> The old Claude artifact link (claude.ai/artifact/8YRXCTKeta6fUcU8MhPFFo) is frozen: never develop there again.
+> Every session: `git pull` first, commit and push to main when done, so parallel conversations never diverge.
+
+
 ## LIVE (done 2026-11-06)
 - Game: https://life-crisis-tycoon.github.io/ — repo github.com/life-crisis-tycoon/life-crisis-tycoon.github.io (GitHub org; old gnaine/Life-crisis-tycoon is obsolete). Before a Google Play release, move to a custom domain (Play app is bound to its domain; local saves are per web address) (GitHub Pages, main branch, root, `.nojekyll`). A push redeploys in ~4 min.
 - Supabase project `life-crisis-tycoon` (ref pvihszrcjosdyxmkcklu, eu-west-3, org "gnaine's Org"). Tables: `saves` (RLS own rows), `profiles` (user_id, username unique case-insensitive 3–16 `[A-Za-z0-9_.-]`, public read, own write).
