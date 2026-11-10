@@ -183,13 +183,12 @@ function seeThrough(g, on) {
 function updateCutaway() {
   if (typeof world === 'undefined') return;
   const cx = Math.sin(view.yaw), cz = Math.cos(view.yaw);
-  // Two Point Hospital look (checked on real screenshots): every wall — front, back, inside, outside — is drawn solid at the
-  // same shoulder height, so rooms read as clean boxes from any angle; nothing turns see-through, nothing vanishes.
-  // Doors keep their frame and leaf, scaled with their wall.
-  const KH = WALL_SHOULDER / ROOM_H, KO = WALL_SHOULDER / W_H;
+  // Every wall — front, back, inside, outside — is solid and taller than the people, at door-frame height; doors keep
+  // their full frame and leaf, so visitors visibly walk through real doors. Nothing turns see-through or disappears.
+  const KO = ROOM_H / W_H;
   for (const w of world.cutWalls || []) { w.visible = true; w.scale.y = KO; }
-  for (const w of world.roomCut || []) w.scale.y = KH;
-  for (const d of world.doors || []) { d.g.scale.y = KH; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
+  for (const w of world.roomCut || []) w.scale.y = 1;
+  for (const d of world.doors || []) { d.g.scale.y = 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
   const tan = Math.tan(view.pitch);
   for (const b of world.cityB || []) {
     const dx = b.x - view.tx, dz = b.z - view.tz, along = dx * cx + dz * cz;
