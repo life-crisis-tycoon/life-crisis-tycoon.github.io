@@ -14,9 +14,25 @@ const FALLBACK = { sitphone: 'sit', lie: 'sit', worksit: 'sit', work: 'idle', ph
 const LOOP_ONCE = new Set(['cheer']);
 
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+// Phones (iPhone above all) have a small GPU memory budget: when it runs out, textures silently fail and models render
+// black. On phones every model texture is shrunk to 512 px and its decoded bitmap is released once on the GPU.
+export const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+export function slimTextures(root, max = MOBILE ? 512 : 4096) {
+  const seen = new Set();
+  root.traverse((o) => { if (!o.isMesh) return; for (const m of Array.isArray(o.material) ? o.material : [o.material]) for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap']) {
+    const t = m && m[k]; if (!t || seen.has(t)) continue; seen.add(t);
+    if (MOBILE && k !== 'map') { m[k] = null; m.needsUpdate = true; continue; } // colour only on phones
+    const im = t.image; if (!im || !im.width || im.width <= max) continue;
+    const c = document.createElement('canvas'), f = max / Math.max(im.width, im.height); c.width = Math.round(im.width * f); c.height = Math.round(im.height * f);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); if (im.close) im.close(); t.image = c; t.needsUpdate = true;
+  } });
+  return root;
+}
 const loadGLB = async (url) => {
-  if (url.endsWith('.js')) { const b64 = (await import(/* @vite-ignore */ url)).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); return new Promise((res, rej) => loader.parse(bin.buffer, '', res, rej)); }
-  return new Promise((res, rej) => loader.load(url, res, undefined, rej));
+  let g;
+  if (url.endsWith('.js')) { const b64 = (await import(/* @vite-ignore */ url)).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); g = await new Promise((res, rej) => loader.parse(bin.buffer, '', res, rej)); }
+  else g = await new Promise((res, rej) => loader.load(url, res, undefined, rej));
+  slimTextures(g.scene); return g;
 };
 
 export async function loadCharacters(url) {

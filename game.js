@@ -5,7 +5,7 @@ import { buildCity, moveCity } from './city.js';
 import { makeAudio } from './audio.js';
 import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
-import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull } from './chars.js';
+import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
 import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20 } from './i18n_mgr.js';
 for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l]);
@@ -141,7 +141,8 @@ const GFX = (() => { let q = null; try { q = localStorage.getItem('ahq_gfx'); } 
   const mode = q === 'high' || q === 'low' ? q : weak ? 'low' : 'high';
   return { pref: q || 'auto', mode, low: mode === 'low', batch: true }; })();
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(GFX.low ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, 2.5));
+renderer.setPixelRatio(GFX.low ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, MOBILE ? 2 : 2.5));
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); try { if (inGame) save(); } catch (er) {} setTimeout(() => location.reload(), 300); });
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -153,7 +154,7 @@ scene.environmentIntensity = 0.22;
 const hemi = new THREE.HemisphereLight('#FFE9D2', '#B39C82', 0.62); scene.add(hemi);
 const fill = new THREE.DirectionalLight('#E6ECFF', 0.3); fill.position.set(-14, 12, -10); scene.add(fill);
 const sun = new THREE.DirectionalLight('#FFD9AC', 3.1);
-sun.position.set(16, 24, 10); sun.castShadow = true; sun.shadow.mapSize.set(GFX.low ? 1024 : 2048, GFX.low ? 1024 : 2048);
+sun.position.set(16, 24, 10); sun.castShadow = true; sun.shadow.mapSize.set(GFX.low || MOBILE ? 1024 : 2048, GFX.low || MOBILE ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -20, right: 22, top: 20, bottom: -20, near: 1, far: 80 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
 scene.add(sun); sun.target.position.set(-1, 0, 2); scene.add(sun.target);
@@ -566,7 +567,7 @@ function propModel(name) {
   return PROP_CACHE[name] || (PROP_CACHE[name] = (async () => {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
     const b64 = (await import('./models/props/' + name + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    const gl = await new Promise((res, rej) => new GLTFLoader().parse(bin.buffer, '', res, rej));
+    const gl = await new Promise((res, rej) => new GLTFLoader().parse(bin.buffer, '', res, rej)); slimTextures(gl.scene);
     { const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js'); gl.scene.updateMatrixWorld(true); const groups = new Map();
       gl.scene.traverse((m) => { if (m.isMesh && !m.isSkinnedMesh) { const k = m.material.uuid + '|' + Object.keys(m.geometry.attributes).sort().join(','); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); } });
       if ([...groups.values()].some((l) => l.length > 1)) { const root = new THREE.Group();
