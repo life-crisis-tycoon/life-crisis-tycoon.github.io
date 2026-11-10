@@ -158,7 +158,7 @@ Object.assign(sun.shadow.camera, { left: -20, right: 22, top: 20, bottom: -20, n
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
 scene.add(sun); sun.target.position.set(-1, 0, 2); scene.add(sun.target);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
-const view = { tx: -0.6, tz: -1.6, half: 15.5, yaw: Math.PI / 4, pitch: 0.53, yawT: null };
+const view = { tx: -0.6, tz: -1.6, half: 15.5, yaw: Math.PI / 4, pitch: 0.72, yawT: null };
 function placeCam() {
   const a = innerWidth / innerHeight;
   cam.left = -view.half * a; cam.right = view.half * a; cam.top = view.half; cam.bottom = -view.half; cam.updateProjectionMatrix();
@@ -180,14 +180,15 @@ function seeThrough(g, on) {
     const one = (b) => { let t = SEE_MAT.get(b); if (!t) { t = b.clone(); t.transparent = true; t.opacity = 0.17; t.depthWrite = false; SEE_MAT.set(b, t); } return t; };
     m.material = Array.isArray(base) ? base.map(one) : one(base); m.castShadow = false; });
 }
+let WALLS_UP = (() => { try { return localStorage.getItem('ahq_walls') === 'up'; } catch (e) { return false; } })();
 function updateCutaway() {
   if (typeof world === 'undefined') return;
   const cx = Math.sin(view.yaw), cz = Math.cos(view.yaw);
-  // Every wall — front, back, inside, outside — is solid and taller than the people, at door-frame height; doors keep
-  // their full frame and leaf, so visitors visibly walk through real doors. Nothing turns see-through or disappears.
-  const KO = ROOM_H / W_H;
-  for (const w of world.cutWalls || []) { w.visible = true; w.scale.y = KO; }
-  for (const w of world.roomCut || []) w.scale.y = 1;
+  // Two Point Hospital cutaway: back walls full height (taller than people); walls on the camera side cut to hip height
+  // (solid, never see-through); doors always keep their full frame and leaf. The 🧱 button raises every wall when wanted.
+  const up = WALLS_UP, cut = (n, p) => { if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
+  for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = !up && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
+  for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1;
   for (const d of world.doors || []) { d.g.scale.y = 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
   const tan = Math.tan(view.pitch);
   for (const b of world.cityB || []) {
@@ -719,7 +720,7 @@ function lotOwned(i) {
 // ---------------- rooms ----------------
 const R = { rooms: {}, staff: [], visitors: [], deskQ: [], deskQs: [], litter: [], rats: [], inspector: null, later: [] }; R.deskQs[0] = R.deskQ;
 // Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional ivy + fairy lights.
-const WALL_SHOULDER = 1.55, WALL_CUT = 0.3, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
+const WALL_HIP = 1.0, WALL_CUT = 0.3, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
 const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', ivy: true, lights: true, h: ROOM_H } };
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };
@@ -2256,13 +2257,15 @@ canvas.addEventListener('pointerup', (e) => {
 });
 canvas.addEventListener('wheel', (e) => { view.half = clamp(view.half * (e.deltaY > 0 ? 1.08 : 0.93), 5, 22); placeCam(); }, { passive: true });
 function camRot(dir) { view.yawT = (view.yawT ?? view.yaw) + dir * Math.PI / 2; }
-function camTilt() { const L = [0.42, 0.53, 0.8, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
+function camTilt() { const L = [0.53, 0.72, 0.9, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
 function camAnim(rdt) {
   let ch = false;
   if (view.yawT != null) { const d = view.yawT - view.yaw; if (Math.abs(d) < 0.01) { view.yaw = view.yawT; view.yawT = null; } else view.yaw += d * Math.min(1, rdt * 7); ch = true; }
   if (view.pitchT != null) { const d = view.pitchT - view.pitch; if (Math.abs(d) < 0.005) { view.pitch = view.pitchT; view.pitchT = null; } else view.pitch += d * Math.min(1, rdt * 7); ch = true; }
   if (ch) placeCam();
 }
+{ const wb = $('camWalls'); const paint = () => { wb.textContent = WALLS_UP ? '🧱' : '🔽'; wb.title = t(WALLS_UP ? 'cam.wallsUp' : 'cam.wallsCut'); };
+  paint(); wb.onclick = () => { WALLS_UP = !WALLS_UP; try { localStorage.setItem('ahq_walls', WALLS_UP ? 'up' : 'cut'); } catch (e) {} paint(); updateCutaway(); toast(t(WALLS_UP ? 'cam.wallsUp' : 'cam.wallsCut'), 1800); }; }
 $('camL').onclick = () => camRot(-1); $('camR').onclick = () => camRot(1); $('camT').onclick = camTilt;
 addEventListener('keydown', (e) => { if (!inGame) return; if (e.key === 'q' || e.key === 'Q') camRot(-1); if (e.key === 'e' || e.key === 'E') camRot(1); if (e.key === 't' || e.key === 'T') camTilt(); });
 let lastSpeed = 1;
@@ -3112,7 +3115,7 @@ function startGame() {
   spawnManager();
   assignStaff(); restoreVisitors(); refreshCandidates(); updateBadge();
   setSpeed(1); placeDesk(); AU.startMusic(S.city);
-  show('game'); view.tx = -0.6; view.tz = -1.6; view.half = 15.5; view.yaw = Math.PI / 4; view.pitch = 0.53; view.yawT = view.pitchT = null; placeCam();
+  show('game'); view.tx = -0.6; view.tz = -1.6; view.half = 15.5; view.yaw = Math.PI / 4; view.pitch = 0.72; view.yawT = view.pitchT = null; placeCam();
   if (S.chat.length) { $('bnFrom').textContent = S.chat[0].from.toUpperCase(); $('bnText').innerHTML = S.chat[0].text; }
 }
 function startNew(city) {
