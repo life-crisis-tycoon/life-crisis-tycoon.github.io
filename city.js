@@ -27,8 +27,98 @@ export function buildCity(kind, cg, H, box) {
   }
   const muralTex = (seedC) => canvasTex(128, 64, (g) => { const P = ['#FF5FA2', '#FFD25E', '#5AB8F0', '#7ACB4E', '#B57BE8', '#FF7A2E']; g.fillStyle = '#3B3F48'; g.fillRect(0, 0, 128, 64); for (let i = 0; i < 9; i++) { g.fillStyle = P[(i + seedC) % P.length]; g.beginPath(); g.ellipse(10 + i * 14, 20 + ((i * 37) % 30), 14, 10, i, 0, 7); g.fill(); } g.strokeStyle = '#fff'; g.lineWidth = 4; g.beginPath(); g.moveTo(8, 50); for (let x = 8; x < 120; x += 12) g.lineTo(x + 6, 40 + ((x * 7) % 18)); g.stroke(); });
 
+
+  // ---------- London building kit (Blender, sheet C): real windows, doors, shopfronts, cornices, slate roofs ----------
+  // Facades are assembled from one-bay modules (2.0 m × 2.3 m) and drawn with one InstancedMesh per module part.
+  // Street-facing fronts of the first row get the detailed modules; sides, backs and rear rows get light ones.
+  const KIT = H.model && kind === 'london' ? { place: {}, list: [] } : null;
+  const KTX = {};
+  const kitTex = (k, w, h, draw) => KTX[k] || (KTX[k] = canvasTex(w, h, draw));
+  const brickTex = () => kitTex('brick', 256, 256, (g) => {
+    g.fillStyle = '#E6D3BC'; g.fillRect(0, 0, 256, 256); let s = 7; const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    for (let row = 0; row < 16; row++) for (let i = -1; i < 5; i++) {
+      const x = i * 64 + (row % 2 ? 32 : 0), y = row * 16, c = ['#B4644A', '#A85A40', '#BC6E50', '#A05238', '#B86A4C'][Math.floor(r() * 5)];
+      g.fillStyle = c; g.beginPath(); g.roundRect(x + 2, y + 2, 60, 12, 3); g.fill(); g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(x + 4, y + 3, 56, 3);
+    } });
+  const stuccoTex = () => kitTex('stucco', 128, 128, (g) => { g.fillStyle = '#F2E9D6'; g.fillRect(0, 0, 128, 128); g.fillStyle = 'rgba(160,140,110,.10)'; for (let y = 0; y < 128; y += 32) g.fillRect(0, y, 128, 2); });
+  const slateTex = () => kitTex('slate', 128, 128, (g) => { g.fillStyle = '#4C5260'; g.fillRect(0, 0, 128, 128); for (let row = 0; row < 8; row++) for (let i = -1; i < 5; i++) { g.fillStyle = ['#5A6170', '#535A68', '#606878'][(row * 3 + i + 9) % 3]; g.beginPath(); g.roundRect(i * 32 + (row % 2 ? 16 : 0) + 1, row * 16 + 1, 30, 14, 2); g.fill(); } });
+  const kitMat = (tex, rx, ry, c = '#FFFFFF') => { const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return new THREE.MeshStandardMaterial({ map: t, color: c, roughness: 0.85 }); };
+  function kitBld(x, z, w, d, h, o) {
+    const g = grp(x, z, o.rot || 0, cg), st = o.style, row = o.row || 0, top = GY + h;
+    const nF = Math.max(1, Math.round(h / 2.3)), FH = h / nF, ky = FH / 2.3;
+    const wallMat = st === 'brick' ? kitMat(brickTex(), 1, 1) : st === 'plain' ? kitMat(stuccoTex(), 1, 1) : mat('#5D7290', { r: 0.3 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat); body.position.y = GY + h / 2; body.castShadow = body.receiveShadow = true; g.add(body);
+    if (st !== 'glass') { // texture repeats per face size: brick courses stay the same size on every building
+      const uv = body.geometry.attributes.uv, pos = body.geometry.attributes.position;
+      for (let i = 0; i < uv.count; i++) { const n = Math.floor(i / 4), ax = n < 2 ? 'z' : n < 4 ? 'x' : 'x'; const u = ax === 'z' ? pos.getZ(i) : pos.getX(i); uv.setXY(i, (u + 50) / 2.0, (pos.getY(i) + h / 2) / 2.0); }
+      uv.needsUpdate = true; }
+    const parts = []; // [module, matrix] for this building
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0);
+    const shop = st !== 'glass' && row === 0 && R() < 0.5, shopK = R() < 0.5 ? 'sf' : 'sg';
+    const faces = [[0, d / 2, 0, w], [Math.PI, -d / 2, 0, w], [Math.PI / 2, w / 2, 1, d], [-Math.PI / 2, -w / 2, 1, d]];
+    for (const [fr, off, axis, len] of faces) {
+      const front = fr === Math.PI, hi = front && row === 0 && !H.low; // the street side is the building's local -z
+      if (H.low && !(front && row === 0)) continue;
+      const nb = Math.max(1, Math.floor(len / 1.9)), bw = len / nb, kx = Math.min(1.35, bw / 2.0);
+      for (let f = 0; f < nF; f++) for (let b = 0; b < nb; b++) {
+        const u = -len / 2 + bw * (b + 0.5), mid = b === Math.floor(nb / 2);
+        let k;
+        if (st === 'glass') k = f === 0 && front && mid ? 'od' : 'ob';
+        else if (st === 'brick') k = f === 0 && front ? (shop ? (mid ? shopK + 'd' : shopK) : mid ? 'bd' : 'bw') : 'bw';
+        else k = f === 0 && front ? (shop ? (mid ? shopK + 'd' : shopK) : mid ? 'gd' : 'gw') : f === 1 && front ? 'gwb' : 'gw';
+        if (!hi) k = { od: 'ob_lo', ob: 'ob_lo', bd: 'bd_lo', bw: 'bw_lo', gd: 'gd_lo', gw: 'gw_lo', gwb: 'gw_lo', sf: 'sf_lo', sfd: 'sf_lo', sg: 'sg_lo', sgd: 'sg_lo' }[k] || k;
+        const px = axis === 0 ? (fr === 0 ? u : -u) : off + (fr > 0 ? 0.004 : -0.004), pz = axis === 0 ? off + (fr === 0 ? 0.004 : -0.004) : (fr > 0 ? -u : u);
+        Q.setFromAxisAngle(Y, fr); M.compose(new THREE.Vector3(axis === 0 ? px : off + Math.sign(off) * 0.004, GY + f * FH, axis === 0 ? off + Math.sign(off) * 0.004 : pz), Q, new THREE.Vector3(kx, ky, 1));
+        parts.push([k, M.clone()]);
+        if (hi && st === 'plain' && f > 0) { M.compose(new THREE.Vector3(px, GY + f * FH - 0.05, axis === 0 ? off + Math.sign(off) * 0.004 : pz), Q, new THREE.Vector3(bw / 2.0, 1, 1)); parts.push(['gband', M.clone()]); }
+      }
+      // top edge: parapet / balustrade / office band on every side
+      const capK = st === 'glass' ? 'ocap' : st === 'plain' ? 'gcap' : null;
+      if (capK) for (let b = 0; b < nb; b++) {
+        const u = -len / 2 + bw * (b + 0.5); Q.setFromAxisAngle(Y, fr);
+        M.compose(new THREE.Vector3(axis === 0 ? (fr === 0 ? u : -u) : off + Math.sign(off) * 0.004, top, axis === 0 ? off + Math.sign(off) * 0.004 : (fr > 0 ? -u : u)), Q, new THREE.Vector3(bw / 2.0, 1, 1)); parts.push([capK, M.clone()]);
+      }
+    }
+    if (st === 'brick') { // pitched slate roof with brick gables and two chimney stacks
+      const rh = Math.min(2.2, d * 0.42), ov = 0.18, geo = new THREE.BufferGeometry(), hw = w / 2 + ov, hd = d / 2 + ov;
+      const v = [-hw, 0, hd, hw, 0, hd, hw, rh, 0, -hw, rh, 0, hw, 0, -hd, -hw, 0, -hd, -hw, rh, 0, hw, rh, 0];
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); geo.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, w, 0, w, hd * 1.2, 0, hd * 1.2, 0, 0, w, 0, w, hd * 1.2, 0, hd * 1.2].map((a) => a / 1.4), 2)); geo.computeVertexNormals();
+      const roof = new THREE.Mesh(geo, kitMat(slateTex(), 1, 1)); roof.position.y = top; roof.castShadow = true; g.add(roof);
+      const gy = rh * (d / 2) / hd, gab = new THREE.BufferGeometry(); gab.setAttribute('position', new THREE.Float32BufferAttribute([w / 2, 0, d / 2, w / 2, 0, -d / 2, w / 2, gy, 0, -w / 2, 0, -d / 2, -w / 2, 0, d / 2, -w / 2, gy, 0], 3));
+      gab.setAttribute('uv', new THREE.Float32BufferAttribute([d / 2, 0, -d / 2, 0, 0, gy, -d / 2, 0, d / 2, 0, 0, gy].map((a, i) => (i % 2 ? (a + h) : a + 50) / 2.0), 2)); gab.computeVertexNormals();
+      const gm = new THREE.Mesh(gab, wallMat); gm.material.side = THREE.DoubleSide; gm.position.y = top; gm.castShadow = true; g.add(gm);
+      for (const sx of [-1, 1]) { Q.setFromAxisAngle(Y, 0); M.compose(new THREE.Vector3(sx * (w / 2 - 0.7), top + 0.2, 0), Q, new THREE.Vector3(1, (rh + 0.4) / 1.0, 1)); parts.push(['chim', M.clone()]); }
+    } else {
+      put(rbox(w - 0.1, 0.06, d - 0.1, '#8E939C', 0.02), 0, top + 0.03, 0, g);
+      if (st === 'glass') for (let i = 0; i < 2; i++) put(rbox(0.8, 0.5, 0.6, '#C9CED6', 0.05), (R() - 0.5) * (w - 1.6), top + 0.3, (R() - 0.5) * (d - 1.6), g);
+    }
+    const rec = { o: g, x, z, h, r: Math.max(w, d) / 2, kit: [] };
+    g.updateMatrixWorld(true);
+    for (const [k, m] of parts) { const wm = g.matrixWorld.clone().multiply(m); (KIT.place[k] = KIT.place[k] || []).push([wm, rec]); }
+    B.push(rec); return g;
+  }
+  // once the kit model has loaded: one InstancedMesh per module part, and buildings learn to squash their parts (cutaway)
+  function kitBuild() {
+    if (!KIT) return;
+    H.model('kit_london').then((src) => {
+      const S = new THREE.Matrix4(), tmp = new THREE.Matrix4();
+      for (const [k, list] of Object.entries(KIT.place)) {
+        const node = src.getObjectByName(k); if (!node) continue;
+        const n = node.clone(); n.position.set(0, 0, 0); n.updateMatrixWorld(true);
+        n.traverse((m) => { if (!m.isMesh) return;
+          const im = new THREE.InstancedMesh(m.geometry, m.material, list.length); im.castShadow = !H.low; im.receiveShadow = true; im.frustumCulled = false;
+          list.forEach(([wm, rec], i) => { tmp.multiplyMatrices(wm, m.matrixWorld); im.setMatrixAt(i, tmp); rec.kit.push([im, i, tmp.clone()]); });
+          im.instanceMatrix.needsUpdate = true; cg.add(im); });
+      }
+      for (const rec of B) if (rec.kit) rec.onSquash = (ky) => { const touched = new Set(); S.makeScale(1, ky, 1); const off = new THREE.Matrix4().makeTranslation(0, GY, 0), inv = new THREE.Matrix4().makeTranslation(0, -GY, 0);
+        for (const [im, i, base] of rec.kit) { tmp.copy(off).multiply(S).multiply(inv).multiply(base); im.setMatrixAt(i, tmp); touched.add(im); }
+        for (const im of touched) im.instanceMatrix.needsUpdate = true; };
+    }).catch((e) => console.warn('[kit]', e && e.message));
+  }
   // ---------- building ----------
   function bld(x, z, w, d, h, o = {}) {
+    if (KIT && ['brick', 'plain', 'glass'].includes(o.style || 'plain')) return kitBld(x, z, w, d, h, o);
     const col = o.col || '#E9E1D3', style = o.style || 'plain', win = o.win || '#9FC6DA';
     const t = facade(style, col, win), mk = (rx, ry) => { const c = t.clone(); c.needsUpdate = true; c.wrapS = c.wrapT = THREE.RepeatWrapping; c.repeat.set(Math.max(1, Math.round(rx)), Math.max(1, Math.round(ry))); return new THREE.MeshStandardMaterial({ map: c, roughness: style === 'glass' ? 0.35 : 0.85, metalness: style === 'glass' ? 0.2 : 0 }); };
     const side = mk(d / 1.6, h / 1.5), front = mk(w / 1.6, h / 1.5), roof = mat(o.roof || '#8A8E96', { r: 0.9 });
@@ -120,7 +210,7 @@ export function buildCity(kind, cg, H, box) {
     put(sph(0.25, '#E3B341', { m: 0.8, r: 0.3 }), 0, 22, 0, g);
     lm(g, x, z, 22, 2); reserve(x - 2, x + 2, z - 2, z + 2); if (H.glb) H.glb(g, 'bigben', { h: 18 });
     const pal = C(x + 7.5, z); pal.position.y = GY; put(rbox(11, 5, 4, s, 0.04), 0, 2.5, 0, pal); for (let i = 0; i < 12; i++) put(new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.2, 4), mat(d)), -5.2 + i * 0.95, 5.5, 1.9, pal); for (let i = 0; i < 8; i++) put(rbox(0.7, 2.6, 0.05, '#8C7A52', 0.02), -4.6 + i * 1.3, 2.6, 2.03, pal);
-    lm(pal, x + 7.5, z, 6, 6); reserve(x + 1.5, x + 13.5, z - 2.5, z + 2.5);
+    lm(pal, x + 7.5, z, 6, 6); reserve(x + 1.5, x + 13.5, z - 2.5, z + 2.5); if (H.glb) H.glb(pal, 'palace', { len: 12.2 });
   }
   function londonEye(x, z, rot) {
     const g = C(x, z, rot); g.position.y = GY; const r = 7;
@@ -344,7 +434,7 @@ export function buildCity(kind, cg, H, box) {
           if (kind === 'seoul' && st[0] === 'apt') o.num = String(101 + Math.floor(R() * 9));
           const rot = depthAxis === 'z-' ? Math.PI : depthAxis === 'x-' ? -Math.PI / 2 : depthAxis === 'x+' ? Math.PI / 2 : 0;
           const swap = rot === Math.PI / 2 || rot === -Math.PI / 2;
-          bld(x, z, swap ? bd : bw, swap ? bw : bd, h, { ...o, rot });
+          bld(x, z, swap ? bd : bw, swap ? bw : bd, h, { ...o, rot, row });
           reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2);
         }
         u += w + gap;
@@ -358,6 +448,7 @@ export function buildCity(kind, cg, H, box) {
   for (let x = xW + 5.5; x < xE - 2; x += 8) lamp(x, zN + 2.0);
 
   if (H.low) cg.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+  kitBuild();
   return { bg: RC.bg, ground: RC.ground, buildings: B, movers };
 }
 

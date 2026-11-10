@@ -188,15 +188,16 @@ function updateCutaway() {
   // Theme Hospital / Two Point style: a wall stays full height only when nothing walkable lies behind it from the camera
   // (outer back walls). Every other wall — and the door in it — drops to the same low stub, so heights stay coherent.
   const cut = (n, p) => { const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
-  // interior walls and their doors never shrink: the ones between the camera and a room turn see-through at full height
-  for (const w of world.roomCut || []) seeThrough(w, cut(w.userData.n, w.userData.p));
-  for (const d of world.doors || []) { const c = cut(d.g.userData.n, [d.x, d.z]); seeThrough(d.g, c); d.cut = c; }
+  // Two Point style: walls facing the camera are cut low so rooms stay readable, and their door is cut to exactly the same
+  // height (jambs only: no lintel, no leaf), so the wall reads as one low line with an opening; back walls keep full doors
+  for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_CUT : 1;
+  for (const d of world.doors || []) { const c = cut(d.g.userData.n, [d.x, d.z]); d.g.scale.y = c ? WALL_CUT : 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = !c; d.cut = c; }
   const tan = Math.tan(view.pitch);
   for (const b of world.cityB || []) {
     const dx = b.x - view.tx, dz = b.z - view.tz, along = dx * cx + dz * cz;
     const perp = Math.abs(dx * cz - dz * cx);
     const occl = along > -b.r && perp < 18 + b.r && b.h / tan > along - b.r - 9;
-    if (b.lm) b.o.visible = !occl; else b.o.scale.y = occl ? Math.max(0.06, Math.min(1, 1.6 / b.h)) : 1;
+    if (b.lm) b.o.visible = !occl; else { const ky = occl ? Math.max(0.06, Math.min(1, 1.6 / b.h)) : 1; b.o.scale.y = ky; if (b.onSquash && b._ky !== ky) { b._ky = ky; b.onSquash(ky); } }
   }
 }
 function resize() { renderer.setSize(innerWidth, innerHeight, false); placeCam(); }
@@ -568,9 +569,43 @@ function propModel(name) {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
     const b64 = (await import('./models/props/' + name + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const gl = await new Promise((res, rej) => new GLTFLoader().parse(bin.buffer, '', res, rej));
-    gl.scene.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.isMeshStandardMaterial) { mt.metalness = 0; mt.roughness = 0.8; mt.envMapIntensity = 0.6; if (mt.map) mt.map.anisotropy = 4; } } });
+    { const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js'); gl.scene.updateMatrixWorld(true); const groups = new Map();
+      gl.scene.traverse((m) => { if (m.isMesh && !m.isSkinnedMesh) { const k = m.material.uuid + '|' + Object.keys(m.geometry.attributes).sort().join(','); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); } });
+      if ([...groups.values()].some((l) => l.length > 1)) { const root = new THREE.Group();
+        for (const list of groups.values()) { const geos = list.map((m) => { const g2 = m.geometry.index ? m.geometry.clone() : m.geometry.clone(); g2.applyMatrix4(m.matrixWorld); return g2; });
+          const merged = geos.length > 1 ? mergeGeometries(geos, false) : geos[0]; if (!merged) { for (const m of list) { const c = m.clone(); c.applyMatrix4(m.matrixWorld); root.add(c); } continue; }
+          const mm = new THREE.Mesh(merged, list[0].material); mm.name = list[0].name; root.add(mm); }
+        // keep named top-level nodes (the building kit picks modules by name)
+        if (!gl.scene.children.some((c) => /^(bw|gw|ob|sf|chim)/.test(c.name))) gl.scene = root; }
+    }
+    gl.scene.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.isMeshStandardMaterial) { mt.metalness = 0; mt.roughness = /glass/.test(mt.name) ? 0.2 : 0.8; mt.envMapIntensity = /glass/.test(mt.name) ? 1.2 : 0.6; if (mt.map) mt.map.anisotropy = 4; } } });
     return gl.scene;
   })());
+}
+const INST = {}, INST_NAMES = new Set(['tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop']);
+function glbInst(g, name, o = {}) {
+  if (!PROPS_ON || !g) return; g.userData.swap = true;
+  let rec = INST[name]; if (!rec || rec.done) { rec = INST[name] = { list: [], done: false }; const R0 = rec; propModel(name).then((src) => { R0.done = true; buildInst(src, R0.list); }).catch((e) => console.warn('[props]', name, e.message)); }
+  rec.list.push([g, o]);
+}
+function buildInst(src, list) {
+  const live = list.filter(([g]) => g.parent); if (!live.length) return;
+  let root = live[0][0]; while (root.parent && root.parent !== scene) root = root.parent;
+  src.updateMatrixWorld(true); const meshes = []; src.traverse((m) => { if (m.isMesh) meshes.push(m); });
+  const box0 = new THREE.Box3().setFromObject(src), sz0 = box0.getSize(new THREE.Vector3());
+  const placeM = live.map(([g, o]) => {
+    const quarter = Math.abs(Math.sin(o.rot || 0)) > 0.7, sx = quarter ? sz0.z : sz0.x, sz = quarter ? sz0.x : sz0.z;
+    const sl = o.len ? o.len / Math.max(sx, sz) : null, sh = o.h ? o.h / sz0.y : null, k = sl || sh || 1;
+    for (const c of g.children.slice()) g.remove(c); g.userData.glb = src.name || 'inst';
+    g.updateWorldMatrix(true, false);
+    return g.matrixWorld.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(0, o.y || 0, 0), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), o.rot || 0), new THREE.Vector3(k, sh && sl ? sh : k, k)));
+  });
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4();
+  for (const m of meshes) {
+    const im = new THREE.InstancedMesh(m.geometry, m.material, placeM.length); im.castShadow = !GFX.low; im.receiveShadow = true;
+    placeM.forEach((pm, i) => { tmp.multiplyMatrices(inv, pm).multiply(m.matrixWorld); im.setMatrixAt(i, tmp); });
+    im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); root.add(im);
+  }
 }
 // o: { h: height } and/or { len: longest horizontal size } (both → non-uniform), rot: extra yaw, y: base height, keep: fn(child) → keep it
 function glbSwap(g, name, o = {}) {
@@ -654,7 +689,7 @@ const CITY_LIGHT = {
 function buildCityDecor(kind) {
   if (cityScene === kind) { buildShell(kind); buildAnnexLot(kind); return; } cityScene = kind;
   if (world.cityG) scene.remove(world.cityG); const cg = new THREE.Group(); scene.add(cg); world.cityG = cg;
-  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, glb: kind === 'london' ? glbSwap : null }, plotBox(kind));
+  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, glb: kind === 'london' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
   scene.background = new THREE.Color(res.bg); const L = CITY_LIGHT[kind] || CITY_LIGHT._;
   world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];
@@ -1243,7 +1278,7 @@ function spawnVisitor(prob, em, vip, look0) {
   if (look.vm && !CHAR.A.full[look.vm]) loadFull(look.vm);
   const av = person(look, 'visitor'); av.position.set(1 + Math.random() * 4, 0.1, 12.2); scene.add(av); av.userData.p.waitPose = RNG() < 0.55 ? 'phone' : 'idle';
   const hud = new THREE.Group(); scene.add(hud);
-  const icon = new THREE.Sprite(iconTex(em ? '🚨' : '❔')); icon.scale.set(0.55, 0.55, 1); icon.position.set(0, 2.15 * look.tall, 0); icon.renderOrder = 10; hud.add(icon);
+  const icon = new THREE.Sprite(iconTex(em ? '🚨' : '🛎️')); icon.scale.set(0.55, 0.55, 1); icon.position.set(0, 2.15 * look.tall, 0); icon.renderOrder = 10; hud.add(icon);
   const bg = new THREE.Sprite(barBg); bg.center.set(0, 0.5); bg.scale.set(0.64, 0.1, 1); bg.position.set(-0.226, 1.82 * look.tall, 0.226); bg.renderOrder = 11; hud.add(bg);
   const fg = new THREE.Sprite(barMat('#7ACB4E')); fg.center.set(0, 0.5); fg.scale.set(0.6, 0.06, 1); fg.position.set(-0.212, 1.82 * look.tall, 0.212); fg.renderOrder = 12; hud.add(fg);
   const gag = addGag(av, prob, look);
@@ -1537,7 +1572,7 @@ function visitorUpdate(v, dt) {
     case 'toLoo': if (stepWalker(v, dt, walkSpeed * (v.urgent ? 1.7 : 1))) { settle(v, v.lspot); v.state = 'loo'; v.prog = 0; } break;
     case 'loo': {
       v.prog += dt / 3.5;
-      if (v.prog >= 1) { v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '❔'); floatAt(v.av.position, '🧼');
+      if (v.prog >= 1) { v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️'); floatAt(v.av.position, '🧼');
         const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; AU.sfx('flush', hearVol(v.av.position)); }
       break; }
@@ -2160,7 +2195,7 @@ function renderVCard() {
   const tr = v.target != null && R.rooms[v.target], qi = tr ? roomQ(v.target).indexOf(v) : -1, others = need ? Object.values(R.rooms).filter((r) => r.type === need && r.id !== v.target) : [];
   const ws = Math.round(v.waitT || 0), wt = ws >= 60 ? Math.floor(ws / 60) + 'm' + String(ws % 60).padStart(2, '0') : ws + 's';
   $('vcard').style.borderLeftColor = v.em ? '#FF2D2D' : v.vip ? '#FFC83D' : '';
-  const html = `<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b class="f" style="font-size:17px">${v.em ? '🚨 ' : v.vip ? '👑 ' : ''}${v.name}, ${v.age}</b><div style="font-size:13px;font-weight:900">${v.known ? (isMystK(v.prob) ? '❓ ' + pn(v.prob) : `<span id="vInfo" style="cursor:pointer;text-decoration:underline dotted">${pr.e} ${pn(v.prob)} ℹ️</span>`) : '❔ ' + t('v.notChecked')}${v.em ? ` <span class="emtag">${t('vc.em')}</span>` : ''}</div><div style="font-size:12.5px;font-weight:800;color:${v.state === 'wait' && !built ? 'var(--red)' : 'var(--muted)'}">${st}${qi >= 0 ? ' · ' + t('vc.pos', { i: qi + 1, n: roomQ(v.target).length }) : ''}</div></div><button class="icon y" style="width:34px;height:34px;flex:none" id="vClose">✕</button></div>
+  const html = `<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b class="f" style="font-size:17px">${v.em ? '🚨 ' : v.vip ? '👑 ' : ''}${v.name}, ${v.age}</b><div style="font-size:13px;font-weight:900">${v.known ? (isMystK(v.prob) ? '❓ ' + pn(v.prob) : `<span id="vInfo" style="cursor:pointer;text-decoration:underline dotted">${pr.e} ${pn(v.prob)} ℹ️</span>`) : '🛎️ ' + t('v.notChecked')}${v.em ? ` <span class="emtag">${t('vc.em')}</span>` : ''}</div><div style="font-size:12.5px;font-weight:800;color:${v.state === 'wait' && !built ? 'var(--red)' : 'var(--muted)'}">${st}${qi >= 0 ? ' · ' + t('vc.pos', { i: qi + 1, n: roomQ(v.target).length }) : ''}</div></div><button class="icon y" style="width:34px;height:34px;flex:none" id="vClose">✕</button></div>
   <div class="bar" style="height:8px;margin-top:6px"><i style="width:${Math.round(v.pat * 100)}%;background:${v.pat > 0.5 ? '#7ACB4E' : v.pat > 0.25 ? '#FFB800' : '#E5484D'}"></i></div>
   <div class="vgrid"><span>${mood} · ${Math.round(v.pat * 100)}%</span><span>⏱️ ${wt}</span><span>💵 ${t('vc.spent', { m: money(v.spent || 0) })}</span><span>${v.known && !isMystK(v.prob) ? '💰 ' + t('vc.fee', { m: money(feeFor(v)) }) : '💰 ?'}</span><span class="neg">⚠️ ${t('vc.leave', { n: leaveCost(v) })}</span></div>
   <div class="vthought">💬 “${vThought(v)}”</div>
@@ -3329,7 +3364,7 @@ function pickVisitor(e) { // finger-friendly: nearest visitor to the tap (body o
   return null;
 }
 // ---------------- inspect: desk & room queues ----------------
-function vChip(v) { const c = v.pat > 0.6 ? '#7ACB4E' : v.pat > 0.3 ? '#FFB800' : '#E5484D'; return `<button class="vchip w" data-vid="${v.id}"><span class="vf">${v.em ? '🚨' : v.vip ? '👑' : v.known && !isMystK(v.prob) ? PROBLEMS[v.prob].e : '❔'}</span><span class="vn">${v.name}</span><i style="width:${Math.round(v.pat * 100)}%;background:${c}"></i></button>`; }
+function vChip(v) { const c = v.pat > 0.6 ? '#7ACB4E' : v.pat > 0.3 ? '#FFB800' : '#E5484D'; return `<button class="vchip w" data-vid="${v.id}"><span class="vf">${v.em ? '🚨' : v.vip ? '👑' : v.known && !isMystK(v.prob) ? PROBLEMS[v.prob].e : '🛎️'}</span><span class="vn">${v.name}</span><i style="width:${Math.round(v.pat * 100)}%;background:${c}"></i></button>`; }
 function bindChips() { $('sheet').querySelectorAll('[data-vid]').forEach((b) => b.onclick = () => { const v = R.visitors.find((x) => x.id === +b.dataset.vid); closeSheet(); if (v) selectVisitor(v); }); }
 // express check-in upgrades: ×2 then ×3 speed for one desk (pricey on purpose)
 const DESK_UP = [0, 6000, 15000];
