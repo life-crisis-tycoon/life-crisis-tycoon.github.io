@@ -722,7 +722,7 @@ function lotOwned(i) {
 // ---------------- rooms ----------------
 const R = { rooms: {}, staff: [], visitors: [], deskQ: [], deskQs: [], litter: [], rats: [], inspector: null, later: [] }; R.deskQs[0] = R.deskQ;
 // Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional ivy + fairy lights.
-const WALL_CUT = 0.42, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
+const WALL_CUT = 0.3, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
 const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', ivy: true, lights: true, h: ROOM_H } };
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };

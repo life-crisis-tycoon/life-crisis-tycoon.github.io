@@ -334,6 +334,8 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 
 <script type="module" src="./account.js"></script>
 <script type="module" src="./game.js"></script>
-<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));</script>
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => { navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((r) => r.update()).catch(() => {});
+  // a new version took over: reload once so the player sees it (saves are in local storage + online, nothing is lost)
+  let had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !sessionStorage.getItem('lct_rl')) { sessionStorage.setItem('lct_rl', '1'); location.reload(); } had = true; }); });</script>
 </body>
 </html>
