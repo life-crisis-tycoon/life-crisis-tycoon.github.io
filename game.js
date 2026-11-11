@@ -2265,7 +2265,11 @@ canvas.addEventListener('pointerup', (e) => {
   if (mgrPick) { mgrPickAt(e); return; }
   if (R.mgr && ray.intersectObject(R.mgr.av, true).length) { openMgr(); return; }
   { const pv = pickVisitor(e); if (pv) { selectVisitor(pv); return; } }
-  const dh = ray.intersectObjects(Object.values(world.decor), true); if (dh.length) { openDecorMenu(dh[0].object.userData.decorId); return; }
+  // decor (vending machine, radiators, AC, plants, sofas…): the modelled versions replace the primitive children after the tap
+  // ids were set, so climb to the decor group instead of trusting the mesh — otherwise placed items could never be moved
+  const dh = ray.intersectObjects(Object.values(world.decor), true);
+  if (dh.length) { let o = dh[0].object; while (o && o.userData.decorId == null && !Object.values(world.decor).includes(o)) o = o.parent;
+    const id = o ? (o.userData.decorId ?? +Object.keys(world.decor).find((k) => world.decor[k] === o)) : null; if (id != null && !isNaN(id)) { openDecorMenu(id); return; } }
   if (ray.intersectObject(world.desk, true).length) { openDesk(); return; }
   { const dh2 = ray.intersectObjects(world.desks2 || [], true); if (dh2.length) { let o = dh2[0].object; while (o && o.userData.di == null) o = o.parent; if (o) { openDesk2(o.userData.di); return; } } }
   const hits = ray.intersectObjects(R.visitors.map((v) => v.av), true);
@@ -2824,6 +2828,9 @@ function openDecorMenu(id) {
 function buildExtras() {
   let h = `<div class="lbl" style="margin:12px 0 6px">🔧 ${t('eq.title')}</div>`;
   for (const [k, cost] of [['gen', 1500], ['ac', 2000], ['net', 1200], ['quiet', 1800], ['garden', 3000]].concat(S.garden ? [['gardenRoof', 2500], ['gardenHeat', 1200], ['gardenCool', 1200]] : [])) h += `<div class="opt w"><div class="oi" style="background:#E3ECF5">${{ gen: '🔋', ac: '❄️', net: '📡', quiet: '🔇', garden: '🌳', gardenRoof: '🏠', gardenHeat: '🔥', gardenCool: '🌬️' }[k]}</div><div class="ot"><b>${t('eq.' + k)} · ${money(cost)}</b><div>${t('eq.' + k + 'D')}</div></div>${S[k] ? `<span class="tr good">${t('eq.owned')}</span>` : `<button class="btn g" data-eq="${k}" data-cost="${cost}" ${S.cash < cost ? 'disabled' : ''}>${t('build.btn')}</button>`}</div>`;
+  // already placed items: one tap to move (or sell) them — on a phone the item itself is often hidden behind people
+  if ((S.decor || []).length) { h += `<div class="lbl" style="margin:12px 0 6px">✋ ${t('dc.placed')}</div>`;
+    for (const d of S.decor) { const D = DECOR[d.k]; if (!D) continue; h += `<div class="opt w"><div class="oi" style="background:#E3ECF5">${D.e}</div><div class="ot"><b>${t('dc.' + d.k)}</b></div><button class="btn g" data-mvdec="${d.id}">✋ ${t('dc.move')}</button></div>`; } }
   h += `<div class="lbl" style="margin:12px 0 6px">🪴 ${t('dc.title')} · ✨ ${kudos()} ${t('kd.name')}</div><p class="sub">${t('kd.info')}</p>`;
   for (const [k, D] of Object.entries(DECOR)) h += `<div class="opt w"><div class="oi" style="background:${D.kd ? '#FFF3CF' : '#DDF3E2'}">${D.e}</div><div class="ot"><b>${t('dc.' + k)} · ${D.kd ? '✨' + D.kd : money(D.cost)}</b><div>${t('dc.' + k + 'D')}</div></div><button class="btn ${D.kd ? 'y' : 'g'}" data-dec="${k}" ${D.kd ? (kudos() < D.kd ? 'disabled' : '') : (S.cash < D.cost ? 'disabled' : '')}>${t('build.btn')}</button></div>`;
   return h;
@@ -2831,6 +2838,7 @@ function buildExtras() {
 function bindExtras() {
   $('sheet').querySelectorAll('[data-eq]').forEach((b) => b.onclick = () => { const k = b.dataset.eq, c = +b.dataset.cost; if (S.cash < c) return; S.cash -= c; S[k] = true; if (k.startsWith('garden')) { world.shellOwn = null; buildAnnexLot(); rebuildGrid(); gardenRain(); } save(); toast(t('eq.done', { name: t('eq.' + k) })); openBuild(); });
   $('sheet').querySelectorAll('[data-dec]').forEach((b) => b.onclick = () => startDecor(b.dataset.dec));
+  $('sheet').querySelectorAll('[data-mvdec]').forEach((b) => b.onclick = () => { const d = (S.decor || []).find((x) => x.id === +b.dataset.mvdec); if (d) { closeSheet(); startDecor(d.k, d); } });
 }
 
 // ---------------- mandatory events ----------------
