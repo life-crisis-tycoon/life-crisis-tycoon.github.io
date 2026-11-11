@@ -89,30 +89,31 @@ for (const k of ['quarter', 'thirty', 'situation', 'mercury']) PROJECTS['m_' + k
 const EMERGENCIES = { subway: { room: 'yoga', probs: ['grind'], city: 'newyork' }, replica: { room: 'therapy', probs: ['quake'], city: 'mexico' }, stamps: { room: 'ahwa', probs: ['paperwork'], city: 'cairo' }, weddingseason: { room: 'wedding', probs: ['wedding'], city: 'mumbai' }, crunch: { room: 'jjim', probs: ['overtime'], city: 'seoul' }, gridlock: { room: 'nap', probs: ['commute'], city: 'saopaulo' }, blackout: { room: 'garage', probs: ['hustle', 'fuel'], city: 'lagos' }, valentine: { room: 'social', probs: ['ghosted', 'apps', 'lonely'] }, rentriot: { room: 'budget', probs: ['rent', 'flat', 'subs'] }, strike: { room: 'nap', probs: ['sunday', 'burn', 'gloom'], city: 'london' }, layoff: { room: 'career', probs: ['boss', 'ladder'] }, bills: { room: 'budget', probs: ['rent', 'subs', 'flat'] },
   // big Lagos events once the city has 2 stars: a lot of people at once, a bigger payout
   danfo: { room: 'garage', mix: true, city: 'lagos', stars: 2, n: 11, need: 8, time: 210, gap: 1.6, reward: 6500 },
+  tourbus: { room: 'budget', mix: true, notCity: 'lagos', stars: 2, n: 12, need: 9, time: 220, gap: 1.4, reward: 6000 },
   school: { room: 'parent', probs: ['schoolrun', 'homework', 'sugar', 'tablet', 'toddler'], city: 'lagos', stars: 2, n: 15, need: 11, time: 240, gap: 1.1, reward: 8500 } };
 const CITY_NAMES = { newyork: ['Jess', 'Marcus', 'Priya', 'Danny', 'Aaliyah', 'Ethan', 'Mei', 'Carlos', 'Rachel', 'Malik', 'Sofia', 'Tyler', 'Grace', 'Omar', 'Brooke', 'Kenji'], mexico: ['Sofía', 'Diego', 'Valeria', 'Luis', 'Ximena', 'Carlos', 'Fernanda', 'Jorge', 'Mariana', 'Alejandro', 'Daniela', 'Mateo', 'Lupita', 'Emiliano', 'Camila', 'Andrés'], cairo: ['Omar', 'Noor', 'Yasmin', 'Karim', 'Mariam', 'Ahmed', 'Salma', 'Youssef', 'Hana', 'Mostafa', 'Laila', 'Tarek', 'Nadia', 'Amr', 'Dina', 'Sherif'] };
 const FIRST = ['Priya', 'Marcus', 'Jade', 'Omar', 'Zoe', 'Kai', 'Amara', 'Leo', 'Noor', 'Mateo', 'Hana', 'Tunde', 'Ines', 'Sam', 'Riya', 'Ezra', 'Lola', 'Dev', 'Maya', 'Femi', 'Chloe', 'Arjun', 'Sofia', 'Kwame', 'Yuki', 'Min-jun', 'Lucas', 'Aiko'];
 const LAST = ['Shah', 'Bello', 'Kim', 'Haddad', 'Okafor', 'Nguyen', 'Silva', 'Brown', 'Patel', 'Rossi', 'Mensah', 'Garcia', 'Ito', 'Kowalski', 'Adeyemi', 'Murphy', 'Park', 'Dubois'];
 const CITIES = {
   london: { lvl: 0, region: 'rg.europe', cash: 15000, rent: 2400, rain: 0.45, pin: [44.8, 23.4], desc: 'map.desc', tag: 'brief.tag', brief: 'brief.desc', rules: [['🌧️', 'brief.r1'], ['📝', 'brief.r2'], ['🧍', 'brief.r3']], chips: [['b', 'chip.rain'], ['b', 'chip.planning'], ['r', 'chip.strike']], start: 'start.landlord',
-    goals: [[['helped', 45], ['vibes', 60]], [['cash', 45000], ['helped', 110]], [['cash', 80000], ['vibes', 85]]] },
+    goals: [[['helped', 45], ['vibes', 60]], [['cash', 45000], ['helped', 110]], [['bestday', 18], ['emwin', 2], ['vibes', 85]]] },
   lagos: { lvl: 1, region: 'rg.africa', unlock: 'london', cash: 14000, rent: 2600, rain: 0.25, pin: [45.1, 52.0], desc: 'lg.desc', tag: 'lg.tag', brief: 'lg.brief', rules: [['⚡', 'lg.r1'], ['💼', 'lg.r2'], ['🚦', 'lg.r3']], chips: [['b', 'lg.c1'], ['b', 'lg.c2'], ['r', 'lg.c3']], start: 'lg.landlord', power: true, hustle: true, waves: true,
-    goals: [[['helped', 70], ['vibes', 60]], [['cash', 70000], ['helped', 540]], [['wave', 45], ['cash', 135000]]] },
+    goals: [[['helped', 70], ['vibes', 60]], [['cash', 70000], ['helped', 540]], [['bestday', 24], ['emwin', 4], ['wave', 20]]] },
   mumbai: { lvl: 2, region: 'rg.asia', unlock: 'lagos', cash: 13000, rent: 2200, rain: 0.5, monsoon: true, pin: [67.4, 45.0], desc: 'mb.desc', tag: 'mb.tag', brief: 'mb.brief', rules: [['🌧️', 'mb.r1'], ['👨‍👩‍👧', 'mb.r2'], ['💍', 'mb.r3']], chips: [['b', 'mb.c1'], ['b', 'mb.c2'], ['r', 'mb.c3']], start: 'mb.landlord', groups: { chance: 0.22, kind: 'families' },
-    goals: [[['helped', 110], ['vibes', 60]], [['cash', 90000], ['families', 25]], [['wedding', 55], ['vibes', 85]]] },
+    goals: [[['helped', 110], ['vibes', 60]], [['cash', 90000], ['families', 25]], [['bestday', 26], ['emwin', 4], ['wedding', 30]]] },
   seoul: { lvl: 3, region: 'rg.asia', unlock: 'mumbai', cash: 12000, rent: 3000, rain: 0.3, night: true, pin: [82.7, 32.0], desc: 'se.desc', tag: 'se.tag', brief: 'se.brief', rules: [['🌙', 'se.r1'], ['💼', 'se.r2'], ['🪞', 'se.r3']], chips: [['b', 'se.c1'], ['b', 'se.c2'], ['r', 'se.c3']], start: 'se.landlord',
-    goals: [[['helped', 125], ['vibes', 65]], [['cash', 90000], ['helped', 630]], [['night', 450], ['helped', 1350]]] },
+    goals: [[['helped', 125], ['vibes', 65]], [['cash', 90000], ['helped', 630]], [['nightbest', 9], ['bestday', 28], ['emwin', 4]]] },
   saopaulo: { lvl: 4, region: 'rg.americas', unlock: 'seoul', cash: 12000, rent: 2500, rain: 0.3, waves: true, pin: [27.3, 73.2], desc: 'sp.desc', tag: 'sp.tag', brief: 'sp.brief', rules: [['🚗', 'sp.r1'], ['🥳', 'sp.r2'], ['📺', 'sp.r3']], chips: [['b', 'sp.c1'], ['b', 'sp.c2'], ['r', 'sp.c3']], start: 'sp.landlord', groups: { chance: 0.3, kind: 'groups' },
-    goals: [[['helped', 145], ['vibes', 65]], [['cash', 110000], ['groups', 70]], [['groups', 145], ['vibes', 80]]] },
+    goals: [[['helped', 145], ['vibes', 65]], [['cash', 110000], ['groups', 70]], [['bestday', 30], ['emwin', 5], ['vibes', 80]]] },
   cairo: { lvl: 5, region: 'rg.africa', unlock: 'saopaulo', cash: 12000, rent: 2500, sig: 'paperwork', rain: 0.05, hot: true, evening: true, pin: [53.9, 36.9], desc: 'cr.desc', tag: 'cr.tag', brief: 'cr.brief', rules: [['🥵', 'cr.r1'], ['🌆', 'cr.r2'], ['📑', 'cr.r3']], chips: [['b', 'cr.c1'], ['b', 'cr.c2'], ['r', 'cr.c3']], start: 'cr.landlord',
-    goals: [[['helped', 160], ['vibes', 65]], [['cash', 100000], ['tea', 50]], [['evening', 450], ['vibes', 82]]] },
+    goals: [[['helped', 160], ['vibes', 65]], [['cash', 100000], ['tea', 50]], [['bestday', 30], ['emwin', 5], ['vibes', 82]]] },
   mexico: { lvl: 6, region: 'rg.americas', unlock: 'cairo', cash: 12000, rent: 2600, rain: 0.25, quake: true, altitude: true, sig: 'coraje', pin: [13.1, 41.0], desc: 'mx.desc', tag: 'mx.tag', brief: 'mx.brief', rules: [['🚨', 'mx.r1'], ['⛰️', 'mx.r2'], ['🤼', 'mx.r3']], chips: [['b', 'mx.c1'], ['b', 'mx.c2'], ['r', 'mx.c3']], start: 'mx.landlord',
-    goals: [[['helped', 175], ['vibes', 65]], [['cash', 110000], ['lucha', 55]], [['quake', 60], ['vibes', 84]]] },
+    goals: [[['helped', 175], ['vibes', 65]], [['cash', 110000], ['lucha', 55]], [['bestday', 32], ['emwin', 5], ['quake', 25]]] },
   newyork: { lvl: 7, region: 'rg.americas', unlock: 'mexico', cash: 14000, rent: 3600, rain: 0.3, tips: true, impatient: true, sig: 'grind', pin: [23.8, 28.3], desc: 'ny.desc', tag: 'ny.tag', brief: 'ny.brief', rules: [['💸', 'ny.r1'], ['⏱️', 'ny.r2'], ['🧘', 'ny.r3']], chips: [['b', 'ny.c1'], ['b', 'ny.c2'], ['r', 'ny.c3']], start: 'ny.landlord',
-    goals: [[['helped', 190], ['vibes', 68]], [['cash', 150000], ['yoga', 60]], [['tips', 300], ['vibes', 86]]] },
+    goals: [[['helped', 190], ['vibes', 68]], [['cash', 150000], ['yoga', 60]], [['bestday', 34], ['emwin', 6], ['vibes', 86]]] },
 };
 const LOCKED_PINS = [];
-const metric = (s, m) => (m === 'helped' ? s.served : m === 'vibes' ? s.vibes : m === 'cash' ? s.cash : (s.cnt || {})[m] || 0);
+const metric = (s, m) => (m === 'bestday' ? Math.max(s.bestDay || 0, s.dServ || 0) : m === 'nightbest' ? Math.max(s.bestNight || 0, s.nServ || 0) : m === 'helped' ? s.served : m === 'vibes' ? s.vibes : m === 'cash' ? s.cash : (s.cnt || {})[m] || 0);
 function incCnt(k) { S.cnt = S.cnt || {}; S.cnt[k] = (S.cnt[k] || 0) + 1; }
 const isNight = () => cityOf().night && S.t > DAY_LEN * 0.66;
 const mkGoals = (arr) => arr.map((parts, i) => ({ k: 'g' + (i + 1), parts, ok: (s) => parts.every(([m, v]) => metric(s, m) >= v) }));
@@ -1632,7 +1633,7 @@ function visitorUpdate(v, dt) {
         const pr = (S.price || 1) * (cityOf().hustle ? 1.1 : 1) * (isNight() ? 1.15 : 1), fee = Math.round(PROBLEMS[v.prob].fee * 1.3 * (0.7 + S.vibes / 200) * pr);
         const twoVisit = beh('stamps2') && v.prob === 'paperwork', gain = Math.round(fee * (v.vip ? 2 : 1) * (twoVisit ? 0.5 : 1)), iou = beh('iou') && BROKE.has(v.prob);
         if (iou) { S.iou = (S.iou || 0) + gain; behSeen('iou'); floatAt(v.av.position, '🧾 ' + money(gain)); } else S.cash += gain;
-        S.earned += gain; S.served++; v.spent = (v.spent || 0) + gain; dailyHit(v);
+        S.earned += gain; S.served++; S.dServ = (S.dServ || 0) + 1; if (isNight()) S.nServ = (S.nServ || 0) + 1; v.spent = (v.spent || 0) + gain; dailyHit(v);
         if (cityOf().tips && v.pat > 0.5) { const tip = Math.round(gain * 0.25); S.cash += tip; S.earned += tip; incCnt('tips'); setTimeout(() => floatAt(v.av.position, '💵 tip +' + money(tip)), 400); } // happy & quick → they tip
         if (twoVisit && !v.stage2) { behSeen('stamps2'); R.later.push({ t: 40 + RNG() * 40, prob: 'paperwork', stage2: true }); floatAt(v.av.position, '📑 1/2'); }
         const SS = S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; SS.prob[v.prob] = (SS.prob[v.prob] || 0) + 1; SS.room[room.type] = (SS.room[room.type] || 0) + 1; SS.staff[st.data.id] = (SS.staff[st.data.id] || 0) + 1;
@@ -1772,7 +1773,7 @@ function verdict() {
 // ---------------- emergencies ----------------
 function offerEmergency() {
   tip('em');
-  const keys = Object.keys(EMERGENCIES).filter((e) => unlocked(EMERGENCIES[e].room) && (!EMERGENCIES[e].city || EMERGENCIES[e].city === (S.city || 'london')) && (S.stars || 0) >= (EMERGENCIES[e].stars || 0));
+  const keys = Object.keys(EMERGENCIES).filter((e) => unlocked(EMERGENCIES[e].room) && (!EMERGENCIES[e].city || EMERGENCIES[e].city === (S.city || 'london')) && EMERGENCIES[e].notCity !== (S.city || 'london') && (S.stars || 0) >= (EMERGENCIES[e].stars || 0));
   const big = keys.filter((e) => EMERGENCIES[e].stars), k = big.length && RNG() < 0.6 ? rnd(big) : rnd(keys); const E = EMERGENCIES[k];
   const missing = !hasRoom(E.room);
   modal(`<div style="font-size:44px">🚨</div><h2>${t('em.' + k)}</h2><p>${t('em.' + k + '.d')}</p><p style="color:var(--green-d)">${E.reward ? t('em.rewardN', { m: money(E.reward) }) : t('em.reward')}</p>${missing ? `<p style="color:var(--red)">${t('em.missing')} (${rn(E.room)})</p>` : ''}
@@ -1785,7 +1786,7 @@ function emergencyUpdate(dt) {
   E.t -= dt; E.spawnT -= dt;
   if (E.left > 0 && E.spawnT <= 0) { E.spawnT = E.gap || 3; E.left--; const D = EMERGENCIES[E.k];
     const pool = D.mix ? Object.keys(PROBLEMS).filter((pk) => PROBLEMS[pk].room && hasRoom(PROBLEMS[pk].room) && !isMystK(pk)) : D.probs; spawnVisitor(rnd(pool.length ? pool : ['hustle']), true); }
-  if (E.got >= E.need) { addKudos(5); S.cash += E.reward || 2500; floatAt(new THREE.Vector3(2, 1.5, 4), '🎉 +' + money(E.reward || 2500)); S.vibes = clamp(S.vibes + 8, 0, 100); S.em = null; toast(t('em.win'), 3500); chat(t('from.hq'), t('em.win'), '🎉'); }
+  if (E.got >= E.need) { incCnt('emwin'); addKudos(5); S.cash += E.reward || 2500; floatAt(new THREE.Vector3(2, 1.5, 4), '🎉 +' + money(E.reward || 2500)); S.vibes = clamp(S.vibes + 8, 0, 100); S.em = null; toast(t('em.win'), 3500); chat(t('from.hq'), t('em.win'), '🎉'); }
   else if (E.t <= 0) { S.vibes = clamp(S.vibes - 8, 0, 100); S.em = null; toast(t('em.fail'), 3500); chat(t('from.hq'), t('em.fail'), '😬'); }
 }
 
@@ -2324,7 +2325,7 @@ function dayTick(dt) {
   if (S.lifeAt > 0 && S.t >= S.lifeAt && !modalPaused) { S.lifeAt = -1; lifeEvent(); }
   if (S.emAt > 0 && S.t >= S.emAt) { S.emAt = -1; if (!S.em) offerEmergency(); }
   if (S.t >= DAY_LEN) {
-    S.t -= DAY_LEN; dailyEnd(); S.day++; dailyNew();
+    S.t -= DAY_LEN; dailyEnd(); S.bestDay = Math.max(S.bestDay || 0, S.dServ || 0); S.bestNight = Math.max(S.bestNight || 0, S.nServ || 0); S.dServ = 0; S.nServ = 0; S.day++; dailyNew();
     if (cityOf().quake && S.day >= 3 && Math.random() < 0.3) S.quakeAt = 15 + Math.random() * 50;
     if (S.iou) { S.cash += S.iou; chat(t('from.hq'), t('bh.iouPaid', { m: money(S.iou) }), '🧾'); S.iou = 0; }
     if (RENT_EVERY - ((S.day - 1) % RENT_EVERY) === 1) say('rent', t('pa.rent', { m: money(RENT) }), 0);
@@ -2343,7 +2344,7 @@ function dayTick(dt) {
     if (S.crewAngry && S.day >= S.crewAngry) { S.crewAngry = 0; if (Math.random() < 0.65) vandalism(); }
     if (S.crewReport && S.day >= S.crewReport) { S.crewReport = 0; S.crewNext = S.day + crewGap() + 7; chat(t('crew.name'), t('crew.police'), '🚓'); }
     if (S.day > 1 && (S.day - 1) % 12 === 0) setTimeout(() => showWrapped(true), 400);
-    if (S.day >= S.nextEm) { S.nextEm = S.day + ((S.city === 'lagos' && (S.stars || 0) >= 2) ? 1 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 2)); S.emAt = 8 + Math.random() * 20; }
+    if (S.day >= S.nextEm) { S.nextEm = S.day + (((S.stars || 0) >= 2) ? 1 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 2)); S.emAt = 8 + Math.random() * 20; }
     billWarn();
     if ((S.day - 1) % RENT_EVERY === 0) {
       const wages = Math.round(S.staff.reduce((a, s) => a + s.wage, 0) * WAGE_K);
