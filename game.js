@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -89,7 +89,14 @@ for (const k of ['quarter', 'thirty', 'situation', 'mercury']) PROJECTS['m_' + k
 const EMERGENCIES = { subway: { room: 'yoga', probs: ['grind'], city: 'newyork' }, replica: { room: 'therapy', probs: ['quake'], city: 'mexico' }, stamps: { room: 'ahwa', probs: ['paperwork'], city: 'cairo' }, weddingseason: { room: 'wedding', probs: ['wedding'], city: 'mumbai' }, crunch: { room: 'jjim', probs: ['overtime'], city: 'seoul' }, gridlock: { room: 'nap', probs: ['commute'], city: 'saopaulo' }, blackout: { room: 'garage', probs: ['hustle', 'fuel'], city: 'lagos' }, valentine: { room: 'social', probs: ['ghosted', 'apps', 'lonely'] }, rentriot: { room: 'budget', probs: ['rent', 'flat', 'subs'] }, strike: { room: 'nap', probs: ['sunday', 'burn', 'gloom'], city: 'london' }, layoff: { room: 'career', probs: ['boss', 'ladder'] }, bills: { room: 'budget', probs: ['rent', 'subs', 'flat'] },
   // big Lagos events once the city has 2 stars: a lot of people at once, a bigger payout
   danfo: { room: 'garage', mix: true, city: 'lagos', stars: 2, n: 11, need: 8, time: 210, gap: 1.6, reward: 6500 },
-  tourbus: { room: 'budget', mix: true, notCity: 'lagos', stars: 2, n: 12, need: 9, time: 220, gap: 1.4, reward: 6000 },
+  tourbus: { room: 'budget', mix: true, city: 'london', stars: 2, n: 12, need: 9, time: 220, gap: 1.4, reward: 6000 },
+  // one big local event per city once it has 2 stars; bias = the local problems that show up most in the crowd
+  baraat: { room: 'wedding', mix: true, bias: ['wedding', 'sharmaji', 'topper', 'train'], city: 'mumbai', stars: 2, n: 12, need: 9, time: 220, gap: 1.4, reward: 6500 },
+  hoesik: { room: 'jjim', mix: true, bias: ['overtime', 'nunchi', 'beauty', 'burn', 'boss'], city: 'seoul', stars: 2, n: 12, need: 9, time: 220, gap: 1.4, reward: 6500 },
+  derby: { room: 'roda', mix: true, bias: ['commute', 'saudade', 'novela', 'ghosted'], city: 'saopaulo', stars: 2, n: 13, need: 9, time: 230, gap: 1.3, reward: 7000 },
+  results: { room: 'ahwa', mix: true, bias: ['paperwork', 'overthink', 'impostor', 'ladder', 'heatgrump'], city: 'cairo', stars: 2, n: 12, need: 9, time: 220, gap: 1.4, reward: 6500 },
+  zocalo: { room: 'lucha', mix: true, bias: ['coraje', 'antojo', 'ahorita', 'quake'], city: 'mexico', stars: 2, n: 12, need: 9, time: 220, gap: 1.4, reward: 6500 },
+  marathon: { room: 'yoga', mix: true, bias: ['grind', 'headache', 'tummy', 'rentshock'], city: 'newyork', stars: 2, n: 13, need: 9, time: 220, gap: 1.3, reward: 7500 },
   school: { room: 'parent', probs: ['schoolrun', 'homework', 'sugar', 'tablet', 'toddler'], city: 'lagos', stars: 2, n: 15, need: 11, time: 240, gap: 1.1, reward: 8500 } };
 const CITY_NAMES = { newyork: ['Jess', 'Marcus', 'Priya', 'Danny', 'Aaliyah', 'Ethan', 'Mei', 'Carlos', 'Rachel', 'Malik', 'Sofia', 'Tyler', 'Grace', 'Omar', 'Brooke', 'Kenji'], mexico: ['Sofía', 'Diego', 'Valeria', 'Luis', 'Ximena', 'Carlos', 'Fernanda', 'Jorge', 'Mariana', 'Alejandro', 'Daniela', 'Mateo', 'Lupita', 'Emiliano', 'Camila', 'Andrés'], cairo: ['Omar', 'Noor', 'Yasmin', 'Karim', 'Mariam', 'Ahmed', 'Salma', 'Youssef', 'Hana', 'Mostafa', 'Laila', 'Tarek', 'Nadia', 'Amr', 'Dina', 'Sherif'] };
 const FIRST = ['Priya', 'Marcus', 'Jade', 'Omar', 'Zoe', 'Kai', 'Amara', 'Leo', 'Noor', 'Mateo', 'Hana', 'Tunde', 'Ines', 'Sam', 'Riya', 'Ezra', 'Lola', 'Dev', 'Maya', 'Femi', 'Chloe', 'Arjun', 'Sofia', 'Kwame', 'Yuki', 'Min-jun', 'Lucas', 'Aiko'];
@@ -1771,23 +1778,37 @@ function verdict() {
 }
 
 // ---------------- emergencies ----------------
+// a burst of 1–4 emergencies back to back, then a calm stretch of a few days; sizes and gaps are random so the rhythm never settles
+function emProbs(k) { const D = EMERGENCIES[k]; return D ? (D.mix ? ['*mix'].concat(D.bias || []) : D.probs) : []; }
+function emStartBurst() { const st2 = (S.stars || 0) >= 2, r = Math.random(); S.emBurst = st2 ? (r < 0.15 ? 1 : r < 0.55 ? 2 : r < 0.85 ? 3 : 4) : (r < 0.6 ? 1 : 2); S.emAt = 8 + Math.random() * 40; }
+function emNext() { // called whenever an emergency is over (won, failed or declined)
+  if ((S.emBurst || 0) > 0) { S.emAt = S.t + 12 + Math.random() * 30; return; } // may run past midnight: carried over at day rollover
+  const st2 = (S.stars || 0) >= 2; S.nextEm = S.day + (st2 ? 3 + Math.floor(Math.random() * 2) : 4 + Math.floor(Math.random() * 3)); }
 function offerEmergency() {
   tip('em');
-  const keys = Object.keys(EMERGENCIES).filter((e) => unlocked(EMERGENCIES[e].room) && (!EMERGENCIES[e].city || EMERGENCIES[e].city === (S.city || 'london')) && EMERGENCIES[e].notCity !== (S.city || 'london') && (S.stars || 0) >= (EMERGENCIES[e].stars || 0));
-  const big = keys.filter((e) => EMERGENCIES[e].stars), k = big.length && RNG() < 0.6 ? rnd(big) : rnd(keys); const E = EMERGENCIES[k];
+  const city = S.city || 'london';
+  let keys = Object.keys(EMERGENCIES).filter((e) => unlocked(EMERGENCIES[e].room) && (!EMERGENCIES[e].city || EMERGENCIES[e].city === city) && EMERGENCIES[e].notCity !== city && (S.stars || 0) >= (EMERGENCIES[e].stars || 0));
+  // never the same emergency, nor one about the same problems, twice in a row
+  const last = new Set(emProbs(S.emLast)), fresh = keys.filter((e) => e !== S.emLast && !emProbs(e).some((p) => last.has(p)));
+  keys = fresh.length ? fresh : keys.filter((e) => e !== S.emLast).length ? keys.filter((e) => e !== S.emLast) : keys;
+  if (!keys.length) { S.emBurst = 0; emNext(); return; }
+  const big = keys.filter((e) => EMERGENCIES[e].stars), k = big.length && RNG() < 0.55 ? rnd(big) : rnd(keys); const E = EMERGENCIES[k];
+  S.emLast = k; S.emBurst = Math.max(0, (S.emBurst || 1) - 1);
   const missing = !hasRoom(E.room);
   modal(`<div style="font-size:44px">🚨</div><h2>${t('em.' + k)}</h2><p>${t('em.' + k + '.d')}</p><p style="color:var(--green-d)">${E.reward ? t('em.rewardN', { m: money(E.reward) }) : t('em.reward')}</p>${missing ? `<p style="color:var(--red)">${t('em.missing')} (${rn(E.room)})</p>` : ''}
   <div class="row2" style="margin-top:10px"><button class="btn y" id="emNo">${t('em.decline')}</button><button class="btn g" id="emYes">${t('em.accept')}</button></div>`);
-  $('emNo').onclick = closeModal;
+  $('emNo').onclick = () => { closeModal(); emNext(); };
   $('emYes').onclick = () => { closeModal(); AU.sfx('siren'); say('em', t('pa.em', { name: t('em.' + k) }), 0); S.em = { k, need: E.need || 4, got: 0, t: E.time || 150, left: E.n || 6, spawnT: 0, gap: E.gap || 3, reward: E.reward || 2500 }; chat(t('from.hq'), '🚨 ' + t('em.' + k), '🚨'); };
 }
 function emergencyUpdate(dt) {
   const E = S.em; if (!E) return;
   E.t -= dt; E.spawnT -= dt;
   if (E.left > 0 && E.spawnT <= 0) { E.spawnT = E.gap || 3; E.left--; const D = EMERGENCIES[E.k];
-    const pool = D.mix ? Object.keys(PROBLEMS).filter((pk) => PROBLEMS[pk].room && hasRoom(PROBLEMS[pk].room) && !isMystK(pk)) : D.probs; spawnVisitor(rnd(pool.length ? pool : ['hustle']), true); }
-  if (E.got >= E.need) { incCnt('emwin'); addKudos(5); S.cash += E.reward || 2500; floatAt(new THREE.Vector3(2, 1.5, 4), '🎉 +' + money(E.reward || 2500)); S.vibes = clamp(S.vibes + 8, 0, 100); S.em = null; toast(t('em.win'), 3500); chat(t('from.hq'), t('em.win'), '🎉'); }
-  else if (E.t <= 0) { S.vibes = clamp(S.vibes - 8, 0, 100); S.em = null; toast(t('em.fail'), 3500); chat(t('from.hq'), t('em.fail'), '😬'); }
+    const ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && (!PROBLEMS[pk].city || PROBLEMS[pk].city === (S.city || 'london'));
+    let pool = D.probs; if (D.mix) { const b = (D.bias || []).filter(ok); pool = b.length && RNG() < 0.6 ? b : Object.keys(PROBLEMS).filter(ok); }
+    spawnVisitor(rnd(pool.length ? pool : ['hustle']), true); }
+  if (E.got >= E.need) { incCnt('emwin'); addKudos(5); S.cash += E.reward || 2500; floatAt(new THREE.Vector3(2, 1.5, 4), '🎉 +' + money(E.reward || 2500)); S.vibes = clamp(S.vibes + 8, 0, 100); S.em = null; emNext(); toast(t('em.win'), 3500); chat(t('from.hq'), t('em.win'), '🎉'); }
+  else if (E.t <= 0) { S.vibes = clamp(S.vibes - 8, 0, 100); S.em = null; emNext(); toast(t('em.fail'), 3500); chat(t('from.hq'), t('em.fail'), '😬'); }
 }
 
 // ---------------- research ----------------
@@ -2336,7 +2357,7 @@ function dayTick(dt) {
   if (S.raiseAt > 0 && S.t >= S.raiseAt && !modalPaused) { S.raiseAt = -1; raiseRequest(); }
   if (S.lifeAt > 0 && S.t >= S.lifeAt && !modalPaused) { S.lifeAt = -1; lifeEvent(); }
   if (S.incAt > 0 && S.t >= S.incAt) { S.incAt = -1; incStart(); }
-  if (S.emAt > 0 && S.t >= S.emAt) { S.emAt = -1; if (!S.em) offerEmergency(); }
+  if (S.emAt > 0 && S.t >= S.emAt) { if (S.em || modalPaused) S.emAt = S.t + 10; else { S.emAt = -1; offerEmergency(); } }
   if (S.t >= DAY_LEN) {
     S.t -= DAY_LEN; dailyEnd(); S.bestDay = Math.max(S.bestDay || 0, S.dServ || 0); S.bestNight = Math.max(S.bestNight || 0, S.nServ || 0); S.dServ = 0; S.nServ = 0; S.day++; dailyNew(); if (S.day >= 3 && RNG() < ((S.stars || 0) >= 2 ? 0.45 : 0.3)) S.incAt = 10 + RNG() * 50;
     if (cityOf().quake && S.day >= 3 && Math.random() < 0.3) S.quakeAt = 15 + Math.random() * 50;
@@ -2357,7 +2378,9 @@ function dayTick(dt) {
     if (S.crewAngry && S.day >= S.crewAngry) { S.crewAngry = 0; if (Math.random() < 0.65) vandalism(); }
     if (S.crewReport && S.day >= S.crewReport) { S.crewReport = 0; S.crewNext = S.day + crewGap() + 7; chat(t('crew.name'), t('crew.police'), '🚓'); }
     if (S.day > 1 && (S.day - 1) % 12 === 0) setTimeout(() => showWrapped(true), 400);
-    if (S.day >= S.nextEm) { S.nextEm = S.day + (((S.stars || 0) >= 2) ? 1 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 2)); S.emAt = 8 + Math.random() * 20; }
+    if (S.emAt >= DAY_LEN - 1) S.emAt = Math.max(3, S.emAt - DAY_LEN); // an offer that slipped past midnight comes early the next day
+    if (S.day >= S.nextEm && !S.em && !(S.emAt > 0) && !((S.emBurst || 0) > 0)) { S.nextEm = S.day + 99; emStartBurst(); }
+    else if ((S.emBurst || 0) > 0 && !S.em && !(S.emAt > 0)) emNext();
     billWarn();
     if ((S.day - 1) % RENT_EVERY === 0) {
       const wages = Math.round(S.staff.reduce((a, s) => a + s.wage, 0) * WAGE_K);
