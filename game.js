@@ -1353,14 +1353,15 @@ function linePts(room) {
   return (room.linePts = out.slice(0, LINE_CAP[room.size]));
 }
 function joinLine(v, room, kind) {
-  const pts = linePts(room), Q = (room.lineQ = room.lineQ || []); if (Q.length >= pts.length) { if (kind === 'cafe' && !v.cured) logComplaint('cafeq'); return false; }
+  const pts = linePts(room), Q = (room.lineQ = room.lineQ || []); if (Q.length >= pts.length) return false;
   if (v.spot) { v.spot.busy = null; v.spot = null; }
-  Q.push(v); v.lineRoom = room.id; v.lineKind = kind; v.linePt = pts[Q.length - 1]; setPath(v, findPath(v.av.position, v.linePt)); v.state = 'toLine';
+  Q.push(v); v.lineT = 0; v.lineRoom = room.id; v.lineKind = kind; v.linePt = pts[Q.length - 1]; setPath(v, findPath(v.av.position, v.linePt)); v.state = 'toLine';
   v.icon.material = iconTex(kind === 'cafe' ? '🍵' : '🛒'); return true;
 }
 function lineDrop(v) { const room = R.rooms[v.lineRoom]; v.lineRoom = null; if (!room || !room.lineQ) return; const i = room.lineQ.indexOf(v); if (i < 0) return; room.lineQ.splice(i, 1);
   const pts = linePts(room); room.lineQ.forEach((o, k) => { const np = pts[k]; if (np && o.linePt !== np) { o.linePt = np; if (o.state === 'line' || o.state === 'toLine') { setPath(o, findPath(o.av.position, np)); o.state = 'toLine'; } } }); }
 function lineTick(v, dt) {
+  v.lineT = (v.lineT || 0) + dt; if (!v.lineCmp && !v.cured && v.lineT > 20) { v.lineCmp = true; logComplaint(v.lineKind === 'cafe' ? 'cafeq' : 'queue'); floatAt(v.av.position, '⏳'); } // a complaint only after 20 s in the line
   const room = R.rooms[v.lineRoom]; if (!room || room.closed) { lineDrop(v); if (v.cured) { setPath(v, exitPath(v)); v.state = 'exit'; } else seatVisitor(v); return; }
   if (!v.cured) { const need = needOf(v); if (need && Object.values(R.rooms).some((r) => r.type === need && !r.closed && r.spots.some((s) => !s.busy) && r.staff.some((x) => x && x.mode === 'there'))) { lineDrop(v); seatVisitor(v); return; } } // their room is free: they leave the line
   if (room.lineQ[0] !== v) return;
@@ -2544,7 +2545,7 @@ function dayTick(dt) {
     if (S.rainy) { chat(t('from.weather'), t('weather.rain'), '🌧️'); tip('rain'); }
     if (S.day === 3 && unlocked('lab') && !hasRoom('lab')) tip('lab');
     plotOf().lots.forEach((_, i) => { if (lotSt(i) === 'pending' && S.day >= lotDay(i)) lotOwned(i); });
-    if (S.day >= S.nextInspect) { S.nextInspect = S.day + 3 + Math.floor(Math.random() * 2); S.inspectAt = 15 + Math.random() * 30; }
+    if (S.day >= S.nextInspect) { S.nextInspect = S.day + 7; // one inspection a week (a failed or warned one gets a re-check sooner, see verdict) S.inspectAt = 15 + Math.random() * 30; }
     if (S.day >= 2 && Math.random() < (cityOf().power ? 0.7 : 0.5)) S.evAt = 10 + Math.random() * 35;
     if (S.day >= 3 && S.staff.length >= 3 && Math.random() < 0.3) S.raiseAt = 20 + Math.random() * 25;
     else if (S.mode === 'career' && S.city !== 'london' && S.day >= 30 && S.staff.length >= 2 && Math.random() < 0.3) S.lifeAt = 15 + Math.random() * 35;
