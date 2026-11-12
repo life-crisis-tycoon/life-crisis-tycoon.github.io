@@ -2545,7 +2545,7 @@ function dayTick(dt) {
     if (S.rainy) { chat(t('from.weather'), t('weather.rain'), '🌧️'); tip('rain'); }
     if (S.day === 3 && unlocked('lab') && !hasRoom('lab')) tip('lab');
     plotOf().lots.forEach((_, i) => { if (lotSt(i) === 'pending' && S.day >= lotDay(i)) lotOwned(i); });
-    if (S.day >= S.nextInspect) { S.nextInspect = S.day + 7; // one inspection a week (a failed or warned one gets a re-check sooner, see verdict) S.inspectAt = 15 + Math.random() * 30; }
+    if (S.day >= S.nextInspect) { S.nextInspect = S.day + 7; S.inspectAt = 15 + Math.random() * 30; } // one inspection a week (a failed or warned one gets a re-check sooner, see verdict)
     if (S.day >= 2 && Math.random() < (cityOf().power ? 0.7 : 0.5)) S.evAt = 10 + Math.random() * 35;
     if (S.day >= 3 && S.staff.length >= 3 && Math.random() < 0.3) S.raiseAt = 20 + Math.random() * 25;
     else if (S.mode === 'career' && S.city !== 'london' && S.day >= 30 && S.staff.length >= 2 && Math.random() < 0.3) S.lifeAt = 15 + Math.random() * 35;
