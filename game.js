@@ -1565,7 +1565,7 @@ function visitorUpdate(v, dt) {
     case 'checkin': {
       const host = deskHost(v.desk || 0, true);
       if (!host) { v.state = 'queue'; break; }
-      if (S.ev && S.ev.k === 'power') break;
+      if (S.ev && S.ev.k === 'power' && !S.ev.gen) break;
       v.prog += dt / (3.2 / (0.7 + host.data.skill * 0.12) / traitVal(host.data, 'speed') / boost() / energyF(host) * mgrDeskF()) * deskLv(v.desk || 0);
       if (v.prog >= 1) {
         finishCheckin(v);
@@ -1627,8 +1627,8 @@ function visitorUpdate(v, dt) {
       if (st && st.av && !v.rspot.lie) { const dx = st.av.position.x - v.av.position.x, dz = st.av.position.z - v.av.position.z, base = v.rspot.rot || 0; if (dx * dx + dz * dz > 0.04) { const d = angW(Math.atan2(dx, dz) - base); turnTo(v.av, base + (v.rspot.sit ? clamp(d, -0.6, 0.6) : d), dt, 4); } }
       // staff gone (sent home, life event…): don't leave the client sitting alone in the room; back to the waiting area
       if (!st || st.mode !== 'there') { v.aloneT = (v.aloneT || 0) + dt; if (v.aloneT > 2.5) { v.aloneT = 0; v.rspot.busy = null; v.rspot = null; v.room = null; seatVisitor(v); } break; } v.aloneT = 0;
-      if (room.closed || (S.ev && S.ev.k === 'power') || S.quake) break;
-      v.prog += dt / (ROOMS[room.type].time / (0.7 + st.data.skill * 0.12) / traitVal(st.data, 'speed') / roomSpeed(room.type) / sizeSpd(room) / boost() / energyF(st) / evSlow(room.type) * mgrRoomF(room.id) * (inAura(st.av.position) ? 1.15 : 1));
+      if (room.closed || (S.ev && S.ev.k === 'power' && (!S.ev.gen || S.ev.off.includes(room.id))) || S.quake) break;
+      v.prog += dt / (ROOMS[room.type].time / (0.7 + st.data.skill * 0.12) / traitVal(st.data, 'speed') / roomSpeed(room.type) / sizeSpd(room) / incSpd(room) / boost() / energyF(st) / evSlow(room.type) * mgrRoomF(room.id) * (inAura(st.av.position) ? 1.15 : 1));
       if (v.prog >= 1) {
         const pr = (S.price || 1) * (cityOf().hustle ? 1.1 : 1) * (isNight() ? 1.15 : 1), fee = Math.round(PROBLEMS[v.prob].fee * 1.3 * (0.7 + S.vibes / 200) * pr);
         const twoVisit = beh('stamps2') && v.prob === 'paperwork', gain = Math.round(fee * (v.vip ? 2 : 1) * (twoVisit ? 0.5 : 1)), iou = beh('iou') && BROKE.has(v.prob);
@@ -1869,7 +1869,7 @@ function updateLabels() {
   const seen = new Set();
   for (const room of Object.values(R.rooms)) {
     const q = roomRect(room.def), needStaff = ROOMS[room.type].role && !room.staff.some(Boolean);
-    const el = label('r' + room.id, needStaff || room.closed ? 'warn tap' : 'tap', room.closed ? '💧 ' + rn(room.type) + ' · ' + t('ev.closed') : needStaff ? t('room.needs', { room: rn(room.type), role: roleN(ROOMS[room.type].role) }) : rn(room.type) + roomNo(room) + (roomQ(room.id).length ? ' · 👥' + roomQ(room.id).length : ''), () => openRoomMenu(room.id));
+    const ix = incOf(room.id); const el = label('r' + room.id, needStaff || room.closed || ix ? 'warn tap' : 'tap', ix ? INC[ix.k].e + ' ' + rn(room.type) + ' · ' + (INC[ix.k].closes ? t('ev.closed') : t('inc.slow')) + ' · ' + incLeft(ix) : room.closed ? '💧 ' + rn(room.type) + ' · ' + t('ev.closed') : needStaff ? t('room.needs', { room: rn(room.type), role: roleN(ROOMS[room.type].role) }) : rn(room.type) + roomNo(room) + (roomQ(room.id).length ? ' · 👥' + roomQ(room.id).length : ''), () => openRoomMenu(room.id));
     if (needStaff && R.visitors.some((v) => v.state === 'wait' && v.known && needOf(v) === room.type)) say('ns' + room.type, t('room.needs', { room: rn(room.type), role: roleN(ROOMS[room.type].role) }), 50);
     else if (roomQ(room.id).length >= 5) say('q' + room.id, t('pa.queue', { room: rn(room.type) + roomNo(room) }), 90);
     if (!needStaff && !room.closed) el.style.background = ROOMS[room.type].pill; at(el, room.cx, 3.0, q.z0 + 0.3); seen.add('r' + room.id);
@@ -1924,12 +1924,14 @@ function openRoomMenu(id) {
   const room = R.rooms[id]; if (!room || placingR || moving) return;
   const r = room.def, Z = SIZES[r.size], role = ROOMS[r.type].role, refund = Math.round(roomCost(r.type, r.size) / 2);
   let h = `<h2>${ROOMS[r.type].e} ${rn(r.type)}${roomNo(room)}</h2><p class="sub">${t('room.sizeL', { s: t('sz.' + r.size) })} · ${Z.W}×${Z.D}${role ? ' · ' + t('room.staffN', { a: room.staff.filter(Boolean).length, b: Z.st, role: roleN(role) }) : ''}</p>`;
+  { const ix = incOf(id); if (ix) h += `<div class="opt w" style="border-color:#FF9F43"><div class="oi" style="background:#FFE9D2">${INC[ix.k].e}</div><div class="ot"><b>${t('inc.' + ix.k, { room: rn(r.type) })}</b><div>${t('inc.' + ix.k + 'D')} ${ix.techT != null ? '🧰 ' + t('inc.techComing') : t('inc.how', { left: incLeft(ix) })}</div></div>${ix.techT == null ? `<button class="btn y" id="rmExpress" ${S.cash < expressCost(ix) ? 'disabled' : ''}>🧰 ${money(expressCost(ix))}</button>` : ''}</div>`; }
   if (ROOMS[r.type].role || ROOMS[r.type].loo) h += roomQueueHtml(room) + '<div style="height:10px"></div>';
   h += `<div class="row2" style="margin-bottom:10px"><button class="btn g" id="rmMove">✋ ${t('room.move')}</button><button class="btn y" id="rmDemo">🗑️ ${t('room.demolish', { m: money(refund) })}</button></div>`;
   h += `<div class="lbl" style="margin:4px 0 6px">${t('room.resize')}</div>` + sizeCards(r.type, r.size);
   if (role && room.staff.some((s) => !s)) h += `<button class="btn w" id="rmHire" style="width:100%">${t('next.staff', { role: roleN(role), room: rn(r.type) })}</button>`;
   openSheet(h);
   $('rmMove').onclick = () => { closeSheet(); startPlace({ type: r.type, size: r.size }, r); };
+  { const xb = $('rmExpress'); if (xb) xb.onclick = () => { if (incExpress(id)) openRoomMenu(id); }; }
   $('rmDemo').onclick = () => { closeSheet(); demolish(r.id); };
   const hb = $('rmHire'); if (hb) hb.onclick = () => openHire(role);
   bindRoomQueue(room);
@@ -2170,6 +2172,16 @@ function openChat() {
 const staffById = (id) => R.staff.find((rs) => rs.data.id === id);
 const visById = (id) => R.visitors.find((v) => v.id === id && ['toWait', 'wait', 'queue', 'toQueue', 'checkin'].includes(v.state));
 const ACTS = {
+  inc: { live: (a) => { const x = incOf(a.room); return !!x && x.techT == null; },
+    opts: (a) => { const x = incOf(a.room), c = x ? expressCost(x) : 0; return [
+      { id: 'exp', main: true, label: '🧰 ' + t('inc.express', { m: money(c) }), ok: S.cash >= c, reply: t('inc.techComing'), run: () => incExpress(a.room) },
+      { id: 'wait', label: '⏳ ' + t('inc.wait'), reply: t('inc.waitR'), run: () => {} }]; } },
+  gen: { live: () => S.gen && (S.genBroken || genFuel() < GEN_TANK || !S.genBig),
+    opts: () => [
+      { id: 'fix', main: true, hide: !S.genBroken, label: '🔧 ' + t('gen.repair', { m: money(350) }), ok: S.cash >= 350, reply: t('gen.repaired'), run: () => repairGen() },
+      { id: 'fuel', main: !S.genBroken, hide: genFuel() >= GEN_TANK, label: '⛽ ' + t('gen.refuel', { m: money((GEN_TANK - genFuel()) * fuelPrice()) }), ok: S.cash >= (GEN_TANK - genFuel()) * fuelPrice(), reply: t('gen.refueledShort'), run: () => refuelGen() },
+      { id: 'big', hide: !!S.genBig, label: '⚡ ' + t('gen.big', { m: money(3500) }), ok: S.cash >= 3500, reply: t('gen.bigR'), run: () => { S.cash -= 3500; S.genBig = true; save(); } },
+      { id: 'later', label: t('gen.later'), reply: '👍', run: () => {} }] },
   tired: { live: (a) => { const rs = staffById(a.id); return !!rs && !(rs.data.awayT > 0); },
     opts: (a) => { const rs = staffById(a.id), d = rs && rs.data, first = d ? d.name.split(' ')[0] : '';
       return [
@@ -2323,9 +2335,10 @@ function dayTick(dt) {
   if (S.evAt > 0 && S.t >= S.evAt && !S.ev && !modalPaused) { S.evAt = -1; startEvent(); }
   if (S.raiseAt > 0 && S.t >= S.raiseAt && !modalPaused) { S.raiseAt = -1; raiseRequest(); }
   if (S.lifeAt > 0 && S.t >= S.lifeAt && !modalPaused) { S.lifeAt = -1; lifeEvent(); }
+  if (S.incAt > 0 && S.t >= S.incAt) { S.incAt = -1; incStart(); }
   if (S.emAt > 0 && S.t >= S.emAt) { S.emAt = -1; if (!S.em) offerEmergency(); }
   if (S.t >= DAY_LEN) {
-    S.t -= DAY_LEN; dailyEnd(); S.bestDay = Math.max(S.bestDay || 0, S.dServ || 0); S.bestNight = Math.max(S.bestNight || 0, S.nServ || 0); S.dServ = 0; S.nServ = 0; S.day++; dailyNew();
+    S.t -= DAY_LEN; dailyEnd(); S.bestDay = Math.max(S.bestDay || 0, S.dServ || 0); S.bestNight = Math.max(S.bestNight || 0, S.nServ || 0); S.dServ = 0; S.nServ = 0; S.day++; dailyNew(); if (S.day >= 3 && RNG() < ((S.stars || 0) >= 2 ? 0.45 : 0.3)) S.incAt = 10 + RNG() * 50;
     if (cityOf().quake && S.day >= 3 && Math.random() < 0.3) S.quakeAt = 15 + Math.random() * 50;
     if (S.iou) { S.cash += S.iou; chat(t('from.hq'), t('bh.iouPaid', { m: money(S.iou) }), '🧾'); S.iou = 0; }
     if (RENT_EVERY - ((S.day - 1) % RENT_EVERY) === 1) say('rent', t('pa.rent', { m: money(RENT) }), 0);
@@ -2454,7 +2467,7 @@ function step(dt, now = performance.now(), rdt = dt) {
     if (rs.data.role === 'maint' && !rs.onBreak) maintUpdate(rs, dt);
   }
   doorsUpdate(dt); staffCover(dt); mgrUpdate(dt); if (S.pepT > 0) S.pepT -= dt; if (S.pepCd > 0) S.pepCd -= dt;
-  pestUpdate(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); decorUpdate(dt); checkGoals();
+  pestUpdate(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); decorUpdate(dt); checkGoals();
   saveT += rdt; if (saveT > 3) { saveT = 0; save(); }
 }
 const fpsW = { t: 0, n: 0, sum: 0, done: false };
@@ -2832,6 +2845,7 @@ function buildExtras() {
   // already placed items: one tap to move (or sell) them — on a phone the item itself is often hidden behind people
   if ((S.decor || []).length) { h += `<div class="lbl" style="margin:12px 0 6px">✋ ${t('dc.placed')}</div>`;
     for (const d of S.decor) { const D = DECOR[d.k]; if (!D) continue; h += `<div class="opt w"><div class="oi" style="background:#E3ECF5">${D.e}</div><div class="ot"><b>${t('dc.' + d.k)}</b></div><button class="btn g" data-mvdec="${d.id}">✋ ${t('dc.move')}</button></div>`; } }
+  if (S.gen) h += `<div class="opt w"><div class="oi" style="background:#FFF3CF">⛽</div><div class="ot"><b>${t('gen.status', { f: genFuel(), tank: GEN_TANK, n: genCap() })}${S.genBroken ? ' · 💥 ' + t('gen.brokenShort') : ''}</b><div>${t('gen.info')}</div></div>${S.genBroken ? `<button class="btn y" id="genFix" ${S.cash < 350 ? 'disabled' : ''}>🔧 ${money(350)}</button>` : genFuel() < GEN_TANK ? `<button class="btn g" id="genFuel" ${S.cash < (GEN_TANK - genFuel()) * fuelPrice() ? 'disabled' : ''}>⛽ ${money((GEN_TANK - genFuel()) * fuelPrice())}</button>` : ''}${!S.genBig ? `<button class="btn w" id="genBig" ${S.cash < 3500 ? 'disabled' : ''}>⚡ ${money(3500)}</button>` : ''}</div>`;
   h += `<div class="lbl" style="margin:12px 0 6px">🪴 ${t('dc.title')} · ✨ ${kudos()} ${t('kd.name')}</div><p class="sub">${t('kd.info')}</p>`;
   for (const [k, D] of Object.entries(DECOR)) h += `<div class="opt w"><div class="oi" style="background:${D.kd ? '#FFF3CF' : '#DDF3E2'}">${D.e}</div><div class="ot"><b>${t('dc.' + k)} · ${D.kd ? '✨' + D.kd : money(D.cost)}</b><div>${t('dc.' + k + 'D')}</div></div><button class="btn ${D.kd ? 'y' : 'g'}" data-dec="${k}" ${D.kd ? (kudos() < D.kd ? 'disabled' : '') : (S.cash < D.cost ? 'disabled' : '')}>${t('build.btn')}</button></div>`;
   return h;
@@ -2839,17 +2853,81 @@ function buildExtras() {
 function bindExtras() {
   $('sheet').querySelectorAll('[data-eq]').forEach((b) => b.onclick = () => { const k = b.dataset.eq, c = +b.dataset.cost; if (S.cash < c) return; S.cash -= c; S[k] = true; if (k.startsWith('garden')) { world.shellOwn = null; buildAnnexLot(); rebuildGrid(); gardenRain(); } save(); toast(t('eq.done', { name: t('eq.' + k) })); openBuild(); });
   $('sheet').querySelectorAll('[data-dec]').forEach((b) => b.onclick = () => startDecor(b.dataset.dec));
+  { const f = $('genFuel'), x = $('genFix'), bg = $('genBig'); if (f) f.onclick = () => { refuelGen(); closeSheet(); }; if (x) x.onclick = () => { repairGen(); closeSheet(); }; if (bg) bg.onclick = () => { if (S.cash < 3500) return; S.cash -= 3500; S.genBig = true; save(); toast('⚡ ' + t('gen.bigR')); closeSheet(); }; }
   $('sheet').querySelectorAll('[data-mvdec]').forEach((b) => b.onclick = () => { const d = (S.decor || []).find((x) => x.id === +b.dataset.mvdec); if (d) { closeSheet(); startDecor(d.k, d); } });
 }
 
+// ---------------- generator: a crutch, not a cure ----------------
+// It only carries a few rooms (4, or 9 with the big one), burns fuel that must be bought (dearer in Lagos as the weeks go by),
+// is loud (waiting people get edgy), and can stall — then the cut is total until someone repairs it.
+const GEN_TANK = 4, genCap = () => (S.genBig ? 9 : 4);
+const fuelPrice = () => Math.round(110 * (S.city === 'lagos' ? Math.min(2.2, 1 + S.day / 30) : 1));
+const genFuel = () => (S.genFuel ?? GEN_TANK);
+function refuelGen() { const need = GEN_TANK - genFuel(), c = need * fuelPrice(); if (!need || S.cash < c) return false; S.cash -= c; S.genFuel = GEN_TANK; save(); toast('⛽ ' + t('gen.refueled', { m: money(c) })); return true; }
+function repairGen() { const c = 350; if (!S.genBroken || S.cash < c) return false; S.cash -= c; S.genBroken = false; save(); toast('🔧 ' + t('gen.repaired')); return true; }
+// ---------------- building incidents (from city 2): a room is out of action for 1–2 days ----------------
+// The maintenance crew can only make it safe — they cannot repair it. Wait it out, or pay a technician for an express repair.
+const INC_MESH = new Map(); // room id → warning sign / puddle (never saved)
+const INC = { leak: { e: '💧', closes: true }, elec: { e: '⚡', spd: 0.45 }, ceiling: { e: '🧱', closes: true } };
+const nowAbs = () => S.day * DAY_LEN + S.t;
+const incOf = (id) => (S.inc || []).find((x) => x.room === id);
+const incSpd = (room) => { const x = incOf(room.id); return x && INC[x.k].spd ? INC[x.k].spd : 1; };
+const expressCost = (x) => { const r = S.rooms.find((q) => q.id === x.room); return Math.round(({ s: 650, m: 950, l: 1400 })[r ? r.size : 'm'] * (x.k === 'ceiling' ? 1.3 : 1)); };
+const incLeft = (x) => { const s2 = Math.max(0, x.end - nowAbs()), d = Math.floor(s2 / DAY_LEN), h = Math.round((s2 % DAY_LEN) / DAY_LEN * 24); return d ? t('inc.leftD', { d, h }) : t('inc.leftH', { h: Math.max(1, h) }); };
+function incStart() {
+  if ((S.city || 'london') === 'london' || (S.inc || []).length >= 2) return;
+  const pool = S.rooms.filter((r) => !ROOMS[r.type].staffOnly && !incOf(r.id) && R.rooms[r.id]); if (pool.length < 3) return;
+  const r = rnd(pool), k = rnd(['leak', 'leak', 'elec', 'ceiling']), dur = DAY_LEN * (1 + RNG());
+  const x = { k, room: r.id, end: nowAbs() + dur }; (S.inc = S.inc || []).push(x); incVisual(x);
+  AU.sfx('err'); toast(INC[k].e + ' ' + t('inc.' + k, { room: rn(r.type) }), 3000);
+  chat(t('from.hq'), t('inc.' + k, { room: rn(r.type) }) + ' ' + t('inc.' + k + 'D') + ' ' + t('inc.how', { left: incLeft(x) }), INC[k].e, { act: { k: 'inc', room: r.id } });
+}
+function incVisual(x) {
+  const room = R.rooms[x.room]; if (!room || INC_MESH.has(x.room)) return; const g = new THREE.Group(); g.position.set(room.cx + 0.6, 0, room.cz + 0.6);
+  if (x.k === 'leak') { put(cyl(0.55, 0.55, 0.02, '#7FC7F0'), 0, 0.14, 0, g); const d = put(cyl(0.0, 0.08, 0.2, '#7FC7F0'), 0, 2.4, 0, g); g.userData.drip = d; }
+  else if (x.k === 'ceiling') { for (let i = 0; i < 5; i++) put(rbox(0.22, 0.08, 0.18, '#CFC6B8', 0.03), (RNG() - 0.5) * 0.9, 0.16, (RNG() - 0.5) * 0.9, g); }
+  put(rbox(0.5, 0.5, 0.04, '#FFD23F', 0.05), 0, 0.55, 0, g).rotation.z = Math.PI / 4; put(rbox(0.06, 0.5, 0.06, '#3A3F47', 0.01), 0, 0.25, 0, g);
+  scene.add(g); INC_MESH.set(x.room, g);
+}
+function incEnd(x, express) {
+  S.inc = (S.inc || []).filter((y) => y !== x); const mm = INC_MESH.get(x.room); if (mm) { scene.remove(mm); INC_MESH.delete(x.room); }
+  const room = R.rooms[x.room]; if (room && INC[x.k].closes) room.closed = !!(S.ev && S.ev.k === 'leak' && S.ev.room === x.room);
+  if (room) chat(t('from.hq'), t(express ? 'inc.fixedX' : 'inc.fixed', { room: rn(room.type) }), '🔧');
+}
+function incTick(dt) {
+  for (const x of (S.inc || []).slice()) {
+    const room = R.rooms[x.room]; if (!room) { S.inc = S.inc.filter((y) => y !== x); continue; }
+    if (!INC_MESH.has(x.room)) incVisual(x);
+    if (INC[x.k].closes) room.closed = true;
+    { const mm = INC_MESH.get(x.room); if (mm && mm.userData.drip) mm.userData.drip.position.y = 2.4 - ((performance.now() / 600) % 1) * 2.2; }
+    if (x.techT != null) { x.techT -= dt; if (x.techT <= 0) { incEnd(x, true); continue; } }
+    if (nowAbs() >= x.end) incEnd(x, false);
+  }
+}
+function incExpress(id) { const x = incOf(id); if (!x || x.techT != null) return false; const c = expressCost(x); if (S.cash < c) { toast(t('build.noCash')); return false; } S.cash -= c; x.techT = 20; toast('🧰 ' + t('inc.techComing')); save(); return true; }
 // ---------------- mandatory events ----------------
 const EVENTS = { power: { dur: 25, e: '⚡' }, wifi: { dur: 40, e: '📶' }, leak: { dur: 45, e: '💧' }, noise: { dur: 40, e: '🔨' }, heat: { dur: 50, e: '🥵' } };
 const evSlow = (type) => (S.ev && S.ev.k === 'noise' && (type === 'nap' || type === 'therapy') ? 2 : S.ev && S.ev.k === 'wifi' && type === 'detox' ? 0.67 : 1);
-function evPatience() { if (!S.ev) return 1; const k = S.ev.k; return k === 'wifi' ? 1.4 : k === 'noise' ? 1.2 : k === 'heat' ? 1 : k === 'power' ? 1.2 : 1; }
+function evPatience() { if (!S.ev) return 1; const k = S.ev.k; return k === 'wifi' ? 1.4 : k === 'noise' ? 1.2 : k === 'heat' ? 1 : k === 'power' ? (S.ev.gen ? 1.12 : 1.2) : 1; }
 function startEvent() {
-  const keys = Object.keys(EVENTS).filter((k) => k !== 'leak' || S.rooms.some((r) => !ROOMS[r.type].staffOnly));
+  const keys = Object.keys(EVENTS).filter((k) => k !== 'leak' || ((S.city || 'london') === 'london' && S.rooms.some((r) => !ROOMS[r.type].staffOnly)));
   const k = cityOf().power && RNG() < 0.5 ? 'power' : cityOf().hot && RNG() < 0.45 ? 'heat' : rnd(keys);
-  if (k === 'power' && S.gen) { chat(t('from.hq'), t('ev.gen'), '🔋'); S.cash -= 100; incCnt('pcuts'); return; }
+  let genRun = false;
+  if (k === 'power' && S.gen) {
+    if (S.genBroken) chat(t('from.hq'), t('gen.stillBroken'), '🔧', { act: { k: 'gen' } });
+    else if (genFuel() <= 0) chat(t('from.hq'), t('gen.empty'), '⛽', { act: { k: 'gen' } });
+    else if (RNG() < 0.18) { S.genBroken = true; chat(t('from.hq'), t('gen.broke'), '💥', { act: { k: 'gen' } }); }
+    else genRun = true;
+  }
+  if (genRun) {
+    S.genFuel = genFuel() - 1; incCnt('pcuts');
+    // the biggest power users beyond the generator's capacity go dark
+    const live = S.rooms.filter((r) => !ROOMS[r.type].staffOnly).sort((a, b) => (POWER[a.size] + (POWER_X[a.type] || 0)) - (POWER[b.size] + (POWER_X[b.type] || 0)));
+    const off = live.slice(genCap()).map((r) => r.id);
+    S.ev = { k: 'power', t: EVENTS.power.dur, gen: true, off }; say('evpower', t('ev.power'), 30);
+    chat(t('from.hq'), t('gen.running', { n: Math.min(live.length, genCap()), off: off.length, f: S.genFuel, tank: GEN_TANK }), '🔋', S.genFuel <= 1 || off.length ? { act: { k: 'gen' } } : {});
+    renderer.toneMappingExposure = 0.75; toast('🔋 ' + t('gen.toast', { off: off.length }), 2600); return;
+  }
   if (k === 'heat' && S.ac) { chat(t('from.weather'), t('ev.acOk'), '❄️'); return; }
   if (k === 'wifi' && S.net) { chat(t('from.hq'), t('ev.netOk'), '📡'); return; }
   if (k === 'noise' && S.quiet) { chat(t('from.hq'), t('ev.quietOk'), '🔇'); return; }
@@ -3138,6 +3216,7 @@ function startGame() {
     let done = false; for (const dx of [0.5, -0.5, 0]) { for (const dz of [0.5, -0.5, 0]) { const tr = { ...r, x: snapC(r.x + dx), z: snapC(r.z + dz), edit: r }; if (placeValid(tr)) { r.x = tr.x; r.z = tr.z; done = true; break; } } if (done) break; } } }
   { const bad = S.rooms.filter((r) => { const q = roomRect(r); for (let x = q.x0 + 0.25; x < q.x1; x += 0.5) for (let z = q.z0 + 0.25; z < q.z1; z += 0.5) if (!buildable(x, z)) return true; return false; }); if (bad.length) { for (const r of bad) S.cash += roomCost(r.type, r.size); S.rooms = S.rooms.filter((r) => !bad.includes(r)); rebuildGrid(); setTimeout(() => toast(t('plot.refund', { n: bad.length })), 800); } }
   for (const r of S.rooms) buildRoom(r);
+  for (const m of INC_MESH.values()) scene.remove(m); INC_MESH.clear();
   for (const k in world.decor) { scene.remove(world.decor[k]); delete world.decor[k]; } for (const d of S.decor || []) buildDecor(d);
   if (S.ev) { S.ev = null; } renderer.toneMappingExposure = 0.92;
   // the café needs a host now: a save that already had a café gets one (once), so nothing stops working; a short-lived 'barista' role becomes a host
