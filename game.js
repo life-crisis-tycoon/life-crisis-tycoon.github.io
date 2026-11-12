@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -1353,7 +1353,7 @@ function linePts(room) {
   return (room.linePts = out.slice(0, LINE_CAP[room.size]));
 }
 function joinLine(v, room, kind) {
-  const pts = linePts(room), Q = (room.lineQ = room.lineQ || []); if (Q.length >= pts.length) return false;
+  const pts = linePts(room), Q = (room.lineQ = room.lineQ || []); if (Q.length >= pts.length) { if (!v.cured && !v.lineFullCmp) { v.lineFullCmp = true; logComplaint(kind === 'cafe' ? 'cafeq' : 'queue'); floatAt(v.av.position, '😤'); } return false; }
   if (v.spot) { v.spot.busy = null; v.spot = null; }
   Q.push(v); v.lineT = 0; v.lineRoom = room.id; v.lineKind = kind; v.linePt = pts[Q.length - 1]; setPath(v, findPath(v.av.position, v.linePt)); v.state = 'toLine';
   v.icon.material = iconTex(kind === 'cafe' ? '🍵' : '🛒'); return true;
@@ -1642,7 +1642,7 @@ function patienceRate(v) {
   if (cafeOpen()) r *= cafeF() - (done('oat') ? 0.1 : 0);
   r *= 1 + 0.12 * R.rats.length + 0.02 * R.litter.length;
   if (v.state === 'toQueue' || v.state === 'queue') r *= 0.8;
-  if (v.em) r *= 0.8;
+  if (v.em) r *= 1.5; // people in crisis: patience runs out fast
   if (v.vip) r *= 1.3;
   if (cityOf().hustle) r *= 1.05;
   r *= decorCalm(v) * evPatience() * (inAura(v.av.position) ? 0.75 : 1);
@@ -1945,6 +1945,18 @@ function emStartBurst() { const st2 = (S.stars || 0) >= 2, r = Math.random(); S.
 function emNext() { // called whenever an emergency is over (won, failed or declined)
   if ((S.emBurst || 0) > 0) { S.emAt = S.t + 12 + Math.random() * 30; return; } // may run past midnight: carried over at day rollover
   const st2 = (S.stars || 0) >= 2; S.nextEm = S.day + (st2 ? 3 + Math.floor(Math.random() * 2) : 4 + Math.floor(Math.random() * 3)); }
+// the clock is sized to your centre: roughly the time your staffed rooms need to help that many people, +40 %, plus walking time
+function emClock(E) {
+  const types = new Set(E.mix ? Object.keys(ROOMS).filter((k) => ROOMS[k].role && !ROOMS[k].shop && k !== 'cafe' && k !== 'lab') : (E.probs || []).map((p) => PROBLEMS[p] && PROBLEMS[p].room).filter(Boolean));
+  let thr = 0; for (const r of Object.values(R.rooms)) if (types.has(r.type) && r.staff.some(Boolean)) thr += (capOf(r.type, r.size) || 1) * sizeSpd(r) / (ROOMS[r.type].time || 9);
+  const max = E.time || 150; if (!thr) return max;
+  return Math.round(clamp((E.need || 4) / thr * 1.4 + 25, 60, max));
+}
+function emFail(E) {
+  vb('em', -12); const fine = Math.round(RENT * 0.15 / 50) * 50; S.cash -= fine;
+  for (const v of R.visitors.filter((u) => u.em && !u.cured && !['exit', 'angry'].includes(u.state))) leave(v, false); // the ones you could not help walk out angry
+  S.em = null; emNext(); toast(t('em.fail') + ' −' + money(fine), 3500); chat(t('from.hq'), t('em.failFine', { m: money(fine) }), '😬');
+}
 function offerEmergency() {
   tip('em');
   const city = S.city || 'london';
@@ -1956,20 +1968,22 @@ function offerEmergency() {
   const big = keys.filter((e) => EMERGENCIES[e].stars), k = big.length && RNG() < 0.55 ? rnd(big) : rnd(keys); const E = EMERGENCIES[k];
   S.emLast = k; S.emBurst = Math.max(0, (S.emBurst || 1) - 1);
   const missing = !hasRoom(E.room);
-  modal(`<div style="font-size:44px">🚨</div><h2>${t('em.' + k)}</h2><p>${t('em.' + k + '.d')}</p><p style="color:var(--green-d)">${E.reward ? t('em.rewardN', { m: money(E.reward) }) : t('em.reward')}</p>${missing ? `<p style="color:var(--red)">${t('em.missing')} (${rn(E.room)})</p>` : ''}
+  const clk = emClock(E), mmss = Math.floor(clk / 60) + ':' + String(clk % 60).padStart(2, '0');
+  modal(`<div style="font-size:44px">🚨</div><h2>${t('em.' + k)}</h2><p>${t('em.' + k + '.d').replace(/\b\d:\d\d\b/, mmss)}</p><p style="font-weight:800">⏱️ ${t('em.clock', { t: mmss })}</p><p style="color:var(--green-d)">${E.reward ? t('em.rewardN', { m: money(E.reward) }) : t('em.reward')}</p>${missing ? `<p style="color:var(--red)">${t('em.missing')} (${rn(E.room)})</p>` : ''}
   <div class="row2" style="margin-top:10px"><button class="btn y" id="emNo">${t('em.decline')}</button><button class="btn g" id="emYes">${t('em.accept')}</button></div>`);
   $('emNo').onclick = () => { closeModal(); emNext(); };
-  $('emYes').onclick = () => { closeModal(); AU.sfx('siren'); say('em', t('pa.em', { name: t('em.' + k) }), 0); S.em = { k, need: E.need || 4, got: 0, t: E.time || 150, left: E.n || 6, spawnT: 0, gap: E.gap || 3, reward: E.reward || 2500 }; chat(t('from.hq'), '🚨 ' + t('em.' + k), '🚨'); };
+  $('emYes').onclick = () => { closeModal(); AU.sfx('siren'); E.time0 = clk; say('em', t('pa.em', { name: t('em.' + k) }), 0); S.em = { k, need: E.need || 4, got: 0, t: clk, left: E.n || 6, spawnT: 0, gap: E.gap || 3, reward: E.reward || 2500 }; S.em.t0 = S.em.t; chat(t('from.hq'), '🚨 ' + t('em.' + k), '🚨'); };
 }
 function emergencyUpdate(dt) {
   const E = S.em; if (!E) return;
   E.t -= dt; E.spawnT -= dt;
   if (E.left > 0 && E.spawnT <= 0) { E.spawnT = E.gap || 3; E.left--; const D = EMERGENCIES[E.k];
     const ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && (!PROBLEMS[pk].city || PROBLEMS[pk].city === (S.city || 'london'));
-    let pool = D.probs; if (D.mix) { const b = (D.bias || []).filter(ok); pool = b.length && RNG() < 0.6 ? b : Object.keys(PROBLEMS).filter(ok); }
+    let pool = D.probs; if (D.mix) { const b = (D.bias || []).filter(ok); pool = b.length && RNG() < 0.6 ? b : Object.keys(PROBLEMS).filter(ok);
+      if (D.stars && RNG() < 0.2) { const city = S.city || 'london', miss = Object.keys(PROBLEMS).filter((pk) => PROBLEMS[pk].room && ROOMS[PROBLEMS[pk].room] && !hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && !PROBLEMS[pk].myst && (!PROBLEMS[pk].city || PROBLEMS[pk].city === city) && unlocked(PROBLEMS[pk].room)); if (miss.length) pool = miss; } } // ~20 % come with a problem you have no room for
     spawnVisitor(rnd(pool.length ? pool : ['hustle']), true); }
   if (E.got >= E.need) { incCnt('emwin'); addKudos(5); S.cash += E.reward || 2500; floatAt(new THREE.Vector3(2, 1.5, 4), '🎉 +' + money(E.reward || 2500)); vb('em', 0 + 8); S.em = null; emNext(); toast(t('em.win'), 3500); chat(t('from.hq'), t('em.win'), '🎉'); }
-  else if (E.t <= 0) { vb('em', 0 - 8); S.em = null; emNext(); toast(t('em.fail'), 3500); chat(t('from.hq'), t('em.fail'), '😬'); }
+  else if (E.t <= 0 || E.got + E.left + R.visitors.filter((u) => u.em && !u.cured && !['exit', 'angry'].includes(u.state)).length < E.need) emFail(E); // out of time, or too many already gone
 }
 
 // ---------------- research ----------------
@@ -2056,7 +2070,7 @@ function updateLabels() {
   const seen = new Set();
   for (const room of Object.values(R.rooms)) {
     const q = roomRect(room.def), needStaff = ROOMS[room.type].role && !room.staff.some(Boolean);
-    const ix = incOf(room.id); const el = label('r' + room.id, needStaff || room.closed || ix ? 'warn tap' : 'tap', ix ? INC[ix.k].e + ' ' + rn(room.type) + ' · ' + (INC[ix.k].closes ? t('ev.closed') : t('inc.slow')) + ' · ' + incLeft(ix) : room.closed ? '💧 ' + rn(room.type) + ' · ' + t('ev.closed') : needStaff ? t('room.needs', { room: rn(room.type), role: roleN(ROOMS[room.type].role) }) : rn(room.type) + roomNo(room) + (roomQ(room.id).length ? ' · 👥' + roomQ(room.id).length : '') + ((room.lineQ || []).length ? ' · 👥' + room.lineQ.length : '') + (((S.rEarn || {})[room.id] || {})[S.day] ? ' · 💵' + money(S.rEarn[room.id][S.day]) : ''), () => openRoomMenu(room.id));
+    const ix = incOf(room.id); const el = label('r' + room.id, needStaff || room.closed || ix ? 'warn tap' : 'tap', ix ? INC[ix.k].e + ' ' + rn(room.type) + ' · ' + (INC[ix.k].closes ? t('ev.closed') : t('inc.slow')) + ' · ' + incLeft(ix) : room.closed ? '💧 ' + rn(room.type) + ' · ' + t('ev.closed') : needStaff ? t('room.needs', { room: rn(room.type), role: roleN(ROOMS[room.type].role) }) : rn(room.type) + roomNo(room) + (roomQ(room.id).length ? ' · 👥' + roomQ(room.id).length : '') + ((room.lineQ || []).length ? ' · 👥' + room.lineQ.length : '') + (roomWeek(room.id) ? ' · 💵' + money(roomWeek(room.id)) + ' ' + t('room.wkShort') : ''), () => openRoomMenu(room.id));
     if (needStaff && R.visitors.some((v) => v.state === 'wait' && v.known && needOf(v) === room.type)) say('ns' + room.type, t('room.needs', { room: rn(room.type), role: roleN(ROOMS[room.type].role) }), 50);
     else if (roomQ(room.id).length >= 5) say('q' + room.id, t('pa.queue', { room: rn(room.type) + roomNo(room) }), 90);
     if (!needStaff && !room.closed) el.style.background = ROOMS[room.type].pill; at(el, room.cx, 3.0, q.z0 + 0.3); seen.add('r' + room.id);
@@ -2114,7 +2128,7 @@ function openRoomMenu(id) {
   let h = `<h2>${ROOMS[r.type].e} ${rn(r.type)}${roomNo(room)}</h2><p class="sub">${t('room.sizeL', { s: t('sz.' + r.size) })} · ${Z.W}×${Z.D}${role ? ' · ' + t('room.staffN', { a: room.staff.filter(Boolean).length, b: Z.st, role: roleN(role) }) : ''}</p>`;
   { const ix = incOf(id); if (ix) h += `<div class="opt w" style="border-color:#FF9F43"><div class="oi" style="background:#FFE9D2">${INC[ix.k].e}</div><div class="ot"><b>${t('inc.' + ix.k, { room: rn(r.type) })}</b><div>${t('inc.' + ix.k + 'D')} ${ix.techT != null ? '🧰 ' + t('inc.techComing') : t('inc.how', { left: incLeft(ix) })}</div></div>${ix.techT == null ? `<button class="btn y" id="rmExpress" ${S.cash < expressCost(ix) ? 'disabled' : ''}>🧰 ${money(expressCost(ix))}</button>` : ''}</div>`; }
   { const wk = roomWeek(id), wg = Math.round(room.staff.filter(Boolean).reduce((a, x) => a + ((x.data && x.data.wage) || 0), 0) * WAGE_K), dd = room.def.dirt || 0;
-    if (ROOMS[r.type].role || r.type === 'cafe') h += `<div class="receipt" style="margin-bottom:8px"><div><span>💵 ${t('room.week')}</span><b>+${money(wk)}</b></div>${wg ? `<div><span>👥 ${t('room.wages')}</span><span>-${money(wg)}</span></div><div style="font-weight:800"><span>${t('room.net')}</span><span style="color:${wk - wg >= 0 ? '#1E8A3A' : 'var(--red)'}">${wk - wg >= 0 ? '+' : '-'}${money(Math.abs(wk - wg))}</span></div>` : ''}${S.day < 7 ? `<div style="font-size:12px;color:var(--muted)">${t('room.weekNote', { d: S.day })}</div>` : ''}</div>`;
+    if (ROOMS[r.type].role || r.type === 'cafe') h += `<div class="receipt" style="margin-bottom:8px"><div><span>☀️ ${t('room.today')}</span><b>+${money(((S.rEarn || {})[id] || {})[S.day] || 0)}</b></div><div><span>💵 ${t('room.week')}</span><b>+${money(wk)}</b></div>${wg ? `<div><span>👥 ${t('room.wages')}</span><span>-${money(wg)}</span></div><div style="font-weight:800"><span>${t('room.net')}</span><span style="color:${wk - wg >= 0 ? '#1E8A3A' : 'var(--red)'}">${wk - wg >= 0 ? '+' : '-'}${money(Math.abs(wk - wg))}</span></div>` : ''}${S.day < 7 ? `<div style="font-size:12px;color:var(--muted)">${t('room.weekNote', { d: S.day })}</div>` : ''}</div>`;
     if (dd >= 0.35) h += `<div class="msg" style="margin-bottom:8px">🧽 ${t('room.dirty', { p: Math.round(dd * 100) })}</div>`; }
   if (ROOMS[r.type].role || ROOMS[r.type].loo) h += roomQueueHtml(room) + '<div style="height:10px"></div>';
   h += `<div class="row2" style="margin-bottom:10px"><button class="btn g" id="rmMove">✋ ${t('room.move')}</button><button class="btn y" id="rmDemo">🗑️ ${t('room.demolish', { m: money(refund) })}</button></div>`;
@@ -2651,8 +2665,9 @@ function updateHUD() { navResearch();
   const ec = $('emchip');
   if (!S.em && S.ev) { ec.style.display = 'block'; ec.style.borderLeftColor = '#FF9F43'; ec.textContent = EVENTS[S.ev.k].e + ' ' + (S.ev.k === 'leak' ? t('ev.leak', { room: rn((R.rooms[S.ev.room] || {}).type || 'budget') }) : t('ev.hud', { name: t('ev.' + S.ev.k), t: Math.ceil(S.ev.t) + 's' })); }
   else if (!S.em && S.ad) { ec.style.display = 'block'; ec.style.borderLeftColor = '#16963C'; ec.textContent = ADS[S.ad.k].e + ' ' + t('mk.active', { name: t('mk.' + S.ad.k), t: Math.ceil(S.ad.t) + 's' }); }
-  else if (S.em) { ec.style.borderLeftColor = ''; const s = Math.max(0, Math.ceil(S.em.t)); ec.style.display = 'block'; ec.textContent = '🚨 ' + t('em.hud', { name: t('em.' + S.em.k), a: S.em.got, b: S.em.need, t: Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') }); }
+  else if (S.em) { ec.style.borderLeftColor = ''; const s = Math.max(0, Math.ceil(S.em.t)); ec.style.display = 'block'; ec.textContent = '🚨 ' + t('em.hud', { name: t('em.' + S.em.k), a: S.em.got, b: S.em.need, t: Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') }); ec.style.color = s <= 30 ? '#E53E3E' : ''; ec.style.fontWeight = s <= 30 ? '900' : ''; }
   else ec.style.display = 'none';
+  if (!S.em) { ec.style.color = ''; ec.style.fontWeight = ''; }
 }
 function step(dt, now = performance.now(), rdt = dt) {
   dayTick(dt); if (!inGame) return; probIntroTick(rdt); behTick(dt); laterTick(dt); caseTick(); tempTick(dt); quakeTick(dt); doomers = beh('slowdoom') ? R.visitors.filter((u) => DOOM.has(u.prob) && !u.cured && u.path && u.path.length) : [];
