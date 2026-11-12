@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -404,7 +404,15 @@ const inR = (r, x, z) => x > r[0] && x < r[1] && z > r[2] && z < r[3];
 const lotSt = (i) => (!S ? 'locked' : i === 0 ? S.annex || 'locked' : i === 1 ? S.annex2 || 'locked' : (S.lotsX && S.lotsX[i]) || 'locked');
 const lotDay = (i) => (i === 0 ? S.annexDay : i === 1 ? S.annexDay2 || 0 : (S.lotsXDay && S.lotsXDay[i]) || 0);
 function setLot(i, st, day) { if (i === 0) { S.annex = st; if (day != null) S.annexDay = day; } else if (i === 1) { S.annex2 = st; if (day != null) S.annexDay2 = day; } else { (S.lotsX = S.lotsX || {})[i] = st; if (day != null) (S.lotsXDay = S.lotsXDay || {})[i] = day; } }
-const lotCost = (i, c) => Math.round(plotOf(c).cost * [1, 1.7, 1.3, 1.6, 2][i] / 500) * 500;
+// land is priced by the square metre (one rate per city, each further lot a bit dearer), and every owned lot adds to the weekly rent
+const LAND_M2 = { london: 110, lagos: 100, mumbai: 180, seoul: 200, newyork: 250, mexico: 150, cairo: 130, saopaulo: 150 }, ANNEX_RENT_K = 0.25;
+const rArea = (r) => (r[1] - r[0]) * (r[3] - r[2]);
+const lotArea = (i, c) => rArea(plotOf(c).lots[i]);
+const mainArea = (c) => plotOf(c).main.reduce((a, r) => a + rArea(r), 0) - (plotOf(c).holes || []).reduce((a, r) => a + rArea(r), 0);
+const lotCost = (i, c) => Math.max(2000, Math.round(lotArea(i, c) * (LAND_M2[c || (S && S.city) || 'london'] || 150) * (1 + 0.15 * i) / 500) * 500);
+const lotRent = (i, c) => { const C = CITIES[c || (S && S.city) || 'london']; return Math.round(C.rent * BILL_K / mainArea(c) * lotArea(i, c) * ANNEX_RENT_K / 50) * 50; };
+const annexRent = () => (S && S.mode === 'career' ? plotOf().lots.reduce((a, _, i) => a + (lotSt(i) === 'owned' ? lotRent(i) : 0), 0) : 0);
+function setRent() { RENT = Math.round(CITIES[S.city || 'london'].rent * BILL_K / 50) * 50 + annexRent(); }
 const lotOpen = (i) => i < 2 || lotSt(i - 1) === 'owned'; // the big extra lots open one after another
 const ownedLots = (c) => plotOf(c).lots.map((_, i) => !!(S && (!c || S.city === c) && lotSt(i) === 'owned'));
 function inFloorC(c, own, x, z) { const P = plotOf(c); if ((P.holes || []).some((h) => inR(h, x, z))) return false; if (P.main.some((r) => inR(r, x, z))) return true; return P.lots.some((L, i) => own[i] && inR(L, x, z)); }
@@ -723,7 +731,7 @@ function buildAnnexLot(c) {
   });
 }
 function lotOwned(i) {
-  setLot(i, 'owned'); buildAnnexLot(); rebuildGrid();
+  setLot(i, 'owned'); setRent(); buildAnnexLot(); rebuildGrid();
   const L = plotOf().lots[i];
   for (const r of S.rooms) { const q = roomRect(r); if (q.x0 <= L[1] + 0.1 && q.x1 >= L[0] - 0.1 && q.z0 <= L[3] + 0.1 && q.z1 >= L[2] - 0.1) { evictRoom(r.id); buildRoom(r); } }
   assignStaff(); chat(t('from.council'), t('council.ok'), '📝'); toast('🏗️ ' + t('lot.ready'), 2600); say('lot', t('lot.ready'), 0); save();
@@ -1644,7 +1652,7 @@ function visitorUpdate(v, dt) {
         if (cityOf().tips && v.pat > 0.5) { const tip = Math.round(gain * 0.25); S.cash += tip; S.earned += tip; incCnt('tips'); setTimeout(() => floatAt(v.av.position, '💵 tip +' + money(tip)), 400); } // happy & quick → they tip
         if (twoVisit && !v.stage2) { behSeen('stamps2'); R.later.push({ t: 40 + RNG() * 40, prob: 'paperwork', stage2: true }); floatAt(v.av.position, '📑 1/2'); }
         const SS = S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; SS.prob[v.prob] = (SS.prob[v.prob] || 0) + 1; SS.room[room.type] = (SS.room[room.type] || 0) + 1; SS.staff[st.data.id] = (SS.staff[st.data.id] || 0) + 1;
-        if (v.vip) { SS.vip++; S.vibes = clamp(S.vibes + 6, 0, 100); addKudos(3); chat('🤳 ' + v.name, t('vip.viral'), '🔥'); toast('👑 ' + t('vip.viral'), 3200); }
+        if (v.vip) { SS.vip++; const q = v.pat >= 0.65 ? 'viral' : v.pat >= 0.35 ? 'nice' : 'meh', sp = q === 'viral' ? Math.round((300 + 150 * (cityOf().lvl || 0)) / 50) * 50 : 0; S.vibes = clamp(S.vibes + { viral: 8, nice: 4, meh: 1 }[q], 0, 100); addKudos({ viral: 4, nice: 2, meh: 0 }[q]); if (sp) S.cash += sp; const msg = q === 'viral' ? t('vip.viral') + ' ' + t('vip.sponsor', { m: money(sp) }) : t('vip.' + q); chat('🤳 ' + v.name, msg, { viral: '🔥', nice: '👍', meh: '😐' }[q]); toast('👑 ' + msg, 3200); }
         S.vibes = clamp(S.vibes + (SIZES[room.size].vibe + (traitVal(st.data, 'vibe', 0) ? 0.3 : 0)) * (pr > 1 ? Math.max(0, 1 - (pr - 1) * 2) : 1 + (1 - pr) * 2) - (pr >= 1.4 ? 0.4 : 0), 0, 100);
         if (pr >= 1.2 && Math.random() < (pr - 1) * 0.5) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, t('rev.greedy'), '💸');
         if (!iou) floatAt(v.av.position, '+' + money(gain)); AU.sfx('cash');
@@ -1752,28 +1760,55 @@ function pestUpdate(dt) { updateMessIcons();
 }
 
 // ---------------- inspector ----------------
+// three kinds of visit (London only gets the health one): each scores the centre on different things, and the reward grows with the score, the city and a streak of good visits
+const INSP = { health: { e: '📋', look: { shirt: '#5E6B7A', pants: '#3B4452', hair: '#5A5A5A' } }, safety: { e: '🦺', look: { shirt: '#F28C28', pants: '#2F3A4A', hair: '#2B2B2B' } }, critic: { e: '🕵️', look: { shirt: '#2D2D3A', pants: '#1F1F28', hair: '#7A4B2A' } } };
 function spawnInspector() {
   tip('insp');
-  const av = visPerson('v16', { skin: rnd(SKIN), hair: '#5A5A5A', style: 'short', shirt: '#5E6B7A', pants: '#3B4452', clip: true, glasses: true, tall: 1.12, wide: 0.9, nose: true });
+  const kinds = (S.city || 'london') === 'london' ? ['health'] : Object.keys(INSP).filter((k) => k !== S.inspLast);
+  const kind = rnd(kinds); S.inspLast = kind; const L = INSP[kind].look;
+  const av = visPerson('v16', { skin: rnd(SKIN), hair: L.hair, style: 'short', shirt: L.shirt, pants: L.pants, clip: kind !== 'critic', glasses: kind !== 'safety', tall: 1.12, wide: 0.9, nose: true });
   av.position.set(3, 0.1, 12.5); scene.add(av);
-  R.inspector = { av, path: [{ x: 3.2, z: 7.5 }, { x: 3, z: 3 }, { x: 1.2, z: 1.2 }, { x: 3.5, z: 2.5 }], ph: 0, stage: 0, wait: 0 };
-  chat(t('insp.from'), t('insp.arrive'), '📋');
+  R.inspector = { kind, av, path: [{ x: 3.2, z: 7.5 }, { x: 3, z: 3 }, { x: 1.2, z: 1.2 }, { x: 3.5, z: 2.5 }], ph: 0, stage: 0, wait: 0 };
+  chat(t('ik.' + kind), t('ik.' + kind + '.arrive'), INSP[kind].e);
 }
 function inspectorUpdate(dt) {
   const I = R.inspector; if (!I) return;
   if (I.stage === 0) { if (stepWalker(I, dt, 1.4)) { I.stage = 1; I.wait = 3.5; poseStand(I.av.userData.p); } }
-  else if (I.stage === 1) { I.wait -= dt; I.av.rotation.y += dt * 1.2; if (I.wait <= 0) { verdict(); I.stage = 2; I.path = [{ x: 3.2, z: 7.5 }, { x: 3, z: 13 }]; } }
+  else if (I.stage === 1) { I.wait -= dt; I.av.rotation.y += dt * 1.2; if (I.wait <= 0) { verdict(I.kind || 'health'); I.stage = 2; I.path = [{ x: 3.2, z: 7.5 }, { x: 3, z: 13 }]; } }
   else if (stepWalker(I, dt, 1.8)) { scene.remove(I.av); R.inspector = null; }
 }
-function verdict() {
-  let sc = 100 - R.litter.length * 7 - R.litter.filter((l) => l.heavy).length * 8 - R.rats.length * 18; if (!hasRoom('toilet')) sc -= 15;
-  if (!R.staff.some((rs) => rs.at === 'desk')) sc -= 20;
-  for (const room of Object.values(R.rooms)) if (ROOMS[room.type].role && !room.staff.some(Boolean)) sc -= 10;
-  sc = clamp(Math.round(sc), 0, 100);
-  const pass = sc >= 70;
-  if (pass) { S.vibes = clamp(S.vibes + 5, 0, 100); S.cash += 500; addKudos(3); } else { S.vibes = clamp(S.vibes - 5, 0, 100); S.cash -= 1000; }
-  chat(t('insp.from'), t(pass ? 'insp.pass' : 'insp.fail', { s: sc }), pass ? '✅' : '❌');
-  modal(`<div style="font-size:44px">📋</div><h2>${t(pass ? 'insp.passT' : 'insp.failT')}</h2><p>${t(pass ? 'insp.pass' : 'insp.fail', { s: sc })}</p><button class="btn g" id="mOk" style="width:100%">${t('insp.ok')}</button>`);
+function inspScore(kind) {
+  const ded = []; const minus = (k, n) => { if (n > 0) ded.push([k, Math.round(n)]); };
+  const waiting = R.visitors.filter((v) => ['queue', 'wait'].includes(v.state)), heavy = R.litter.filter((l) => l.heavy).length;
+  if (kind === 'health') {
+    minus('litter', R.litter.length * 7 + heavy * 8); minus('rats', R.rats.length * 18); if (!hasRoom('toilet')) minus('loo', 15);
+    if (!R.staff.some((rs) => rs.at === 'desk')) minus('desk', 20);
+    minus('staff', Object.values(R.rooms).filter((room) => ROOMS[room.type].role && !room.staff.some(Boolean)).length * 10);
+  } else if (kind === 'safety') {
+    minus('inc', (S.inc || []).length * 22); if (cityOf().power && (S.genBroken || (S.gen && genFuel() <= 0))) minus('gen', 15);
+    minus('crowd', Math.max(0, waiting.length - 10) * 4); minus('temp', Math.min(20, tempOff() * 5)); minus('slip', heavy * 8);
+    if (!R.staff.some((rs) => rs.data && rs.data.role === 'maint')) minus('maint', 12);
+  } else {
+    const avgPat = waiting.length ? waiting.reduce((a, v) => a + v.pat, 0) / waiting.length : 1;
+    minus('wait', (1 - avgPat) * 45); minus('vibes', Math.max(0, 75 - S.vibes) * 0.8); minus('temp', Math.min(15, tempOff() * 4));
+    minus('litter', R.litter.length * 4); minus('rats', R.rats.length * 12); if (!hasRoom('cafe') && !(S.decor || []).some((d) => d.k === 'sofa')) minus('comfort', 8);
+  }
+  ded.sort((x, y) => y[1] - x[1]);
+  return { sc: clamp(100 - ded.reduce((a, d) => a + d[1], 0), 0, 100), ded };
+}
+function verdict(kind = 'health') {
+  const { sc, ded } = inspScore(kind), lv = cityOf().lvl || 0, base = 400 + 200 * lv;
+  const tier = sc >= 95 ? 'gold' : sc >= 85 ? 'great' : sc >= 70 ? 'pass' : sc >= 55 ? 'warn' : 'fail';
+  const T = { gold: [3, 8, 5], great: [2, 6, 4], pass: [1, 4, 3], warn: [0, -2, 0], fail: [-2, -6, 0] }[tier];
+  if (T[0] > 0) S.inspStreak = (S.inspStreak || 0) + 1; else if (tier === 'fail') S.inspStreak = 0;
+  const streak = T[0] > 0 ? Math.min(S.inspStreak, 6) - 1 : 0, cash = Math.round(base * T[0] * (1 + 0.2 * Math.max(0, streak)) / 50) * 50;
+  S.cash += cash; S.vibes = clamp(S.vibes + T[1], 0, 100); if (T[2]) addKudos(T[2]); if (T[0] > 0) incCnt('insp');
+  const m = (cash >= 0 ? '+' : '−') + money(Math.abs(cash)), v = (T[1] >= 0 ? '+' : '−') + Math.abs(T[1]) + '%';
+  chat(t('ik.' + kind), t('iv.' + tier) + ' · ' + t('iv.p', { s: sc, m, v }), INSP[kind].e);
+  const why = ded.slice(0, 3).map(([k, n]) => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${t('iv.r.' + k)}</span><b>−${n}</b></div>`).join('');
+  modal(`<div style="font-size:44px">${tier === 'gold' ? '🏆' : tier === 'fail' ? '❌' : INSP[kind].e}</div><h2>${t('ik.' + kind)} · ${t('iv.' + tier)}</h2><p style="font:700 22px Fredoka">${sc}/100</p><p>${t('iv.p', { s: sc, m, v })}</p>
+  ${streak > 0 ? `<p style="font-weight:800;color:#B7791F">🔥 ${t('iv.streak', { n: S.inspStreak, p: Math.round(streak * 20) })}</p>` : ''}${why ? `<div class="receipt" style="text-align:left"><div style="font-weight:800;margin-bottom:4px">${t('iv.lost')}</div>${why}</div>` : ''}
+  <button class="btn g" id="mOk" style="width:100%">${t('insp.ok')}</button>`);
   $('mOk').onclick = closeModal;
 }
 
@@ -1916,8 +1951,9 @@ function openBuild() {
   const cat = (k) => (ROOMS[k].staffOnly || k === 'lab' ? 'staff' : ROOMS[k].shop || ROOMS[k].loo || k === 'cafe' ? 'comfort' : 'care');
   const hdr = (k) => `<div class="lbl" style="margin:12px 0 6px">${t('bc.' + k)}</div>`;
   const treats = (k) => { const ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && (!PROBLEMS[p].city || PROBLEMS[p].city === (S.city || 'london'))); return ps.length ? `<div style="font-size:12px;color:#2D3748;margin-top:2px"><b>${t('build.treats')}</b> ${ps.map((p) => PROBLEMS[p].e + ' ' + t('p.' + p)).join(' · ')}</div>` : ''; };
+  const nOwn = (k) => S.rooms.filter((r) => r.type === k).length;
   const roomRow = (k, r) => { const ok = unlocked(k);
-    return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b><div>${t('r.' + k + '.d')}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : t('lock.at', { n: UNLOCK[k] })}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
+    return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b>${ok && nOwn(k) ? ` <span class="own" style="background:#E7EEF7;color:#2D3748;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800;white-space:nowrap">${t('build.have', { n: nOwn(k) })}</span>` : ''}<div>${t('r.' + k + '.d')}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : t('lock.at', { n: UNLOCK[k] })}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
   h += hdr('desk') + `<div class="opt w"><div class="oi" style="background:#DDF3E2">🛎️</div><div class="ot"><b>${t('build.moveDesk')}</b><div>${t('build.moveDeskD')}</div></div><button class="btn y" id="bMoveDesk">${t('build.moveBtn')}</button></div><div class="opt w"><div class="oi" style="background:#FFF3C4">➕</div><div class="ot"><b>${t('desk2.title')}</b><div>${t('desk2.D', { n: (S.desks2 || []).length + 2 })}</div></div><button class="btn g" id="bDesk2">${money(DESK_COST)}</button></div>`;
   for (const c of ['care', 'comfort', 'staff']) {
     const ks = Object.entries(ROOMS).filter(([k, r]) => (!r.city || r.city === (S.city || 'london')) && cat(k) === c); if (!ks.length) continue;
@@ -2058,8 +2094,8 @@ function tapLot(i = 0) {
   if (lotSt(i) !== 'locked') { toast(t('lot.wait')); return; }
   if (!lotOpen(i)) { toast('🔒 ' + t('lot.order')); return; }
   const cost = lotCost(i), L = plotOf().lots[i], area = Math.round((L[1] - L[0]) * (L[3] - L[2]));
-  openSheet(`<h2>${t('lot.title')}</h2><p class="sub">${t('lot.sub2', { a: area })}</p><button class="btn g" id="buyLot" style="width:100%" ${S.cash < cost ? 'disabled' : ''}>${t('lot.btn', { cost: money(cost) })}</button>${S.cash < cost ? `<div class="msg" style="margin-top:8px">💡 ${t('lot.loan')}</div>` : ''}`);
-  $('buyLot').onclick = () => { S.cash -= cost; setLot(i, 'pending', S.day + 1); buildAnnexLot(); closeSheet(); chat(t('from.council'), t('council.received'), '📝'); save(); };
+  openSheet(`<h2>${t('lot.title')}</h2><p class="sub">${t('lot.sub2', { a: area })}</p><div class="msg" style="margin-bottom:8px">🏠 ${t('lot.rentAdd', { m: money(lotRent(i)), p: money(Math.round(cost / area)) })}</div><button class="btn g" id="buyLot" style="width:100%" ${S.cash < cost ? 'disabled' : ''}>${t('lot.btn', { cost: money(cost) })}</button>${S.cash < cost ? `<div class="msg" style="margin-top:8px">💡 ${t('lot.loan')}</div>` : ''}`);
+  $('buyLot').onclick = () => { S.cash -= cost; S.annexNote = 1; setLot(i, 'pending', S.day + 1); buildAnnexLot(); closeSheet(); chat(t('from.council'), t('council.received'), '📝'); save(); };
 }
 
 
@@ -2175,15 +2211,23 @@ function openGoals() {
   $('gWrap').onclick = () => { closeSheet(); showWrapped(false); };
   $('gMap').onclick = () => { closeSheet(); toMap(); };
 }
-let chatTab = 'imp';
+let chatTab = 'staff';
+// chat tabs: messages from the team · from visitors (reviews, influencers, people waiting) · everything else (HQ, landlord, inspectors, weather…)
+function chatCat(m) {
+  const f = String(m.from || ''), k = m.act && m.act.k;
+  if (k === 'wait' || k === 'noRoom' || f.startsWith(t('from.review')) || f.startsWith('🤳')) return 'vis';
+  if (k === 'tired' || k === 'needStaff' || f.includes(' · ') || f === t('pep.from', { name: MGR.name }) || S.staff.some((st) => st.name === f)) return 'staff';
+  return 'other';
+}
 let ICONS_ALL = (() => { try { return localStorage.getItem('ahq_icons') === 'all'; } catch (e) { return false; } })();
 function openChat() {
   S.unread = 0; updateBadge();
-  const list = S.chat.filter((m) => chatTab === 'all' || !m.fun);
+  if (!['staff', 'vis', 'other'].includes(chatTab)) chatTab = 'staff';
+  const list = S.chat.filter((m) => chatCat(m) === chatTab), nNew = (c) => S.chat.filter((m) => chatCat(m) === c && m.act && !m.ans && ACTS[m.act.k] && ACTS[m.act.k].live(m.act)).length;
   const row = (m, i) => { const A = m.act && ACTS[m.act.k], opts = A && !m.ans ? A.opts(m.act).filter((x) => !x.hide) : [], live = A && !m.ans && A.live(m.act);
     return `<div class="msg${m.act && !m.ans && live ? ' ask' : ''}"><small>${m.icon || ''} ${m.from} · ${dayN(m.day)}</small>${m.text}`
       + (m.ans ? `<div class="ans">↪ <b>${m.pick}</b><br>${m.ans}</div>` : m.act ? (live ? `<div class="acts">${opts.map((x) => `<button class="btn ${x.main ? 'g' : 'w'}" data-ci="${S.chat.indexOf(m)}" data-co="${x.id}" ${x.ok === false ? 'disabled' : ''}>${x.label}</button>`).join('')}</div>` : `<div class="ans" style="opacity:.6">⌛ ${t('ct.expired')}</div>`) : '') + '</div>'; };
-  openSheet(`<h2>${t('chat.title')}</h2><div class="tabs"><button class="${chatTab === 'imp' ? 'g' : 'y'}" data-ctab="imp">❗ ${t('ct.imp')}</button><button class="${chatTab === 'all' ? 'g' : 'y'}" data-ctab="all">💬 ${t('ct.all')}</button></div>`
+  openSheet(`<h2>${t('chat.title')}</h2><div class="tabs">${[['staff', '👥'], ['vis', '🙂'], ['other', '📢']].map(([c, e]) => `<button class="${chatTab === c ? 'g' : 'y'}" data-ctab="${c}">${e} ${t('ct.' + c)}${nNew(c) ? ` <b style="background:#E53E3E;color:#fff;border-radius:9px;padding:0 6px">${nNew(c)}</b>` : ''}</button>`).join('')}</div>`
     + (list.map(row).join('') || `<div class="msg">${t('chat.empty')}</div>`));
   $('sheet').querySelectorAll('[data-ctab]').forEach((b) => b.onclick = () => { chatTab = b.dataset.ctab; openChat(); });
   $('sheet').querySelectorAll('[data-co]').forEach((b) => b.onclick = () => { const m = S.chat[+b.dataset.ci], A = m && m.act && ACTS[m.act.k]; if (!A || m.ans || !A.live(m.act)) { openChat(); return; }
@@ -2378,6 +2422,7 @@ function dayTick(dt) {
     if (S.crewAngry && S.day >= S.crewAngry) { S.crewAngry = 0; if (Math.random() < 0.65) vandalism(); }
     if (S.crewReport && S.day >= S.crewReport) { S.crewReport = 0; S.crewNext = S.day + crewGap() + 7; chat(t('crew.name'), t('crew.police'), '🚓'); }
     if (S.day > 1 && (S.day - 1) % 12 === 0) setTimeout(() => showWrapped(true), 400);
+    if (S.mode === 'career' && !S.annexNote && annexRent()) { S.annexNote = 1; chat(t('from.landlord'), t('lot.rentNote', { m: money(annexRent()) }), '🏠'); }
     if (S.emAt >= DAY_LEN - 1) S.emAt = Math.max(3, S.emAt - DAY_LEN); // an offer that slipped past midnight comes early the next day
     if (S.day >= S.nextEm && !S.em && !(S.emAt > 0) && !((S.emBurst || 0) > 0)) { S.nextEm = S.day + 99; emStartBurst(); }
     else if ((S.emBurst || 0) > 0 && !S.em && !(S.emAt > 0)) emNext();
@@ -3078,7 +3123,7 @@ function openBills() {
   const total = RENT + wages + elec + loanPay, after = S.cash - total;
   const row = (a, b, sub) => `<div${sub ? ' style="font-size:12px;color:var(--muted);padding-left:10px"' : ''}><span>${a}</span><span>-${money(b)}</span></div>`;
   openSheet(`<h2>🧾 ${t('bills.title')}</h2><p class="sub">${t('bills.when', { d: S.day + toRent, n: toRent })}</p>
-    <div class="receipt">${row('🏠 ' + t('rent.rent'), RENT)}${row('👥 ' + t('rent.wages'), wages)}${staff.map(([n, w]) => row(n, w, true)).join('')}${row('⚡ ' + t('bill.elec') + ' (' + money(elecPerDay() * ELEC_K) + '/' + t('day.unit') + ' × ' + RENT_EVERY + ')', elec)}${loanPay ? row('🏦 ' + t('loan.pay'), loanPay) : ''}
+    <div class="receipt">${row('🏠 ' + t('rent.rent'), RENT)}${annexRent() ? row(t('rent.annex'), annexRent(), true) : ''}${row('👥 ' + t('rent.wages'), wages)}${staff.map(([n, w]) => row(n, w, true)).join('')}${row('⚡ ' + t('bill.elec') + ' (' + money(elecPerDay() * ELEC_K) + '/' + t('day.unit') + ' × ' + RENT_EVERY + ')', elec)}${loanPay ? row('🏦 ' + t('loan.pay'), loanPay) : ''}
     <div style="border-top:2px dashed var(--sh);margin-top:4px;padding-top:6px;font-weight:800"><span>${t('bills.total')}</span><span>-${money(total)}</span></div>
     <div style="font-weight:800;color:${after < 0 ? '#C0362C' : '#1E8A3A'}"><span>${t('bills.after')}</span><span>${money(after)}</span></div></div>
     ${after < 0 ? `<div class="msg">⚠️ ${t('bills.short', { m: money(-after) })}</div>` : ''}`);
@@ -3233,7 +3278,7 @@ function startGame() {
     const P = { A: [-3.5, -3.5, Math.PI / 2], B: [3.5, -3.5, 0], C: [-3.5, 3.5, Math.PI / 2], E: [9.75, -3.5, 0], F: [9.75, 3.5, Math.PI] }, old = S.rooms; S.rooms = [];
     for (const k in old) if (old[k] && P[k]) S.rooms.push({ id: S.nextId++, type: old[k], size: 'm', x: P[k][0], z: P[k][1], a: P[k][2] });
   }
-  S.city = S.city || 'london'; preloadVisitors(S.city); TV.city = t('city.' + S.city); TV.transit = t('tr.' + S.city); const C = CITIES[S.city]; RENT = Math.round(C.rent * BILL_K / 50) * 50; GOALS = mkGoals(S.mode === 'career' ? C.goals : CITIES.london.goals); buildCityDecor(S.city);
+  S.city = S.city || 'london'; preloadVisitors(S.city); TV.city = t('city.' + S.city); TV.transit = t('tr.' + S.city); const C = CITIES[S.city]; setRent(); GOALS = mkGoals(S.mode === 'career' ? C.goals : CITIES.london.goals); buildCityDecor(S.city);
   resetRuntime(); buildAnnexLot(); rebuildGrid();
   if (!S.mod2) { S.mod2 = 1; for (const r of S.rooms) { if (Math.abs(((r.x - 0.5) % 1)) < 1e-6 && Math.abs(((r.z - 0.5) % 1)) < 1e-6) continue; // old saves: move rooms onto the 2 m lattice
     let done = false; for (const dx of [0.5, -0.5, 0]) { for (const dz of [0.5, -0.5, 0]) { const tr = { ...r, x: snapC(r.x + dx), z: snapC(r.z + dz), edit: r }; if (placeValid(tr)) { r.x = tr.x; r.z = tr.z; done = true; break; } } if (done) break; } } }
