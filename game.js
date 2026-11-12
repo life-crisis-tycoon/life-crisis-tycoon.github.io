@@ -3176,6 +3176,7 @@ function openMarketing() {
   else h += `<p class="sub">${t('mk.uses', { n: usesLeft })}${S.adLast ? ' · ' + t('mk.fatigue', { name: t('mk.' + S.adLast) }) : ''}</p>`;
   if (S.ad) h += `<div class="msg" style="border-color:var(--green)">${ADS[S.ad.k].e} ${t('mk.active', { name: t('mk.' + S.ad.k) + (S.ad.room ? ' · ' + rn(S.ad.room) : ''), t: Math.ceil(S.ad.t) + 's' })}</div>`;
   for (const [k, A] of Object.entries(ADS)) {
+    if (k === 'promo') continue; // removed: visitors come with their own problems, promoting a room made no sense (kept in ADS so a promo already running in a save still ends cleanly)
     if (k === 'promo') {
       const types = [...new Set(S.rooms.map((r) => r.type))].filter((ty) => Object.values(PROBLEMS).some((p) => p.room === ty));
       h += `<div class="opt w"><div class="oi" style="background:#FFF3CF">${A.e}</div><div class="ot"><b>${t('mk.promo')} · ${money(A.cost)}</b><div>${t('mk.promoD')}</div><div class="chips" style="margin-top:6px">${types.map((ty) => `<button class="w" data-promo="${ty}" style="border-radius:999px;padding:4px 10px;font-weight:800;font-size:12.5px" ${blocked || S.cash < A.cost ? 'disabled' : ''}>${ROOMS[ty].e} ${rn(ty)}</button>`).join('')}</div></div></div>`;
