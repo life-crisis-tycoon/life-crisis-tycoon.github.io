@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -1797,17 +1797,18 @@ function inspScore(kind) {
   return { sc: clamp(100 - ded.reduce((a, d) => a + d[1], 0), 0, 100), ded };
 }
 function verdict(kind = 'health') {
-  const { sc, ded } = inspScore(kind), lv = cityOf().lvl || 0, base = 400 + 200 * lv;
+  const { sc, ded } = inspScore(kind), lv = cityOf().lvl || 0, base = Math.round(RENT * 0.25 * (1 + 0.1 * lv) / 50) * 50; // tied to the weekly rent so it weighs the same in every city
   const tier = sc >= 95 ? 'gold' : sc >= 85 ? 'great' : sc >= 70 ? 'pass' : sc >= 55 ? 'warn' : 'fail';
-  const T = { gold: [3, 8, 5], great: [2, 6, 4], pass: [1, 4, 3], warn: [0, -2, 0], fail: [-2, -6, 0] }[tier];
-  if (T[0] > 0) S.inspStreak = (S.inspStreak || 0) + 1; else if (tier === 'fail') S.inspStreak = 0;
+  const T = { gold: [3, 8, 5], great: [2, 6, 4], pass: [1, 4, 3], warn: [-0.5, -3, 0], fail: [-2.5, -10, 0] }[tier];
+  if (tier === 'fail' || tier === 'warn') S.nextInspect = S.day + (tier === 'fail' ? 1 : 2); // they come back soon to check it was fixed
+  if (T[0] > 0) S.inspStreak = (S.inspStreak || 0) + 1; else S.inspStreak = 0;
   const streak = T[0] > 0 ? Math.min(S.inspStreak, 6) - 1 : 0, cash = Math.round(base * T[0] * (1 + 0.2 * Math.max(0, streak)) / 50) * 50;
   S.cash += cash; S.vibes = clamp(S.vibes + T[1], 0, 100); if (T[2]) addKudos(T[2]); if (T[0] > 0) incCnt('insp');
   const m = (cash >= 0 ? '+' : '−') + money(Math.abs(cash)), v = (T[1] >= 0 ? '+' : '−') + Math.abs(T[1]) + '%';
   chat(t('ik.' + kind), t('iv.' + tier) + ' · ' + t('iv.p', { s: sc, m, v }), INSP[kind].e);
   const why = ded.slice(0, 3).map(([k, n]) => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${t('iv.r.' + k)}</span><b>−${n}</b></div>`).join('');
   modal(`<div style="font-size:44px">${tier === 'gold' ? '🏆' : tier === 'fail' ? '❌' : INSP[kind].e}</div><h2>${t('ik.' + kind)} · ${t('iv.' + tier)}</h2><p style="font:700 22px Fredoka">${sc}/100</p><p>${t('iv.p', { s: sc, m, v })}</p>
-  ${streak > 0 ? `<p style="font-weight:800;color:#B7791F">🔥 ${t('iv.streak', { n: S.inspStreak, p: Math.round(streak * 20) })}</p>` : ''}${why ? `<div class="receipt" style="text-align:left"><div style="font-weight:800;margin-bottom:4px">${t('iv.lost')}</div>${why}</div>` : ''}
+  ${streak > 0 ? `<p style="font-weight:800;color:#B7791F">🔥 ${t('iv.streak', { n: S.inspStreak, p: Math.round(streak * 20) })}</p>` : ''}${T[0] < 0 ? `<p style="font-weight:800;color:var(--red)">🔁 ${t('iv.back', { n: tier === 'fail' ? 1 : 2 })}</p>` : ''}${why ? `<div class="receipt" style="text-align:left"><div style="font-weight:800;margin-bottom:4px">${t('iv.lost')}</div>${why}</div>` : ''}
   <button class="btn g" id="mOk" style="width:100%">${t('insp.ok')}</button>`);
   $('mOk').onclick = closeModal;
 }
