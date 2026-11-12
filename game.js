@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -1775,7 +1775,7 @@ function visitorUpdate(v, dt) {
         if (!iou) floatAt(v.av.position, '+' + money(gain)); AU.sfx('cash');
         if (v.em && S.em) S.em.got++;
         if (v.gag) v.gag.visible = false;
-        if (v.gid && S.gs && S.gs[v.gid] > 0) { S.gs[v.gid]--; if (S.gs[v.gid] === 0) { delete S.gs[v.gid]; incCnt(cityOf().groups ? cityOf().groups.kind : 'groups'); floatAt(v.av.position, cityOf().groups && cityOf().groups.kind === 'families' ? '👨‍👩‍👧 ✓' : '🥳 ✓'); } }
+        if (v.gid && S.gs && S.gs[v.gid] > 0) { S.gh = S.gh || {}; S.gh[v.gid] = (S.gh[v.gid] || 0) + 1; groupStep(v, v.gid); }
         if (v.prob === 'wedding') incCnt('wedding'); if (PROBLEMS[v.prob].room === 'yoga') incCnt('yoga'); if (PROBLEMS[v.prob].room === 'lucha') incCnt('lucha'); if (v.prob === 'quake') incCnt('quake'); if (v.wave) incCnt('wave'); if (PROBLEMS[v.prob].room === 'ahwa') incCnt('tea'); if (cityOf().evening && S.t > DAY_LEN * 0.6) incCnt('evening'); if (isNight()) incCnt('night'); if (PROBLEMS[v.prob].care) vb('misc', 0 + 1);
         if (Math.random() < 0.08) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, crnd(tList('rev.good')), '⭐', { fun: true });
         v.rspot.busy = null; v.rspot = null; v.cured = true; if (p.anim && p.anim.calm) p.anim.calm(); // cured: back to a normal walk
@@ -1820,11 +1820,14 @@ function complaintOf(v) {
 }
 function logComplaint(k) { S.cmp = (S.cmp || []).filter((c) => c[0] > S.day - 7); S.cmp.push([S.day, k]); vb('cmp', -0.4); }
 function topComplaints() { const n = {}; for (const [d, k] of S.cmp || []) if (d > S.day - 7) n[k] = (n[k] || 0) + 1; return Object.entries(n).sort((a, b) => b[1] - a[1]).slice(0, 3); }
+// a group counts once every member is done (helped or gone), as long as at least 2 of them were helped
+function groupStep(v, gid) { S.gs[gid]--; if (S.gs[gid] > 0) return; delete S.gs[gid]; const ok = ((S.gh || {})[gid] || 0) >= 2; if (S.gh) delete S.gh[gid];
+  if (ok) { incCnt(cityOf().groups ? cityOf().groups.kind : 'groups'); floatAt(v.av.position, cityOf().groups && cityOf().groups.kind === 'families' ? '👨‍👩‍👧 ✓' : '🥳 ✓'); } }
 function leave(v, quiet) {
   lineDrop(v);
   if (v.spot) v.spot.busy = null; if (v.rspot) v.rspot.busy = null; if (v.sspot) { v.sspot.busy = null; v.sspot = null; } if (v.lspot) { v.lspot.busy = null; v.lspot = null; }
   for (const q of R.deskQs) { const qi = q.indexOf(v); if (qi >= 0) q.splice(qi, 1); }
-  if (v.gid && S.gs) S.gs[v.gid] = -99;
+  if (v.gid && S.gs && S.gs[v.gid] > 0) groupStep(v, v.gid); // one member leaving no longer cancels the whole group
   if (!quiet && beh('onestar')) { vb('left', 0 - 1.5); behSeen('onestar'); } // one-star reviews travel fast here
   if (!quiet && beh('famleave') && v.gid && !v.famGone) { v.famGone = true; const mates = R.visitors.filter((o) => o !== v && o.gid === v.gid && waiting(o)); if (mates.length) behSeen('famleave'); for (const o of mates) { o.famGone = true; vb('misc', 0 - 1); leave(o, true); floatAt(o.av.position, '👋', true); } }
   if (!quiet) {
@@ -3307,7 +3310,7 @@ $('hVibes').parentElement.style.cursor = 'pointer'; $('hVibes').parentElement.on
 function metricRow([m, v], done) {
   const cur = metric(S, m), ok = done || cur >= v, pct = clamp(cur / v, 0, 1) * 100;
   const fmt = (x) => (m === 'cash' ? money(x) : m === 'vibes' ? Math.floor(x) + '%' : Math.floor(x));
-  const icon = m === 'helped' ? '🙂' : m === 'vibes' ? '★' : '💵';
+  const icon = { helped: '🙂', vibes: '★', cash: '💵', groups: '🥳', families: '👨‍👩‍👧', bestday: '📈', nightbest: '🌙', emwin: '🚨', wave: '🚦', wedding: '💍', tea: '🍵', quake: '🌋', lucha: '🤼', yoga: '🧘' }[m] || '🎯';
   return `<div class="gm ${ok ? 'ok' : ''}">${icon} ${t('obj.' + m)} <b>${fmt(Math.max(0, cur))} / ${fmt(v)}</b> ${ok ? '✅' : ''}<div class="bar"><i style="width:${ok ? 100 : pct}%;background:${ok ? '#7ACB4E' : '#FFB800'}"></i></div></div>`;
 }
 function nextSteps() {
