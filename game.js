@@ -409,7 +409,7 @@ const LAND_M2 = { london: 110, lagos: 100, mumbai: 180, seoul: 200, newyork: 250
 const rArea = (r) => (r[1] - r[0]) * (r[3] - r[2]);
 const lotArea = (i, c) => rArea(plotOf(c).lots[i]);
 const mainArea = (c) => plotOf(c).main.reduce((a, r) => a + rArea(r), 0) - (plotOf(c).holes || []).reduce((a, r) => a + rArea(r), 0);
-const lotCost = (i, c) => Math.max(2000, Math.round(lotArea(i, c) * (LAND_M2[c || (S && S.city) || 'london'] || 150) * (1 + 0.15 * i) / 500) * 500);
+const lotCost = (i, c) => Math.max(2000, Math.round(lotArea(i, c) * (LAND_M2[c || (S && S.city) || 'london'] || 150) * (i < 2 ? 1 + 0.15 * i : 0.45 + 0.05 * (i - 2)) / 500) * 500); // the 3 big back plots (index 2+) are huge: bulk land, cheaper per m²
 const lotRent = (i, c) => { const C = CITIES[c || (S && S.city) || 'london']; return Math.round(C.rent * BILL_K / mainArea(c) * lotArea(i, c) * ANNEX_RENT_K / 50) * 50; };
 const annexRent = () => (S && S.mode === 'career' ? plotOf().lots.reduce((a, _, i) => a + (lotSt(i) === 'owned' ? lotRent(i) : 0), 0) : 0);
 function setRent() { RENT = Math.round(CITIES[S.city || 'london'].rent * BILL_K / 50) * 50 + annexRent(); }
