@@ -291,7 +291,7 @@ const EXTRA_VIS = ['v16', 'v08', 'v15', 'v22']; // inspector + the "crew"
 function visPerson(key, fb) { if (CHAR.A.full[key]) { const a = person({ vm: key, tall: VIS[key].h / 1.75 }, 'visitor'); if (a.userData.p.glb) return a; } loadFull(key); return person(fb); }
 function preloadVisitors(c) { if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return; for (const k of Object.keys(visPool(c))) loadFull(k); for (const k of EXTRA_VIS.concat(['v25', 'v26', 'v27', 'v28'])) loadFull(k); }
 function visitorPose(v) {
-  const p = v.av.userData.p, sp = v.state === 'wait' ? v.spot : v.state === 'treat' ? v.rspot : v.state === 'loo' || v.state === 'cafe' ? v.lspot : v.state === 'shopping' ? v.sspot : null;
+  const p = v.av.userData.p, sp = v.state === 'wait' ? v.spot : v.state === 'treat' ? v.rspot : v.state === 'loo' || v.state === 'cafe' || v.state === 'amen' ? v.lspot : v.state === 'shopping' ? v.sspot : null;
   poseStand(p); if (sp && sp.sit) poseSit(p, sp.lie); if (['queue', 'wait', 'shopping'].includes(v.state)) posePhone(p);
 }
 function swapVisitorAvatar(v) {
@@ -449,7 +449,6 @@ function markObstacles(blk) {
     const [i0, j0] = ci(cx - R, cz - R), [i1, j1] = ci(cx + R, cz + R);
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j), dx = p.x - cx, dz = p.z - cz, lx = dx * c - dz * s, lz = dx * s + dz * c; if (Math.abs(lx) < w / 2 + 0.15 && Math.abs(lz) < d / 2 + 0.15) blk[j * GW + i] = 1; } };
   if (!S) return;
-  box(1.15, 4.2, 2.9, 0.9, Math.PI / 2);
   if (S.desk) for (const D of desks()) box(D.x, D.z, 2.5, 0.9, D.r);
   for (const [x, z] of LOBBY_PLANTS) box(x, z, 0.5, 0.5, 0);
   for (const d of S.decor || []) box(d.x, d.z, d.k === 'sofa' ? 2.2 : 0.7, d.k === 'sofa' ? 0.9 : 0.7, d.r || 0);
@@ -569,9 +568,6 @@ function buildWorld() {
   desk.traverse((m) => { if (m.isMesh) m.userData.desk = true; });
   setTimeout(() => glbSwap(desk, 'desk', { len: 2.5, y: 0.1, keep: (c) => c === world.deskRing }), 0); // modelled in Blender
   const dr = new THREE.Mesh(new THREE.RingGeometry(1.35, 1.55, 40), new THREE.MeshBasicMaterial({ color: '#7ACB4E', transparent: true, opacity: 0.85 })); dr.rotation.x = -Math.PI / 2; dr.position.y = 0.14; dr.visible = false; desk.add(dr); world.deskRing = dr;
-  const sofa = grp(1.15, 4.2, Math.PI / 2);
-  put(rbox(2.6, 0.45, 0.9, '#FF8FAB', 0.16), 0, 0.33, 0, sofa); put(rbox(2.6, 0.7, 0.3, '#FF8FAB', 0.14), 0, 0.7, -0.35, sofa);
-  put(rbox(0.3, 0.6, 0.9, '#F07C9A', 0.12), -1.3, 0.5, 0, sofa); put(rbox(0.3, 0.6, 0.9, '#F07C9A', 0.12), 1.3, 0.5, 0, sofa); glbSwap(sofa, 'sofa', { len: 2.7, h: 0.86, y: 0.1 }); // a little lower so seated feet reach the floor
   const rug = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.02, 40), mat('#2BB5A6', { r: 1 })); rug.position.set(2.6, 0.13, 3.6); rug.receiveShadow = true; scene.add(rug);
   plant(6.1, 1.1, 1.1, '#FFFFFF'); plant(1.0, 6.0, 1, '#E9785F'); plant(2.6, 1.0, 0.9, '#FFD25E');
   buildCityDecor('london');
@@ -1273,8 +1269,7 @@ function placeDesk() {
   for (const s of WAIT_SPOTS) s.blocked = Math.hypot(s.x - D.x, s.z - D.z) < (D.segs ? 2.0 : 1.5) || Math.hypot(s.x - hs.x, s.z - hs.z) < 0.8 || Math.hypot(s.x - q0.x, s.z - q0.z) < 0.8 || extra.some((e) => Math.hypot(s.x - e.x, s.z - e.z) < 0.8);
 }
 const WAIT_SPOTS = [
-  { x: 1.24, z: 3.55, rot: Math.PI / 2, sit: true, y: 0.05 }, { x: 1.24, z: 4.2, rot: Math.PI / 2, sit: true, y: 0.05 }, { x: 1.24, z: 4.85, rot: Math.PI / 2, sit: true, y: 0.05 }, // back against the cushions, not on the armrests
-  ...[[2.2, 1.5], [3.0, 1.6], [2.0, 2.3], [6.0, 4.0], [6.0, 4.8], [6.0, 5.6], [2.2, 5.9], [2.9, 2.5]].map(([x, z]) => ({ x, z, rot: Math.atan2(4.6 - x, 3.6 - z) })), // standing: by the walls, clear of the sofa and the queue, facing the desk
+  ...[[1.3, 3.6], [1.3, 4.8], [2.2, 1.5], [3.0, 1.6], [2.0, 2.3], [6.0, 4.0], [6.0, 4.8], [6.0, 5.6], [2.2, 5.9], [2.9, 2.5]].map(([x, z]) => ({ x, z, rot: Math.atan2(4.6 - x, 3.6 - z) })), // standing: by the walls, clear of the sofa and the queue, facing the desk
 ].map((s) => ({ ...s, busy: null, sit: !!s.sit, y: s.y || 0 }));
 const iconCache = {};
 function iconTex(e) {
@@ -1436,8 +1431,8 @@ function tempTick(dt) {
   if (S.garden) { if (GARDEN_OK() && S.vibes < 95) S.vibes = clamp(S.vibes + 0.0015 * dt, 0, 100); if ((gardenT += dt) > 5) { gardenT = 0; gardenRain(); } }
   if (S.temp == null) S.temp = targetT(); S.temp += (targetT() - S.temp) * Math.min(1, dt / (S.ev && S.ev.k === 'heat' ? 8 : 20)); // the centre warms up fast in a heatwave, so the thermometer matches the news
   const off = tempOff();
-  if (off > 0) { S.vibes = clamp(S.vibes - 0.004 * Math.min(off, 10) * dt, 0, 100); if (off > 1.5 && (S.day >= 2 || S.t > DAY_LEN * 0.5)) behSeen('temp'); }
-  else if (S.vibes < 90) S.vibes = clamp(S.vibes + 0.002 * dt, 0, 100);
+  if (off > 0) { S.vibes = clamp(S.vibes - 0.012 * Math.min(off, 8) * dt, 0, 100); if (off > 1.5 && (S.day >= 2 || S.t > DAY_LEN * 0.5)) behSeen('temp'); }
+  else if (S.vibes < 90) S.vibes = clamp(S.vibes + 0.004 * dt, 0, 100);
 }
 function openTemp() {
   const T = S.temp ?? 21, off = tempOff(), dec = S.decor || [], st = T < T_LO ? 'cold' : T > T_HI ? 'hot' : 'ok';
@@ -1548,7 +1543,7 @@ function patienceRate(v) {
   if (v.caseK) return 0; // a ⭐ case waits patiently for you
   let r = 1 / 75 / 1.2;
   if (v.spot && v.spot.out) r *= 0.75; // fresh air on the garden benches
-  if (S.mode === 'career' && S.temp != null) { const off = tempOff(); if (off > 0) r *= 1 + 0.06 * Math.min(off, 10); }
+  if (S.mode === 'career' && S.temp != null) { const off = tempOff(); if (off > 0) r *= 1 + 0.1 * Math.min(off, 8); }
   if (S.rainy) r *= cityOf().monsoon ? 1.25 : 1.15;
   if (cafeOpen()) r *= cafeF() - (done('oat') ? 0.1 : 0);
   r *= 1 + 0.12 * R.rats.length + 0.02 * R.litter.length;
@@ -1601,6 +1596,16 @@ function visitorUpdate(v, dt) {
         const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
+    case 'toAmen': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.lspot); v.state = 'amen'; v.prog = 0; } break;
+    case 'amen': {
+      const A = v.lspot; v.prog += dt / (A.k === 'massage' ? 5 : 2.5);
+      if (v.prog >= 1) {
+        if (A.k === 'vending') { const spend = Math.round((4 + RNG() * 5) * (S.price || 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.15); incCnt('snack'); AU.sfx('cash'); floatAt(v.av.position, '🥤 +' + money(spend)); }
+        else { v.pat = Math.min(1, v.pat + 0.4); S.vibes = clamp(S.vibes + 0.3, 0, 100); floatAt(v.av.position, '💆'); }
+        A.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
+        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
+      break; }
     case 'loo': {
       v.prog += dt / 3.5;
       if (v.prog >= 1) { v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️'); floatAt(v.av.position, '🧼');
@@ -1619,10 +1624,13 @@ function visitorUpdate(v, dt) {
         if (loo) { loo.busy = v; if (v.spot) v.spot.busy = null; v.spot = null; v.lspot = loo; setPath(v, findPath(v.av.position, loo)); v.state = 'toLoo'; v.icon.material = iconTex('🚻'); break; }
         if (!hasRoom('toilet')) { tip('toilet'); if (v.urgent) { dropPuddle(v.av.position.x + 0.3, v.av.position.z, '#A0784A'); v.noLoo = true; S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; S.st.acc++; leave(v, false); break; } }
       }
-      if (!v.drank && (v.waitT || 0) > 6 && v.pat < 0.85 && RNG() < dt * 0.06) {
+      const thirsty = S.mode === 'career' && S.temp != null && tempOff() > 2 ? 2 : 1; // too hot or too cold: people go for a drink more often
+      if (!v.drank && (v.waitT || 0) > 4 && v.pat < 0.9 && RNG() < dt * 0.1 * thirsty) {
         const cs = Object.values(R.rooms).filter((r) => r.type === 'cafe' && !r.closed && r.staff.some((x) => x && x.mode === 'there')).map((r) => r.spots.find((s) => s.cafe && !s.busy)).find(Boolean);
         if (cs) { v.drank = true; cs.busy = v; if (v.spot) v.spot.busy = null; v.spot = null; v.lspot = cs; setPath(v, findPath(v.av.position, cs)); v.state = 'toCafe'; v.icon.material = iconTex('🍵'); break; }
       }
+      if (!v.amen && (v.waitT || 0) > 5 && v.pat < 0.92 && RNG() < dt * 0.08 * thirsty) { const as = amenSpot(v);
+        if (as) { v.amen = true; as.busy = v; if (v.spot) v.spot.busy = null; v.spot = null; v.lspot = as; setPath(v, findPath(v.av.position, as)); v.state = 'toAmen'; v.icon.material = iconTex(DECOR[as.k].e); break; } }
       if (RNG() < dt * (done('bins') ? 0.0012 : 0.0025)) dropLitter(v.av.position.x, v.av.position.z);
       const need = needOf(v);
       if (need && (v.target == null || !R.rooms[v.target])) v.target = pickRoomFor(v);
@@ -2798,7 +2806,7 @@ function staffEnergy(rs, dt) {
   if (rs.onBreak) {
     if (rs.mode === 'break') { d.energy = Math.min(1, d.energy + dt / 22); if (d.energy >= 1) { rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
   } else if (rs.mode === 'there' || rs.task) {
-    if (rs.at !== 'idle') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.temp > 26 ? 1 + 0.05 * Math.min(S.temp - 26, 10) : 1) / (150 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
+    if (rs.at !== 'idle') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (150 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
     if (d.energy < 0.25) {
       const spot = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).map((r) => r.spots.find((s) => !s.busy)).find(Boolean);
       if (spot && !rs.task && !patientOf(rs)) { spot.busy = rs; rs.onBreak = spot; /* never walk out mid-session */ rs.goingTo = null; goStaff(rs, spot); tip('break'); }
@@ -2852,7 +2860,7 @@ const SOFA_SEATS = (d) => [-0.5, 0.5].map((lx) => ({ x: d.x + lx * Math.cos(d.r 
 function syncDecorSeats() {
   const want = new Map((S.decor || []).filter((d) => DECOR[d.k] && DECOR[d.k].seats).map((d) => [d.id, d]));
   for (let i = WAIT_SPOTS.length - 1; i >= 0; i--) { const w = WAIT_SPOTS[i]; if (w.dec == null) continue; const d = want.get(w.dec); if (!d || Math.hypot(w.x - d.x, w.z - d.z) > 0.8) { if (w.busy && w.busy.spot === w) w.busy.spot = null; WAIT_SPOTS.splice(i, 1); } }
-  for (const d of want.values()) if (!WAIT_SPOTS.some((w) => w.dec === d.id)) WAIT_SPOTS.splice(3, 0, ...SOFA_SEATS(d)); // seats are taken before standing places
+  for (const d of want.values()) if (!WAIT_SPOTS.some((w) => w.dec === d.id)) WAIT_SPOTS.splice(0, 0, ...SOFA_SEATS(d)); // seats are taken before standing places
 }
 function buildDecor(d) { if (world.decor[d.id]) scene.remove(world.decor[d.id]); const m = decorMesh(d.k); m.position.set(d.x, 0.1, d.z); m.rotation.y = d.r || 0; m.traverse((o) => { o.userData.decorId = d.id; }); scene.add(m); world.decor[d.id] = m; syncDecorSeats(); }
 function decorCalm(v) { let f = 1; for (const d of S.decor || []) if (Math.hypot(d.x - v.av.position.x, d.z - v.av.position.z) < 2.6) f *= DECOR[d.k].calm; return Math.max(0.55, f); }
@@ -2860,7 +2868,18 @@ let decorT = 0;
 function decorUpdate(dt) {
   for (const d of S.decor || []) S.vibes = clamp(S.vibes + DECOR[d.k].vibe * dt, 0, 100);
   decorT += dt; if (decorT < 8) return; decorT = 0;
-  for (const d of S.decor || []) if (d.k === 'vending') { const near = R.visitors.filter((v) => ['wait', 'queue'].includes(v.state) && Math.hypot(d.x - v.av.position.x, d.z - v.av.position.z) < 3.5).length; if (near) { const m = near * 4; S.cash += m; S.earned += m; floatAt({ x: d.x, y: 0.5, z: d.z }, '+' + money(m)); } }
+  if (false) for (const d of S.decor || []) if (d.k === 'vending') { const near = R.visitors.filter((v) => ['wait', 'queue'].includes(v.state) && Math.hypot(d.x - v.av.position.x, d.z - v.av.position.z) < 3.5).length; if (near) { const m = near * 4; S.cash += m; S.earned += m; floatAt({ x: d.x, y: 0.5, z: d.z }, '+' + money(m)); } }
+}
+// one use spot per vending machine (stand in front of it) and per massage chair (sit in it)
+const AMEN = new Map();
+function amenSpot(v) {
+  const list = (S.decor || []).filter((d) => d.k === 'vending' || d.k === 'massage');
+  for (const id of [...AMEN.keys()]) if (!list.some((d) => d.id === id)) AMEN.delete(id);
+  const free = []; for (const d of list) { let a = AMEN.get(d.id); const r = d.r || 0;
+    const want = d.k === 'vending' ? { x: d.x + Math.sin(r) * 0.85, z: d.z + Math.cos(r) * 0.85, rot: r + Math.PI, sit: false, y: 0 } : { x: d.x, z: d.z, rot: r, sit: true, y: 0.05 };
+    if (!a) { a = { ...want, k: d.k, busy: null }; AMEN.set(d.id, a); } else if (!a.busy) Object.assign(a, want);
+    if (!a.busy) free.push(a); }
+  if (!free.length) return null; const m = free.filter((a) => a.k === 'massage'); return v.pat < 0.6 && m.length ? m[0] : rnd(free);
 }
 const DECOR_HALF = (k) => (k === 'sofa' ? [1.15, 0.5] : [0.3, 0.3]);
 function decorValid(x, z, id, k = placingD ? placingD.k : 'plant', r = placingD ? placingD.mesh.rotation.y : 0) { // the whole footprint, rotated, must be clear
