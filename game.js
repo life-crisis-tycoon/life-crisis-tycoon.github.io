@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l], EXTRA30[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30, EXTRA31 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l], EXTRA30[l], EXTRA31[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -103,33 +103,45 @@ const FIRST = ['Priya', 'Marcus', 'Jade', 'Omar', 'Zoe', 'Kai', 'Amara', 'Leo', 
 const LAST = ['Shah', 'Bello', 'Kim', 'Haddad', 'Okafor', 'Nguyen', 'Silva', 'Brown', 'Patel', 'Rossi', 'Mensah', 'Garcia', 'Ito', 'Kowalski', 'Adeyemi', 'Murphy', 'Park', 'Dubois'];
 const CITIES = {
   london: { lvl: 0, region: 'rg.europe', cash: 15000, rent: 2400, rain: 0.45, pin: [44.8, 23.4], desc: 'map.desc', tag: 'brief.tag', brief: 'brief.desc', rules: [['🌧️', 'brief.r1'], ['📝', 'brief.r2'], ['🧍', 'brief.r3']], chips: [['b', 'chip.rain'], ['b', 'chip.planning'], ['r', 'chip.strike']], start: 'start.landlord',
-    goals: [[['helped', 45], ['vibes', 60]], [['cash', 45000], ['helped', 110]], [['bestday', 18], ['emwin', 2], ['vibes', 85]]] },
+    goals: [[['helped', 100], ['vibes', 60, 2]], [['helped', 250], ['succ', 65, 3], ['value', 40000]], [['helped', 500], ['vibes', 85, 3], ['succ', 75, 3], ['value', 80000], ['emwin', 2], ['bestday', 18]]] },
   lagos: { lvl: 1, region: 'rg.africa', unlock: 'london', cash: 14000, rent: 2600, rain: 0.25, pin: [45.1, 52.0], desc: 'lg.desc', tag: 'lg.tag', brief: 'lg.brief', rules: [['⚡', 'lg.r1'], ['💼', 'lg.r2'], ['🚦', 'lg.r3']], chips: [['b', 'lg.c1'], ['b', 'lg.c2'], ['r', 'lg.c3']], start: 'lg.landlord', power: true, hustle: true, waves: true,
-    goals: [[['helped', 70], ['vibes', 60]], [['cash', 70000], ['helped', 540]], [['bestday', 24], ['emwin', 4], ['wave', 20]]] },
+    goals: [[['helped', 130], ['vibes', 60, 2], ['wave', 5]], [['helped', 300], ['succ', 65, 3], ['value', 50000], ['wave', 20]], [['helped', 600], ['vibes', 80, 3], ['succ', 75, 3], ['value', 100000], ['emwin', 3], ['bestday', 24]]] },
   mumbai: { lvl: 2, region: 'rg.asia', unlock: 'lagos', cash: 13000, rent: 2200, rain: 0.5, monsoon: true, pin: [67.4, 45.0], desc: 'mb.desc', tag: 'mb.tag', brief: 'mb.brief', rules: [['🌧️', 'mb.r1'], ['👨‍👩‍👧', 'mb.r2'], ['💍', 'mb.r3']], chips: [['b', 'mb.c1'], ['b', 'mb.c2'], ['r', 'mb.c3']], start: 'mb.landlord', groups: { chance: 0.22, kind: 'families' },
-    goals: [[['helped', 110], ['vibes', 60]], [['cash', 90000], ['wedding', 30]], [['bestday', 26], ['emwin', 4], ['rain', 80]]] },
+    goals: [[['helped', 160], ['vibes', 60, 2], ['wedding', 10]], [['helped', 350], ['succ', 70, 3], ['value', 60000], ['wedding', 30]], [['helped', 700], ['vibes', 80, 3], ['succ', 80, 3], ['value', 120000], ['emwin', 3], ['bestday', 26], ['rain', 80]]] },
   seoul: { lvl: 3, region: 'rg.asia', unlock: 'mumbai', cash: 12000, rent: 3000, rain: 0.3, night: true, pin: [82.7, 32.0], desc: 'se.desc', tag: 'se.tag', brief: 'se.brief', rules: [['🌙', 'se.r1'], ['💼', 'se.r2'], ['🪞', 'se.r3']], chips: [['b', 'se.c1'], ['b', 'se.c2'], ['r', 'se.c3']], start: 'se.landlord',
-    goals: [[['helped', 125], ['vibes', 65]], [['cash', 90000], ['helped', 630]], [['nightbest', 9], ['bestday', 28], ['emwin', 4]]] },
+    goals: [[['helped', 180], ['vibes', 65, 2], ['nightbest', 5]], [['helped', 400], ['succ', 70, 3], ['value', 65000], ['nightbest', 9]], [['helped', 800], ['vibes', 80, 3], ['succ', 80, 3], ['value', 130000], ['emwin', 3], ['bestday', 28], ['nightbest', 12]]] },
   saopaulo: { lvl: 4, region: 'rg.americas', unlock: 'seoul', cash: 12000, rent: 2500, rain: 0.3, waves: true, pin: [27.3, 73.2], desc: 'sp.desc', tag: 'sp.tag', brief: 'sp.brief', rules: [['🚗', 'sp.r1'], ['🥁', 'sp.r2'], ['📺', 'sp.r3']], chips: [['b', 'sp.c1'], ['b', 'sp.c2'], ['r', 'sp.c3']], start: 'sp.landlord',
-    goals: [[['helped', 145], ['vibes', 65]], [['cash', 110000], ['roda', 50]], [['bestday', 30], ['emwin', 5], ['vibes', 80]]] },
+    goals: [[['helped', 200], ['vibes', 65, 2], ['roda', 15]], [['helped', 450], ['succ', 70, 3], ['value', 75000], ['roda', 50]], [['helped', 900], ['vibes', 80, 3], ['succ', 80, 3], ['value', 150000], ['emwin', 3], ['bestday', 30]]] },
   cairo: { lvl: 5, region: 'rg.africa', unlock: 'saopaulo', cash: 12000, rent: 2500, sig: 'paperwork', rain: 0.05, hot: true, evening: true, pin: [53.9, 36.9], desc: 'cr.desc', tag: 'cr.tag', brief: 'cr.brief', rules: [['🥵', 'cr.r1'], ['🌆', 'cr.r2'], ['📑', 'cr.r3']], chips: [['b', 'cr.c1'], ['b', 'cr.c2'], ['r', 'cr.c3']], start: 'cr.landlord',
-    goals: [[['helped', 160], ['vibes', 65]], [['cash', 100000], ['tea', 50]], [['bestday', 30], ['emwin', 5], ['vibes', 82]]] },
+    goals: [[['helped', 220], ['vibes', 65, 2], ['tea', 15]], [['helped', 500], ['succ', 70, 3], ['value', 80000], ['tea', 50]], [['helped', 1000], ['vibes', 82, 3], ['succ', 80, 3], ['value', 160000], ['emwin', 3], ['bestday', 30]]] },
   mexico: { lvl: 6, region: 'rg.americas', unlock: 'cairo', cash: 12000, rent: 2600, rain: 0.25, quake: true, altitude: true, sig: 'coraje', pin: [13.1, 41.0], desc: 'mx.desc', tag: 'mx.tag', brief: 'mx.brief', rules: [['🚨', 'mx.r1'], ['⛰️', 'mx.r2'], ['🤼', 'mx.r3']], chips: [['b', 'mx.c1'], ['b', 'mx.c2'], ['r', 'mx.c3']], start: 'mx.landlord',
-    goals: [[['helped', 175], ['vibes', 65]], [['cash', 110000], ['lucha', 55]], [['bestday', 32], ['emwin', 5], ['quake', 25]]] },
+    goals: [[['helped', 240], ['vibes', 65, 2], ['lucha', 15]], [['helped', 550], ['succ', 75, 3], ['value', 85000], ['lucha', 55]], [['helped', 1100], ['vibes', 82, 3], ['succ', 80, 3], ['value', 170000], ['emwin', 4], ['bestday', 32], ['quake', 25]]] },
   newyork: { lvl: 7, region: 'rg.americas', unlock: 'mexico', cash: 14000, rent: 3600, rain: 0.3, tips: true, impatient: true, sig: 'grind', pin: [23.8, 28.3], desc: 'ny.desc', tag: 'ny.tag', brief: 'ny.brief', rules: [['💸', 'ny.r1'], ['⏱️', 'ny.r2'], ['🧘', 'ny.r3']], chips: [['b', 'ny.c1'], ['b', 'ny.c2'], ['r', 'ny.c3']], start: 'ny.landlord',
-    goals: [[['helped', 190], ['vibes', 68]], [['cash', 150000], ['yoga', 60]], [['bestday', 34], ['emwin', 6], ['vibes', 86]]] },
+    goals: [[['helped', 260], ['vibes', 68, 2], ['yoga', 20]], [['helped', 600], ['succ', 75, 3], ['value', 110000], ['yoga', 60]], [['helped', 1200], ['vibes', 86, 3], ['succ', 85, 3], ['value', 220000], ['emwin', 4], ['bestday', 34]]] },
 };
 const LOCKED_PINS = [];
-const metric = (s, m) => (m === 'bestday' ? Math.max(s.bestDay || 0, s.dServ || 0) : m === 'nightbest' ? Math.max(s.bestNight || 0, s.nServ || 0) : m === 'helped' ? s.served : m === 'vibes' ? s.vibes : m === 'cash' ? s.cash : (s.cnt || {})[m] || 0);
+const metric = (s, m) => (m === 'value' ? centreValue(s) : m === 'succ' ? succRate(s) : m === 'bestday' ? Math.max(s.bestDay || 0, s.dServ || 0) : m === 'nightbest' ? Math.max(s.bestNight || 0, s.nServ || 0) : m === 'helped' ? s.served : m === 'vibes' ? s.vibes : m === 'cash' ? s.cash : (s.cnt || {})[m] || 0);
 function incCnt(k) { S.cnt = S.cnt || {}; S.cnt[k] = (S.cnt[k] || 0) + 1; }
 const isNight = () => cityOf().night && S.t > DAY_LEN * 0.66;
+// centre value: what is built (rooms, equipment, land bought) + the profit of the last 7 days (never below 0)
+function centreValue(s) { if (!s || !s.rooms) return 0; let v = 0;
+  for (const r of s.rooms) if (ROOMS[r.type]) v += roomCost(r.type, r.size || 'm');
+  for (const d of s.decor || []) v += (DECOR[d.k] && DECOR[d.k].cost) || 0;
+  if (s.mode === 'career' && s === S) { const lots = plotOf().lots; for (let i = 0; i < lots.length; i++) if (lotSt(i) === 'owned') v += lotCost(i); }
+  if (s === S) { let rev = 0; for (const id in s.rEarn || {}) rev += roomWeek(+id); const wages = (s.staff || []).reduce((a, x) => a + (x.wage || 0), 0) * WAGE_K; v += Math.max(0, rev - RENT - wages); }
+  return Math.round(v); }
+// success rate: share of the last 40 visitors who left helped rather than angry
+const succRate = (s) => { const o = s.outc || []; return o.length < 8 ? 0 : Math.round((o.reduce((a, x) => a + x, 0) / o.length) * 100); };
+function outcome(ok) { if (!S) return; (S.outc = S.outc || []).push(ok ? 1 : 0); if (S.outc.length > 40) S.outc.shift(); }
 // a vibes condition has to be HELD: 2 days in a row for the 1st star, 3 days for the others (a dip under the line for more than 10 s restarts the count). Once held it stays ticked.
-const VH_GRACE = 10, vhNeed = (i) => (i === 0 ? 2 : 3) * 90;
-const vibeHeld = (s, i) => s.mode !== 'career' || !!(s.vhDone || {})[i];
+const VH_GRACE = 10, vhNeed = (i, days) => (days || (i === 0 ? 2 : 3)) * 90;
+const holdKey = (i, m) => i + ':' + m;
+const heldOk = (s, i, m) => s.mode !== 'career' || !!(s.holdDone || {})[holdKey(i, m)] || (m === 'vibes' && !!(s.vhDone || {})[i]);
+const vibeHeld = (s, i) => heldOk(s, i, 'vibes');
 const partOk = (s, i, m, v) => (m === 'vibes' ? vibeHeld(s, i) && true : metric(s, m) >= v);
-const mkGoals = (arr) => arr.map((parts, i) => ({ k: 'g' + (i + 1), i, parts, ok: (s) => parts.every(([m, v]) => (m === 'vibes' && s.mode === 'career' ? vibeHeld(s, i) : metric(s, m) >= v)) }));
+const mkGoals = (arr) => arr.map((parts, i) => ({ k: 'g' + (i + 1), i, parts, ok: (s) => parts.every(([m, v, days]) => (days && s.mode === 'career' ? heldOk(s, i, m) : metric(s, m) >= v)) }));
 let GOALS = mkGoals(CITIES.london.goals);
-const goalText = (G) => G.parts.map(([m, v]) => t('gp.' + m, { n: m === 'cash' ? money(v) : v })).join(' · ');
+const goalText = (G) => G.parts.map(([m, v, days]) => t('gp.' + m, { n: m === 'cash' || m === 'value' ? money(v) : v }) + (days ? ' (' + t('obj.days', { d: days }) + ')' : '')).join(' · ');
 const cityOf = () => CITIES[(S && S.city) || 'london'];
 const DAY_LEN = 90, RENT_EVERY = 7, BILL_K = 2.5, WAGE_K = 2.0, ELEC_K = 1.5, // 90 s days; weekly bills scaled so cost per real minute stays balanced // weekly bills (rent ×1.5, wages ×1.2 of the old 4-day amounts — balanced by bot runs so a sensible HQ makes a profit)
   // weekly bills; amounts scaled from the old 4-day cycle so the economy keeps its balance
@@ -1466,12 +1478,10 @@ function vibeTick(dt) {
   for (const k in VB) VB[k] *= Math.exp(-dt / 60); // the panel shows roughly the last minute
   vb('fade', (50 - S.vibes) * dt / 900); // a reputation needs upkeep: it drifts back toward 50 % (about -3 %/day at 80 %)
   const st = R.staff.filter((x) => x.data && x.data.energy != null); if (st.length >= 2 && st.reduce((a, x) => a + x.data.energy, 0) / st.length < 0.3) vb('staff', -0.005 * dt); // an exhausted team shows
-  { const gi = S.stars, G = GOALS[gi], pv = G && G.parts.find(([m]) => m === 'vibes');
-    if (S.vhFor !== gi) { S.vhFor = gi; S.vh = 0; S.vhLow = 0; }
-    if (pv && !(S.vhDone || {})[gi]) {
-      if (S.vibes >= pv[1]) { S.vh = (S.vh || 0) + dt; S.vhLow = 0; if (S.vh >= vhNeed(gi)) { (S.vhDone = S.vhDone || {})[gi] = true; toast('★ ' + t('obj.held'), 3000); AU.sfx('cash'); } }
-      else if ((S.vhLow = (S.vhLow || 0) + dt) > VH_GRACE) S.vh = 0;
-    } }
+  { const gi = S.stars, G = GOALS[gi]; S.hold = S.hold || {}; S.holdLow = S.holdLow || {}; S.holdDone = S.holdDone || {};
+    if (G) for (const [m, v, days] of G.parts) { if (!days) continue; const k = holdKey(gi, m); if (heldOk(S, gi, m)) continue;
+      if (metric(S, m) >= v) { S.hold[k] = (S.hold[k] || 0) + dt; S.holdLow[k] = 0; if (S.hold[k] >= vhNeed(gi, days)) { S.holdDone[k] = true; toast('★ ' + t('obj.held'), 3000); AU.sfx('cash'); } }
+      else if ((S.holdLow[k] = (S.holdLow[k] || 0) + dt) > VH_GRACE) S.hold[k] = 0; } }
   if ((vbHistT += dt) >= 5) { vbHistT = 0; vbHist.push(S.vibes); if (vbHist.length > 12) vbHist.shift(); }
 }
 const vibeTrend = () => (vbHist.length < 3 ? 0 : S.vibes - vbHist[0]);
@@ -1775,7 +1785,7 @@ function visitorUpdate(v, dt) {
         const pr = (S.price || 1) * (cityOf().hustle ? 1.1 : 1) * (isNight() ? 1.15 : 1), fee = Math.round(PROBLEMS[v.prob].fee * 1.3 * (0.7 + S.vibes / 200) * pr);
         const twoVisit = beh('stamps2') && v.prob === 'paperwork', gain = Math.round(fee * (v.vip ? 2 : 1) * (twoVisit ? 0.5 : 1)), iou = beh('iou') && BROKE.has(v.prob);
         if (iou) { S.iou = (S.iou || 0) + gain; behSeen('iou'); floatAt(v.av.position, '🧾 ' + money(gain)); } else S.cash += gain;
-        roomEarn(room.id, gain); addDirt(room, 0.035); S.earned += gain; S.served++; S.dServ = (S.dServ || 0) + 1; if (isNight()) S.nServ = (S.nServ || 0) + 1; v.spent = (v.spent || 0) + gain; dailyHit(v);
+        roomEarn(room.id, gain); addDirt(room, 0.035); S.earned += gain; S.served++; outcome(true); S.dServ = (S.dServ || 0) + 1; if (isNight()) S.nServ = (S.nServ || 0) + 1; v.spent = (v.spent || 0) + gain; dailyHit(v);
         if (cityOf().tips && v.pat > 0.5) { const tip = Math.round(gain * 0.25); S.cash += tip; S.earned += tip; roomEarn(room.id, tip); incCnt('tips'); setTimeout(() => floatAt(v.av.position, '💵 tip +' + money(tip)), 400); } // happy & quick → they tip
         if (twoVisit && !v.stage2) { behSeen('stamps2'); R.later.push({ t: 40 + RNG() * 40, prob: 'paperwork', stage2: true }); floatAt(v.av.position, '📑 1/2'); }
         const SS = S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; SS.prob[v.prob] = (SS.prob[v.prob] || 0) + 1; SS.room[room.type] = (SS.room[room.type] || 0) + 1; SS.staff[st.data.id] = (SS.staff[st.data.id] || 0) + 1;
@@ -1843,7 +1853,7 @@ function leave(v, quiet) {
   if (!quiet) {
     logComplaint(complaintOf(v));
     if (S.daily && S.daily.k === 'calm' && !S.daily.won && ++S.daily.bad > 4) S.daily.fail = true;
-    S.left++; AU.sfx('bad'); vb('left', 0 - (v.known && !isMystK(v.prob) && !hasRoom(PROBLEMS[v.prob].room) ? 1 : PROBLEMS[v.prob].care ? 5 : 3) - (v.vip ? 10 : 0)); if (v.vip) { chat('🤳 ' + v.name, t('vip.roast'), '💀'); toast('👑 ' + t('vip.roast'), 3200); } floatAt(v.av.position, t('v.lost'), true);
+    S.left++; outcome(false); AU.sfx('bad'); vb('left', 0 - (v.known && !isMystK(v.prob) && !hasRoom(PROBLEMS[v.prob].room) ? 1 : PROBLEMS[v.prob].care ? 5 : 3) - (v.vip ? 10 : 0)); if (v.vip) { chat('🤳 ' + v.name, t('vip.roast'), '💀'); toast('👑 ' + t('vip.roast'), 3200); } floatAt(v.av.position, t('v.lost'), true);
     if (v.known && !hasRoom(PROBLEMS[v.prob].room)) tip('noRoom');
     const need = v.known ? PROBLEMS[v.prob].room : null;
     if (v.noLoo || Math.random() < 0.3) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, v.noLoo ? t('rev.noLoo') : v.known && isMystK(v.prob) ? t('rev.myst') : need && !hasRoom(need) ? t('rev.noRoom', { room: rn(need) }) : crnd(tList('rev.bad')), '😤');
@@ -2682,12 +2692,17 @@ function updateHUD() { navResearch();
   else ec.style.display = 'none';
   if (!S.em) { ec.style.color = ''; ec.style.fontWeight = ''; }
 }
+// the street sends more people to a bigger centre: every staffed treatment room past the 3rd adds 6 % more arrivals (up to +80 %), and the building holds more at once
+let flowCache = { t: -1, n: 0 };
+function staffedRooms() { const now = performance.now(); if (now - flowCache.t > 1000) { flowCache = { t: now, n: Object.values(R.rooms).filter((r) => ROOMS[r.type].role && !ROOMS[r.type].shop && r.type !== 'cafe' && r.type !== 'lab' && r.staff.some(Boolean)).length }; } return flowCache.n; }
+const flowMul = () => (S.mode === 'career' ? Math.min(1.8, 1 + 0.06 * Math.max(0, staffedRooms() - 3)) : 1);
+const visCap = () => (S.mode === 'career' ? Math.min(36, 18 + Math.round(1.5 * Math.max(0, staffedRooms() - 3))) : 18);
 function step(dt, now = performance.now(), rdt = dt) {
   dayTick(dt); if (!inGame) return; probIntroTick(rdt); behTick(dt); laterTick(dt); caseTick(); tempTick(dt); quakeTick(dt); doomers = beh('slowdoom') ? R.visitors.filter((u) => DOOM.has(u.prob) && !u.cured && u.path && u.path.length) : [];
   spawnT -= dt;
   if (spawnT <= 0 && S.mode === 'career' && cityOf().groups && cityOf().groups.kind === 'families' && RNG() < cityOf().groups.chance && R.visitors.length < 15) { const kp = ['toddler', 'schoolrun', 'tablet', 'homework', 'sugar']; famNext = true; const pr = spawnVisitor(unlocked('parent') ? rnd(kp) : undefined); famNext = false; const gid = S.nextId++; S.gs = S.gs || {}; S.gs[gid] = 1; pr.gid = gid; spawnT = 9; }
   else if (spawnT <= 0 && S.mode === 'career' && cityOf().groups && cityOf().groups.kind !== 'families' && RNG() < cityOf().groups.chance && R.visitors.length < 15) { const pr = spawnVisitor(); const gid = S.nextId++; S.gs = S.gs || {}; const n = 2 + (RNG() < 0.4 ? 1 : 0); S.gs[gid] = n; pr.gid = gid; for (let i = 1; i < n; i++) { const o = spawnVisitor(pr.prob); o.gid = gid; } spawnT = 9; }
-  if (spawnT <= 0) { const base = S.mode === 'career' ? 5.6 : 4.2; spawnT = (base / (S.mode === 'career' ? 1.2 * TIER_FX[vibeTier()].spawn : 0.6 + S.vibes / 100)) * (0.7 + RNG() * 0.6) / adMul() * Math.pow(S.price || 1, S.mode === 'career' && vibeTier() === 'adored' ? 0.6 : 1.2) / (cityOf().waves && S.mode === 'career' ? 1 + 0.7 * Math.sin(S.t / 9) : 1) / (cityOf().evening && S.mode === 'career' ? (S.t > DAY_LEN * 0.6 ? 1.7 : S.t < DAY_LEN * 0.35 ? 0.75 : 1) : 1); if (R.visitors.length < (S.ad ? 24 : 18)) spawnVisitor(); }
+  if (spawnT <= 0) { const base = S.mode === 'career' ? 5.6 : 4.2; spawnT = (base / (S.mode === 'career' ? 1.2 * TIER_FX[vibeTier()].spawn : 0.6 + S.vibes / 100)) * (0.7 + RNG() * 0.6) / adMul() * Math.pow(S.price || 1, S.mode === 'career' && vibeTier() === 'adored' ? 0.6 : 1.2) / (cityOf().waves && S.mode === 'career' ? 1 + 0.45 * Math.sin(S.t / 9) : 1) / flowMul() / (cityOf().evening && S.mode === 'career' ? (S.t > DAY_LEN * 0.6 ? 1.7 : S.t < DAY_LEN * 0.35 ? 0.75 : 1) : 1); if (R.visitors.length < visCap() + (S.ad ? 6 : 0)) spawnVisitor(); }
   adUpdate(dt);
   for (const v of R.visitors.slice()) visitorUpdate(v, dt);
   for (const rs of R.staff) {
@@ -3317,12 +3332,12 @@ $('hDay').parentElement.style.cursor = 'pointer'; $('hDay').parentElement.onclic
 $('hVibes').parentElement.style.cursor = 'pointer'; $('hVibes').parentElement.onclick = (e) => { if (!S || S.mode !== 'career') return; if (e.target && e.target.id === 'hTemp') openTemp(); else openVibes(); };
 
 // ---------------- objectives tracker ----------------
-function metricRow([m, v], done, gi) {
-  if (m === 'vibes' && S.mode === 'career' && gi != null) { const ok = done || vibeHeld(S, gi), need = vhNeed(gi), held = ok ? need : (S.vhFor === gi ? S.vh || 0 : 0), above = S.vibes >= v;
-    return `<div class="gm ${ok ? 'ok' : ''}">★ ${t('obj.vibes')} <b>${Math.floor(S.vibes)}% / ${v}%</b> ${ok ? '✅' : ''}<div style="font-size:12px;color:${ok || above ? 'inherit' : 'var(--red)'}">⏱️ ${t('obj.hold', { a: (held / 90).toFixed(1).replace('.0', ''), b: need / 90, v })}</div><div class="bar"><i style="width:${(held / need) * 100}%;background:${ok ? '#7ACB4E' : '#FFB800'}"></i></div></div>`; }
+function metricRow([m, v, days], done, gi) {
+  if (days && S.mode === 'career' && gi != null) { const ok = done || heldOk(S, gi, m), need = vhNeed(gi, days), held = ok ? need : ((S.hold || {})[holdKey(gi, m)] || 0), cur = metric(S, m), above = cur >= v;
+    return `<div class="gm ${ok ? 'ok' : ''}">${m === 'vibes' ? '★' : '✅'} ${t('obj.' + m)} <b>${Math.floor(cur)}% / ${v}%</b> ${ok ? '✅' : ''}<div style="font-size:12px;color:${ok || above ? 'inherit' : 'var(--red)'}">⏱️ ${t('obj.hold', { a: (held / 90).toFixed(1).replace('.0', ''), b: days, v })}</div><div class="bar"><i style="width:${(held / need) * 100}%;background:${ok ? '#7ACB4E' : '#FFB800'}"></i></div></div>`; }
   const cur = metric(S, m), ok = done || cur >= v, pct = clamp(cur / v, 0, 1) * 100;
-  const fmt = (x) => (m === 'cash' ? money(x) : m === 'vibes' ? Math.floor(x) + '%' : Math.floor(x));
-  const icon = { helped: '🙂', vibes: '★', cash: '💵', groups: '🥳', families: '👨‍👩‍👧', bestday: '📈', nightbest: '🌙', emwin: '🚨', wave: '🚦', wedding: '💍', tea: '🍵', quake: '🌋', lucha: '🤼', yoga: '🧘', roda: '🥁', rain: '🌧️' }[m] || '🎯';
+  const fmt = (x) => (m === 'cash' || m === 'value' ? money(x) : m === 'vibes' ? Math.floor(x) + '%' : Math.floor(x));
+  const icon = { helped: '🙂', vibes: '★', cash: '💵', groups: '🥳', families: '👨‍👩‍👧', bestday: '📈', nightbest: '🌙', emwin: '🚨', wave: '🚦', wedding: '💍', tea: '🍵', quake: '🌋', lucha: '🤼', yoga: '🧘', roda: '🥁', rain: '🌧️', value: '🏢', succ: '✅' }[m] || '🎯';
   return `<div class="gm ${ok ? 'ok' : ''}">${icon} ${t('obj.' + m)} <b>${fmt(Math.max(0, cur))} / ${fmt(v)}</b> ${ok ? '✅' : ''}<div class="bar"><i style="width:${ok ? 100 : pct}%;background:${ok ? '#7ACB4E' : '#FFB800'}"></i></div></div>`;
 }
 function nextSteps() {
@@ -3338,7 +3353,7 @@ function nextSteps() {
   const G = GOALS[S.stars];
   if (G) {
     for (const [m, v] of G.parts) {
-      if (m === 'vibes' ? vibeHeld(S, S.stars) : metric(S, m) >= v) continue;
+      if (G.parts.find((q) => q[0] === m)[2] ? heldOk(S, S.stars, m) : metric(S, m) >= v) continue;
       if (m === 'vibes') { if (!hasRoom('cafe')) add('🍵', t('next.cafe'), () => openSize('cafe')); if (S.pepCd <= 0) add('📣', t('next.pep'), pepTalk); }
       if (m === 'helped') { add('🏗️', t('next.more'), openBuild); { const li = plotOf().lots.findIndex((_, i) => lotSt(i) === 'locked' && lotOpen(i) && S.cash >= lotCost(i)); if (li >= 0) add('🔓', t('next.expand'), () => tapLot(li)); } }
       if (m === 'cash') add('💵', t('next.cash'), null);
@@ -3355,7 +3370,7 @@ function updateObj() {
   const el = $('obj'), now = performance.now();
   const G = GOALS[S.stars];
   // progress on the Goals nav button: average of the current star's conditions
-  const prog = !G ? 1 : G.parts.reduce((a, [m, v]) => a + (m === 'vibes' && S.mode === 'career' ? (vibeHeld(S, S.stars) ? 1 : clamp((S.vhFor === S.stars ? S.vh || 0 : 0) / vhNeed(S.stars), 0, 1)) : clamp(metric(S, m) / v, 0, 1)), 0) / G.parts.length;
+  const prog = !G ? 1 : G.parts.reduce((a, [m, v, days]) => a + (days && S.mode === 'career' ? (heldOk(S, S.stars, m) ? 1 : clamp(((S.hold || {})[holdKey(S.stars, m)] || 0) / vhNeed(S.stars, days), 0, 1)) : clamp(metric(S, m) / v, 0, 1)), 0) / G.parts.length;
   $('gpBar').style.width = (prog * 100) + '%'; $('gpBar').style.background = prog >= 1 ? '#7ACB4E' : '#FFB800';
   objSteps = S.mode === 'career' ? nextSteps() : []; const s0 = objSteps[0];
   $('goalDot').style.display = s0 && s0.act ? 'block' : 'none';
