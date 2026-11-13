@@ -1838,7 +1838,7 @@ function complaintOf(v) {
   if (R.visitors.filter((u) => u.state === 'wait').length > 10) return 'crowd';
   return 'wait';
 }
-function logComplaint(k) { S.cmp = (S.cmp || []).filter((c) => c[0] > S.day - 7); S.cmp.push([S.day, k]); vb('cmp', -0.4); }
+function logComplaint(k) { S.cmp = (S.cmp || []).filter((c) => c[0] > S.day - 7); S.cmp.push([S.day, k]); vb('cmp', -0.15); }
 function topComplaints() { const n = {}; for (const [d, k] of S.cmp || []) if (d > S.day - 7) n[k] = (n[k] || 0) + 1; return Object.entries(n).sort((a, b) => b[1] - a[1]).slice(0, 3); }
 // a group counts once every member is done (helped or gone), as long as at least 2 of them were helped
 function groupStep(v, gid) { S.gs[gid]--; if (S.gs[gid] > 0) return; delete S.gs[gid]; const ok = ((S.gh || {})[gid] || 0) >= 2; if (S.gh) delete S.gh[gid];
@@ -1853,7 +1853,7 @@ function leave(v, quiet) {
   if (!quiet) {
     logComplaint(complaintOf(v));
     if (S.daily && S.daily.k === 'calm' && !S.daily.won && ++S.daily.bad > 4) S.daily.fail = true;
-    S.left++; outcome(false); AU.sfx('bad'); vb('left', 0 - (v.known && !isMystK(v.prob) && !hasRoom(PROBLEMS[v.prob].room) ? 1 : PROBLEMS[v.prob].care ? 5 : 3) - (v.vip ? 10 : 0)); if (v.vip) { chat('🤳 ' + v.name, t('vip.roast'), '💀'); toast('👑 ' + t('vip.roast'), 3200); } floatAt(v.av.position, t('v.lost'), true);
+    S.left++; outcome(false); AU.sfx('bad'); vb('left', 0 - (v.known && !isMystK(v.prob) && !hasRoom(PROBLEMS[v.prob].room) ? 0.8 : PROBLEMS[v.prob].care ? 2.5 : 1.8) - (v.vip ? 10 : 0)); // balanced so ~65 % success holds vibes steady; above that they climb if (v.vip) { chat('🤳 ' + v.name, t('vip.roast'), '💀'); toast('👑 ' + t('vip.roast'), 3200); } floatAt(v.av.position, t('v.lost'), true);
     if (v.known && !hasRoom(PROBLEMS[v.prob].room)) tip('noRoom');
     const need = v.known ? PROBLEMS[v.prob].room : null;
     if (v.noLoo || Math.random() < 0.3) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, v.noLoo ? t('rev.noLoo') : v.known && isMystK(v.prob) ? t('rev.myst') : need && !hasRoom(need) ? t('rev.noRoom', { room: rn(need) }) : crnd(tList('rev.bad')), '😤');
