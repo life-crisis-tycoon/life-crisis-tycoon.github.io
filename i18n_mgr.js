@@ -1054,3 +1054,12 @@ pt: {"obj.groups": "Grupos de amigos", "obj.families": "Famílias inteiras", "ob
 de: {"obj.groups": "Freundesgruppen", "obj.families": "Ganze Familien", "obj.bestday": "Bester Tag", "obj.nightbest": "Beste Nacht", "obj.emwin": "Gewonnene Notfälle", "obj.wave": "Besucher aus Verkehrswellen", "obj.wedding": "Hochzeits-Ruhebüro", "obj.tea": "Ahwa-Besucher", "obj.quake": "Nachbeben-Besucher", "obj.lucha": "Lucha-Besucher", "obj.yoga": "Yoga-Besucher"},
 ja: {"obj.groups": "友達グループ", "obj.families": "家族まるごと", "obj.bestday": "最高の1日", "obj.nightbest": "最高の夜", "obj.emwin": "緊急対応成功", "obj.wave": "渋滞の波の来訪者", "obj.wedding": "結婚式相談所", "obj.tea": "アフワ来訪者", "obj.quake": "余震の来訪者", "obj.lucha": "ルチャ来訪者", "obj.yoga": "ヨガ来訪者"},
 ko: {"obj.groups": "친구 그룹", "obj.families": "가족 전체", "obj.bestday": "최고의 하루", "obj.nightbest": "최고의 밤", "obj.emwin": "긴급 상황 성공", "obj.wave": "교통 물결 방문객", "obj.wedding": "웨딩 안정소", "obj.tea": "아화 방문객", "obj.quake": "여진 방문객", "obj.lucha": "루차 방문객", "obj.yoga": "요가 방문객"} };
+
+export const EXTRA28 = {
+en: {"obj.hold": "Held above {v}%: {a} / {b} days (resets if below for 10 s)", "obj.held": "Vibes goal held!"},
+fr: {"obj.hold": "Tenu au-dessus de {v} % : {a} / {b} jours (repart à zéro si en dessous plus de 10 s)", "obj.held": "Objectif de vibes tenu !"},
+es: {"obj.hold": "Mantenido sobre {v} %: {a} / {b} días (se reinicia si baja más de 10 s)", "obj.held": "¡Objetivo de vibes mantenido!"},
+pt: {"obj.hold": "Mantido acima de {v}%: {a} / {b} dias (zera se ficar abaixo por 10 s)", "obj.held": "Meta de vibes mantida!"},
+de: {"obj.hold": "Über {v} % gehalten: {a} / {b} Tage (startet neu, wenn 10 s darunter)", "obj.held": "Vibes-Ziel gehalten!"},
+ja: {"obj.hold": "{v}%以上を維持：{a} / {b}日（10秒以上下回るとリセット）", "obj.held": "バイブス目標を維持！"},
+ko: {"obj.hold": "{v}% 이상 유지: {a} / {b}일 (10초 이상 떨어지면 초기화)", "obj.held": "바이브 목표 유지 성공!"} };

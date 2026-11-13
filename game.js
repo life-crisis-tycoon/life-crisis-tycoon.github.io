@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -123,7 +123,11 @@ const LOCKED_PINS = [];
 const metric = (s, m) => (m === 'bestday' ? Math.max(s.bestDay || 0, s.dServ || 0) : m === 'nightbest' ? Math.max(s.bestNight || 0, s.nServ || 0) : m === 'helped' ? s.served : m === 'vibes' ? s.vibes : m === 'cash' ? s.cash : (s.cnt || {})[m] || 0);
 function incCnt(k) { S.cnt = S.cnt || {}; S.cnt[k] = (S.cnt[k] || 0) + 1; }
 const isNight = () => cityOf().night && S.t > DAY_LEN * 0.66;
-const mkGoals = (arr) => arr.map((parts, i) => ({ k: 'g' + (i + 1), parts, ok: (s) => parts.every(([m, v]) => metric(s, m) >= v) }));
+// a vibes condition has to be HELD: 2 days in a row for the 1st star, 3 days for the others (a dip under the line for more than 10 s restarts the count). Once held it stays ticked.
+const VH_GRACE = 10, vhNeed = (i) => (i === 0 ? 2 : 3) * 90;
+const vibeHeld = (s, i) => s.mode !== 'career' || !!(s.vhDone || {})[i];
+const partOk = (s, i, m, v) => (m === 'vibes' ? vibeHeld(s, i) && true : metric(s, m) >= v);
+const mkGoals = (arr) => arr.map((parts, i) => ({ k: 'g' + (i + 1), i, parts, ok: (s) => parts.every(([m, v]) => (m === 'vibes' && s.mode === 'career' ? vibeHeld(s, i) : metric(s, m) >= v)) }));
 let GOALS = mkGoals(CITIES.london.goals);
 const goalText = (G) => G.parts.map(([m, v]) => t('gp.' + m, { n: m === 'cash' ? money(v) : v })).join(' · ');
 const cityOf = () => CITIES[(S && S.city) || 'london'];
@@ -1462,6 +1466,12 @@ function vibeTick(dt) {
   for (const k in VB) VB[k] *= Math.exp(-dt / 60); // the panel shows roughly the last minute
   vb('fade', (50 - S.vibes) * dt / 900); // a reputation needs upkeep: it drifts back toward 50 % (about -3 %/day at 80 %)
   const st = R.staff.filter((x) => x.data && x.data.energy != null); if (st.length >= 2 && st.reduce((a, x) => a + x.data.energy, 0) / st.length < 0.3) vb('staff', -0.005 * dt); // an exhausted team shows
+  { const gi = S.stars, G = GOALS[gi], pv = G && G.parts.find(([m]) => m === 'vibes');
+    if (S.vhFor !== gi) { S.vhFor = gi; S.vh = 0; S.vhLow = 0; }
+    if (pv && !(S.vhDone || {})[gi]) {
+      if (S.vibes >= pv[1]) { S.vh = (S.vh || 0) + dt; S.vhLow = 0; if (S.vh >= vhNeed(gi)) { (S.vhDone = S.vhDone || {})[gi] = true; toast('★ ' + t('obj.held'), 3000); AU.sfx('cash'); } }
+      else if ((S.vhLow = (S.vhLow || 0) + dt) > VH_GRACE) S.vh = 0;
+    } }
   if ((vbHistT += dt) >= 5) { vbHistT = 0; vbHist.push(S.vibes); if (vbHist.length > 12) vbHist.shift(); }
 }
 const vibeTrend = () => (vbHist.length < 3 ? 0 : S.vibes - vbHist[0]);
@@ -2347,7 +2357,7 @@ function openGoals() {
   GOALS.forEach((G, i) => {
     const st = S.stars > i ? 'done' : S.stars === i ? 'now' : 'later';
     h += `<div class="goalcard w ${st}"><div class="gh"><span><span class="stars">${'★'.repeat(i + 1)}</span> ${goalText(G)}</span><small>${st === 'done' ? '✅ ' + t('goals.done') : st === 'now' ? t('goals.now') : '🔒 ' + t('goals.later')}</small></div>`;
-    if (st !== 'later') h += G.parts.map((pt) => metricRow(pt, st === 'done')).join('');
+    if (st !== 'later') h += G.parts.map((pt) => metricRow(pt, st === 'done', i)).join('');
     h += '</div>';
   });
   h += `<div class="lbl" style="margin:6px 0">👉 ${t('goals.nextSteps')}</div>` + (steps.length ? steps.map((s, i) => `<button class="stepbtn w" data-step="${i}">${s.icon} <span>${s.txt}</span></button>`).join('') : `<div class="msg">${t('goals.none')}</div>`);
@@ -3307,7 +3317,9 @@ $('hDay').parentElement.style.cursor = 'pointer'; $('hDay').parentElement.onclic
 $('hVibes').parentElement.style.cursor = 'pointer'; $('hVibes').parentElement.onclick = (e) => { if (!S || S.mode !== 'career') return; if (e.target && e.target.id === 'hTemp') openTemp(); else openVibes(); };
 
 // ---------------- objectives tracker ----------------
-function metricRow([m, v], done) {
+function metricRow([m, v], done, gi) {
+  if (m === 'vibes' && S.mode === 'career' && gi != null) { const ok = done || vibeHeld(S, gi), need = vhNeed(gi), held = ok ? need : (S.vhFor === gi ? S.vh || 0 : 0), above = S.vibes >= v;
+    return `<div class="gm ${ok ? 'ok' : ''}">★ ${t('obj.vibes')} <b>${Math.floor(S.vibes)}% / ${v}%</b> ${ok ? '✅' : ''}<div style="font-size:12px;color:${ok || above ? 'inherit' : 'var(--red)'}">⏱️ ${t('obj.hold', { a: (held / 90).toFixed(1).replace('.0', ''), b: need / 90, v })}</div><div class="bar"><i style="width:${(held / need) * 100}%;background:${ok ? '#7ACB4E' : '#FFB800'}"></i></div></div>`; }
   const cur = metric(S, m), ok = done || cur >= v, pct = clamp(cur / v, 0, 1) * 100;
   const fmt = (x) => (m === 'cash' ? money(x) : m === 'vibes' ? Math.floor(x) + '%' : Math.floor(x));
   const icon = { helped: '🙂', vibes: '★', cash: '💵', groups: '🥳', families: '👨‍👩‍👧', bestday: '📈', nightbest: '🌙', emwin: '🚨', wave: '🚦', wedding: '💍', tea: '🍵', quake: '🌋', lucha: '🤼', yoga: '🧘' }[m] || '🎯';
@@ -3326,7 +3338,7 @@ function nextSteps() {
   const G = GOALS[S.stars];
   if (G) {
     for (const [m, v] of G.parts) {
-      if (metric(S, m) >= v) continue;
+      if (m === 'vibes' ? vibeHeld(S, S.stars) : metric(S, m) >= v) continue;
       if (m === 'vibes') { if (!hasRoom('cafe')) add('🍵', t('next.cafe'), () => openSize('cafe')); if (S.pepCd <= 0) add('📣', t('next.pep'), pepTalk); }
       if (m === 'helped') { add('🏗️', t('next.more'), openBuild); { const li = plotOf().lots.findIndex((_, i) => lotSt(i) === 'locked' && lotOpen(i) && S.cash >= lotCost(i)); if (li >= 0) add('🔓', t('next.expand'), () => tapLot(li)); } }
       if (m === 'cash') add('💵', t('next.cash'), null);
@@ -3343,7 +3355,7 @@ function updateObj() {
   const el = $('obj'), now = performance.now();
   const G = GOALS[S.stars];
   // progress on the Goals nav button: average of the current star's conditions
-  const prog = !G ? 1 : G.parts.reduce((a, [m, v]) => a + clamp(metric(S, m) / v, 0, 1), 0) / G.parts.length;
+  const prog = !G ? 1 : G.parts.reduce((a, [m, v]) => a + (m === 'vibes' && S.mode === 'career' ? (vibeHeld(S, S.stars) ? 1 : clamp((S.vhFor === S.stars ? S.vh || 0 : 0) / vhNeed(S.stars), 0, 1)) : clamp(metric(S, m) / v, 0, 1)), 0) / G.parts.length;
   $('gpBar').style.width = (prog * 100) + '%'; $('gpBar').style.background = prog >= 1 ? '#7ACB4E' : '#FFB800';
   objSteps = S.mode === 'career' ? nextSteps() : []; const s0 = objSteps[0];
   $('goalDot').style.display = s0 && s0.act ? 'block' : 'none';
