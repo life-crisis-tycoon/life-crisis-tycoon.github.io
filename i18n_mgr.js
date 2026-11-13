@@ -1063,3 +1063,12 @@ pt: {"obj.hold": "Mantido acima de {v}%: {a} / {b} dias (zera se ficar abaixo po
 de: {"obj.hold": "Über {v} % gehalten: {a} / {b} Tage (startet neu, wenn 10 s darunter)", "obj.held": "Vibes-Ziel gehalten!"},
 ja: {"obj.hold": "{v}%以上を維持：{a} / {b}日（10秒以上下回るとリセット）", "obj.held": "バイブス目標を維持！"},
 ko: {"obj.hold": "{v}% 이상 유지: {a} / {b}일 (10초 이상 떨어지면 초기화)", "obj.held": "바이브 목표 유지 성공!"} };
+
+export const EXTRA29 = {
+en: {"obj.roda": "Music Roda visitors", "gp.roda": "Help {n} visitors at the Music Roda"},
+fr: {"obj.roda": "Visiteurs de la Roda musicale", "gp.roda": "Aider {n} visiteurs à la Roda musicale"},
+es: {"obj.roda": "Visitantes de la Roda musical", "gp.roda": "Ayudar a {n} visitantes en la Roda musical"},
+pt: {"obj.roda": "Visitantes da Roda musical", "gp.roda": "Ajudar {n} visitantes na Roda musical"},
+de: {"obj.roda": "Besucher der Musik-Roda", "gp.roda": "{n} Besuchern in der Musik-Roda helfen"},
+ja: {"obj.roda": "音楽ホーダの来訪者", "gp.roda": "音楽ホーダで{n}人を助ける"},
+ko: {"obj.roda": "음악 호다 방문객", "gp.roda": "음악 호다에서 방문객 {n}명 돕기"} };
