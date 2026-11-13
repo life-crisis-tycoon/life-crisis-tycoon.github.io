@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l], EXTRA30[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -107,10 +107,10 @@ const CITIES = {
   lagos: { lvl: 1, region: 'rg.africa', unlock: 'london', cash: 14000, rent: 2600, rain: 0.25, pin: [45.1, 52.0], desc: 'lg.desc', tag: 'lg.tag', brief: 'lg.brief', rules: [['⚡', 'lg.r1'], ['💼', 'lg.r2'], ['🚦', 'lg.r3']], chips: [['b', 'lg.c1'], ['b', 'lg.c2'], ['r', 'lg.c3']], start: 'lg.landlord', power: true, hustle: true, waves: true,
     goals: [[['helped', 70], ['vibes', 60]], [['cash', 70000], ['helped', 540]], [['bestday', 24], ['emwin', 4], ['wave', 20]]] },
   mumbai: { lvl: 2, region: 'rg.asia', unlock: 'lagos', cash: 13000, rent: 2200, rain: 0.5, monsoon: true, pin: [67.4, 45.0], desc: 'mb.desc', tag: 'mb.tag', brief: 'mb.brief', rules: [['🌧️', 'mb.r1'], ['👨‍👩‍👧', 'mb.r2'], ['💍', 'mb.r3']], chips: [['b', 'mb.c1'], ['b', 'mb.c2'], ['r', 'mb.c3']], start: 'mb.landlord', groups: { chance: 0.22, kind: 'families' },
-    goals: [[['helped', 110], ['vibes', 60]], [['cash', 90000], ['families', 25]], [['bestday', 26], ['emwin', 4], ['wedding', 30]]] },
+    goals: [[['helped', 110], ['vibes', 60]], [['cash', 90000], ['wedding', 30]], [['bestday', 26], ['emwin', 4], ['rain', 80]]] },
   seoul: { lvl: 3, region: 'rg.asia', unlock: 'mumbai', cash: 12000, rent: 3000, rain: 0.3, night: true, pin: [82.7, 32.0], desc: 'se.desc', tag: 'se.tag', brief: 'se.brief', rules: [['🌙', 'se.r1'], ['💼', 'se.r2'], ['🪞', 'se.r3']], chips: [['b', 'se.c1'], ['b', 'se.c2'], ['r', 'se.c3']], start: 'se.landlord',
     goals: [[['helped', 125], ['vibes', 65]], [['cash', 90000], ['helped', 630]], [['nightbest', 9], ['bestday', 28], ['emwin', 4]]] },
-  saopaulo: { lvl: 4, region: 'rg.americas', unlock: 'seoul', cash: 12000, rent: 2500, rain: 0.3, waves: true, pin: [27.3, 73.2], desc: 'sp.desc', tag: 'sp.tag', brief: 'sp.brief', rules: [['🚗', 'sp.r1'], ['🥳', 'sp.r2'], ['📺', 'sp.r3']], chips: [['b', 'sp.c1'], ['b', 'sp.c2'], ['r', 'sp.c3']], start: 'sp.landlord', groups: { chance: 0.3, kind: 'groups' },
+  saopaulo: { lvl: 4, region: 'rg.americas', unlock: 'seoul', cash: 12000, rent: 2500, rain: 0.3, waves: true, pin: [27.3, 73.2], desc: 'sp.desc', tag: 'sp.tag', brief: 'sp.brief', rules: [['🚗', 'sp.r1'], ['🥁', 'sp.r2'], ['📺', 'sp.r3']], chips: [['b', 'sp.c1'], ['b', 'sp.c2'], ['r', 'sp.c3']], start: 'sp.landlord',
     goals: [[['helped', 145], ['vibes', 65]], [['cash', 110000], ['roda', 50]], [['bestday', 30], ['emwin', 5], ['vibes', 80]]] },
   cairo: { lvl: 5, region: 'rg.africa', unlock: 'saopaulo', cash: 12000, rent: 2500, sig: 'paperwork', rain: 0.05, hot: true, evening: true, pin: [53.9, 36.9], desc: 'cr.desc', tag: 'cr.tag', brief: 'cr.brief', rules: [['🥵', 'cr.r1'], ['🌆', 'cr.r2'], ['📑', 'cr.r3']], chips: [['b', 'cr.c1'], ['b', 'cr.c2'], ['r', 'cr.c3']], start: 'cr.landlord',
     goals: [[['helped', 160], ['vibes', 65]], [['cash', 100000], ['tea', 50]], [['bestday', 30], ['emwin', 5], ['vibes', 82]]] },
@@ -1786,7 +1786,7 @@ function visitorUpdate(v, dt) {
         if (v.em && S.em) S.em.got++;
         if (v.gag) v.gag.visible = false;
         if (v.gid && S.gs && S.gs[v.gid] > 0) { S.gh = S.gh || {}; S.gh[v.gid] = (S.gh[v.gid] || 0) + 1; groupStep(v, v.gid); }
-        if (v.prob === 'wedding') incCnt('wedding'); if (PROBLEMS[v.prob].room === 'yoga') incCnt('yoga'); if (PROBLEMS[v.prob].room === 'lucha') incCnt('lucha'); if (PROBLEMS[v.prob].room === 'roda') incCnt('roda'); if (v.prob === 'quake') incCnt('quake'); if (v.wave) incCnt('wave'); if (PROBLEMS[v.prob].room === 'ahwa') incCnt('tea'); if (cityOf().evening && S.t > DAY_LEN * 0.6) incCnt('evening'); if (isNight()) incCnt('night'); if (PROBLEMS[v.prob].care) vb('misc', 0 + 1);
+        if (v.prob === 'wedding') incCnt('wedding'); if (PROBLEMS[v.prob].room === 'yoga') incCnt('yoga'); if (PROBLEMS[v.prob].room === 'lucha') incCnt('lucha'); if (PROBLEMS[v.prob].room === 'roda') incCnt('roda'); if (S.rainy) incCnt('rain'); if (v.prob === 'quake') incCnt('quake'); if (v.wave) incCnt('wave'); if (PROBLEMS[v.prob].room === 'ahwa') incCnt('tea'); if (cityOf().evening && S.t > DAY_LEN * 0.6) incCnt('evening'); if (isNight()) incCnt('night'); if (PROBLEMS[v.prob].care) vb('misc', 0 + 1);
         if (Math.random() < 0.08) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, crnd(tList('rev.good')), '⭐', { fun: true });
         v.rspot.busy = null; v.rspot = null; v.cured = true; if (p.anim && p.anim.calm) p.anim.calm(); // cured: back to a normal walk
         v.icon.material = iconTex('😊');
@@ -3322,7 +3322,7 @@ function metricRow([m, v], done, gi) {
     return `<div class="gm ${ok ? 'ok' : ''}">★ ${t('obj.vibes')} <b>${Math.floor(S.vibes)}% / ${v}%</b> ${ok ? '✅' : ''}<div style="font-size:12px;color:${ok || above ? 'inherit' : 'var(--red)'}">⏱️ ${t('obj.hold', { a: (held / 90).toFixed(1).replace('.0', ''), b: need / 90, v })}</div><div class="bar"><i style="width:${(held / need) * 100}%;background:${ok ? '#7ACB4E' : '#FFB800'}"></i></div></div>`; }
   const cur = metric(S, m), ok = done || cur >= v, pct = clamp(cur / v, 0, 1) * 100;
   const fmt = (x) => (m === 'cash' ? money(x) : m === 'vibes' ? Math.floor(x) + '%' : Math.floor(x));
-  const icon = { helped: '🙂', vibes: '★', cash: '💵', groups: '🥳', families: '👨‍👩‍👧', bestday: '📈', nightbest: '🌙', emwin: '🚨', wave: '🚦', wedding: '💍', tea: '🍵', quake: '🌋', lucha: '🤼', yoga: '🧘', roda: '🥁' }[m] || '🎯';
+  const icon = { helped: '🙂', vibes: '★', cash: '💵', groups: '🥳', families: '👨‍👩‍👧', bestday: '📈', nightbest: '🌙', emwin: '🚨', wave: '🚦', wedding: '💍', tea: '🍵', quake: '🌋', lucha: '🤼', yoga: '🧘', roda: '🥁', rain: '🌧️' }[m] || '🎯';
   return `<div class="gm ${ok ? 'ok' : ''}">${icon} ${t('obj.' + m)} <b>${fmt(Math.max(0, cur))} / ${fmt(v)}</b> ${ok ? '✅' : ''}<div class="bar"><i style="width:${ok ? 100 : pct}%;background:${ok ? '#7ACB4E' : '#FFB800'}"></i></div></div>`;
 }
 function nextSteps() {
