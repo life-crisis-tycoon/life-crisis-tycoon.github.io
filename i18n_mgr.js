@@ -1090,3 +1090,12 @@ pt: {"obj.succ": "Taxa de sucesso", "gp.succ": "{n}% de sucesso", "obj.value": "
 de: {"obj.succ": "Erfolgsquote", "gp.succ": "{n} % Erfolgsquote", "obj.value": "Wert des Zentrums", "gp.value": "Zentrum im Wert von {n}", "obj.days": "{d} T", "next.succ": "Weniger wütende Abgänge: mehr Personal oder ein 2. Raum, wo gewartet wird", "next.value": "Bauen und ausstatten: Räume, Ausstattung und Grundstücke steigern den Wert"},
 ja: {"obj.succ": "成功率", "gp.succ": "成功率{n}%", "obj.value": "センターの価値", "gp.value": "センター価値{n}", "obj.days": "{d}日", "next.succ": "怒って帰る人を減らそう：待ちが多い所にスタッフか2つ目の部屋を", "next.value": "建設と設備：部屋・設備・土地でセンターの価値が上がる"},
 ko: {"obj.succ": "성공률", "gp.succ": "성공률 {n}%", "obj.value": "센터 가치", "gp.value": "센터 가치 {n}", "obj.days": "{d}일", "next.succ": "화나서 떠나는 사람 줄이기: 대기가 많은 곳에 직원이나 두 번째 방을", "next.value": "짓고 갖추기: 방, 장비, 부지가 센터 가치를 높여요"} };
+
+export const EXTRA32 = {
+en: {"staff.tiredMany": "{n} of us are running on empty, boss. A staff room (or a bigger one) would help…"},
+fr: {"staff.tiredMany": "On est {n} à être à bout, chef. Une salle de repos (ou une plus grande) nous aiderait…"},
+es: {"staff.tiredMany": "Somos {n} los que vamos en reserva, jefe. Una sala de descanso (o una más grande) ayudaría…"},
+pt: {"staff.tiredMany": "Somos {n} no bagaço, Chefe. Uma sala de descanso (ou uma maior) ajudaria…"},
+de: {"staff.tiredMany": "{n} von uns sind am Ende, Chef. Ein Pausenraum (oder ein größerer) würde helfen…"},
+ja: {"staff.tiredMany": "ボス、{n}人がもう限界です。休憩室（か、もっと広い休憩室）があれば…"},
+ko: {"staff.tiredMany": "사장님, {n}명이 지쳤어요. 휴게실(아니면 더 큰 휴게실)이 있으면 좋겠어요…"} };
