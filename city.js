@@ -182,7 +182,7 @@ export function buildCity(kind, cg, H, box) {
     else if (kindV === 'taxiMx') { body(1.6, 0.8, 3.2, '#F4F2EE'); put(rbox(1.5, 0.6, 1.8, '#E85A9C', 0.28), 0, GY + 1.45, -0.1, g); glass(1.52, 0.35, 1.6, 1.5); put(rbox(1.62, 0.18, 3.22, '#E85A9C', 0.02), 0, GY + 0.75, 0, g); wheels(3.2); }
     else if (kindV === 'pesero') { body(1.8, 1.6, 4.2, '#7ACB4E', 0.3); put(rbox(1.85, 0.16, 4.22, '#F4F2EE', 0.02), 0, GY + 1.1, 0, g); glass(1.85, 0.45, 3.6, 1.45); wheels(4.2); }
     if (H.glb && (kindV === 'dd' || kindV === 'cab')) H.glb(g, kindV === 'dd' ? 'bus' : 'cab', { len: kindV === 'dd' ? 5.2 : 3.3, rot: Math.PI / 2, y: GY });
-    if (H.glb && kind === 'saopaulo') { const sp = { bus: (vehicle.nb = (vehicle.nb || 0) + 1) % 2 ? 'sp_bus_g' : 'sp_bus_r', taxiSP: 'sp_taxi', okada: 'sp_moto' }[kindV]; if (sp) H.glb(g, sp, { len: { sp_taxi: 3.3, sp_moto: 1.5 }[sp] || 5.2, rot: Math.PI, y: GY }); }
+    if (H.glb && kind === 'saopaulo') { const sp = { bus: (vehicle.nb = (vehicle.nb || 0) + 1) % 2 ? 'sp_bus_g' : 'sp_bus_r', taxiSP: 'sp_taxi', okada: 'sp_moto' }[kindV]; if (sp) H.glb(g, sp, { len: { sp_taxi: 3.3, sp_moto: 1.5 }[sp] || 5.2, rot: Math.PI / 2, y: GY }); }
     else if (kindV === 'taxiC') { body(1.6, 0.8, 3.2, '#F4F2EE'); put(rbox(1.5, 0.6, 1.8, '#F4F2EE', 0.28), 0, GY + 1.45, -0.1, g); glass(1.52, 0.35, 1.6, 1.5); for (let i = 0; i < 8; i++) put(rbox(1.62, 0.1, 0.2, i % 2 ? '#1C1C1C' : '#F4F2EE', 0.01), 0, GY + 0.95, -1.4 + i * 0.4, g); wheels(3.2); }
     else if (kindV === 'micro') { body(1.8, 1.5, 4.0, '#F4F2EE', 0.3); put(rbox(1.85, 0.2, 4.02, '#2E6BB8', 0.02), 0, GY + 0.9, 0, g); glass(1.85, 0.45, 3.4, 1.4); wheels(4); }
     else if (kindV === 'tuk') { put(rbox(1.1, 0.7, 1.8, '#C93A2E', 0.2), 0, GY + 0.7, 0, g); put(rbox(1.15, 0.12, 1.9, '#1C1C1C', 0.06), 0, GY + 1.75, 0, g); for (const sx of [-0.5, 0.5]) put(cyl(0.04, 0.04, 0.7, '#1C1C1C'), sx, GY + 1.4, -0.6, g); wheels(1.8, 1.0); }
@@ -413,13 +413,14 @@ export function buildCity(kind, cg, H, box) {
     water(-44, 50, zN - 21, zN - 13, '#7E9A8A'); estaiada(cx + 4, zN - 17); masp(cx - 4, zS + 6, 0); copan(xE + 12, zN + 6);
     for (let i = 0; i < 8; i++) tree(-38 + i * 11, zS + 3.2, i % 3 ? 'jacaranda' : 'ipe', 1);
     // street life (Blender models; plain boxes until they load): benches, a bus shelter, traffic lights at the corners, and food carts under MASP's open plaza
+    // Meshy models (Nov 2026) face −X in their file; rot turns them so the front faces the street or the direction of travel
     const spProp = (x, z, r, n, o, fb) => { const g = C(x, z, r); g.position.y = GY; put(rbox(fb[0], fb[1], fb[2], fb[3], 0.05), 0, fb[1] / 2, 0, g); if (H.glb) H.glb(g, n, o); return g; };
-    for (const bx of [-30, -14, 18, 34]) spProp(bx, zS + 1.95, Math.PI, 'sp_bench', { len: 1.6 }, [1.6, 0.5, 0.45, '#9C6B3E']);
-    spProp(cx + 3, zS + 2.05, Math.PI, 'sp_shelter', { len: 2.8 }, [2.6, 2.3, 1.2, '#AEB4BC']);
+    for (const bx of [-30, -14, 18, 34]) spProp(bx, zS + 1.95, Math.PI, 'sp_bench', { len: 1.6, rot: Math.PI / 2 }, [1.6, 0.5, 0.45, '#9C6B3E']);
+    spProp(cx + 3, zS + 2.05, Math.PI, 'sp_shelter', { len: 2.8, rot: Math.PI / 2 }, [2.6, 2.3, 1.2, '#AEB4BC']);
     for (const [tx, tz] of [[xW + 1.9, zS - 1.9], [xE - 1.9, zS - 1.9], [xW + 1.9, zN + 1.9], [xE - 1.9, zN + 1.9]]) spProp(tx, tz, 0, 'sp_light', { h: 3.4 }, [0.15, 3.2, 0.15, '#8A9099']);
-    spProp(cx - 7, zS + 6.4, 0.2, 'sp_fruit', { len: 2.2 }, [2, 1.2, 1.2, '#B98352']);
-    spProp(cx - 2.5, zS + 5.4, -0.4, 'sp_coco', { h: 2.6 }, [1.3, 1, 0.8, '#7DBA3F']);
-    spProp(cx + 1.8, zS + 6.6, 0.5, 'sp_popcorn', { h: 2.6 }, [0.9, 1.5, 0.6, '#E2443A']);
+    spProp(cx - 7, zS + 6.4, 0.2, 'sp_fruit', { len: 2.2, rot: -Math.PI / 2 }, [2, 1.2, 1.2, '#B98352']);
+    spProp(cx - 2.5, zS + 5.4, -0.4, 'sp_coco', { h: 2.6, rot: -Math.PI / 2 }, [1.3, 1, 0.8, '#7DBA3F']);
+    spProp(cx + 1.8, zS + 6.6, 0.5, 'sp_popcorn', { h: 2.6, rot: -Math.PI / 2 }, [0.9, 1.5, 0.6, '#E2443A']);
   }
 
   // fill blocks

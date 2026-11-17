@@ -615,7 +615,8 @@ function propModel(name) {
   return PROP_CACHE[name] || (PROP_CACHE[name] = (async () => {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
     const b64 = (await import('./models/props/' + name + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    const gl = await new Promise((res, rej) => new GLTFLoader().parse(bin.buffer, '', res, rej)); slimTextures(gl.scene);
+    const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js'); // the Meshy props are meshopt-compressed
+    const gl = await new Promise((res, rej) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(bin.buffer, '', res, rej)); slimTextures(gl.scene);
     { const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js'); gl.scene.updateMatrixWorld(true); const groups = new Map();
       gl.scene.traverse((m) => { if (m.isMesh && !m.isSkinnedMesh) { const k = m.material.uuid + '|' + Object.keys(m.geometry.attributes).sort().join(','); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); } });
       if ([...groups.values()].some((l) => l.length > 1)) { const root = new THREE.Group();
