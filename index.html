@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Life Crisis Tycoon: Fix the Chaos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&family=M+PLUS+Rounded+1c:wght@500;700;800&family=Jua&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Open+Sans:wght@600;700;800&family=Nunito:wght@600;700;800;900&family=M+PLUS+Rounded+1c:wght@500;700;800&family=Jua&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#14213D;--muted:#4A5568;--bg:#F1F2F5;--line:#E3E6EC;--sh:#D5D9E2;--green:#16963C;--green-d:#0E6E2C;--gold:#FFD25E;--gold-b:#D99A12;--gold-d:#C98A0A;--red:#D93A3F;--blue:#1F74C4}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -330,6 +330,20 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 #title .tlogo h1{font-size:clamp(40px,11.5vw,56px)!important}
 .tfoot button{white-space:nowrap;font-size:15px}
 #cloudInfo{font-size:13px;line-height:1.25;max-width:52%}
+
+#title,#title button,#title .tlogo *,#title .tbtn *,#title .tfoot *,#title .tpill *{font-family:'Open Sans',sans-serif!important}
+#title .tlogo{top:calc(env(safe-area-inset-top) + 66px)!important}
+#title .tlogo::before{content:'';position:absolute;left:8%;right:8%;top:-18px;bottom:-14px;z-index:-1;background:radial-gradient(closest-side,rgba(255,250,244,.92),rgba(255,250,244,.7) 55%,rgba(255,250,244,0))}
+#title .tlogo h1{font-weight:800!important;font-size:clamp(46px,14vw,66px)!important;letter-spacing:-1.5px!important;color:#14213D!important;-webkit-text-stroke:0;paint-order:stroke fill;text-shadow:0 3px 0 #fff,0 0 14px rgba(255,255,255,.95)!important}
+#title .ttyc span{font-weight:800!important;font-size:clamp(28px,8.4vw,40px)!important;letter-spacing:.26em!important;margin-right:-.26em!important;color:#169A33!important;text-shadow:0 2px 0 #fff,0 0 10px rgba(255,255,255,.95)!important}
+#title .ttyc i{width:34px!important;height:5px!important}
+#title .tlogo p{font-weight:700!important;font-size:19px!important;color:#2B3346!important;margin-top:4px!important}
+.tbtn.g b,.tbtn.y b{font-weight:800!important;letter-spacing:-.3px}
+.tbtn.g small{font-weight:600!important}
+.tpill{font-weight:700!important}
+#title .tlogo{isolation:isolate;z-index:1}
+#title .tlogo::before{display:none}
+#title .thero{background-position:center top!important;background-size:100% auto!important;background-color:#9ECEFB}
 </style>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icons/icon-180.png">
