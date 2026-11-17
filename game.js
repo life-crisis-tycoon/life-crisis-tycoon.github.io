@@ -272,7 +272,7 @@ const STYLES = ['short', 'long', 'bun', 'curly', 'beanie', 'beard', 'hijab', 'ba
 function outfitKey(kind, o) { return kind === 'staff' ? (o.role === 'barista' ? 'host' : o.role) : kind === 'manager' ? (o.model || 'mgr_h') : (o.vm && CHAR.A.full[o.vm] ? o.vm : 'casual'); }
 // ---- modelled visitors: 28 people; who shows up depends on the city's population, never on the problem they bring ----
 // h = height in m (HUD placement), kid = only comes along with a family group
-const VIS = { v01: { h: 1.65 }, v02: { h: 1.8 }, v03: { h: 1.68 }, v04: { h: 1.74 }, v05: { h: 1.62 }, v06: { h: 1.75 }, v07: { h: 1.63 }, v08: { h: 1.76 }, v09: { h: 1.65 }, v10: { h: 1.35, chair: true }, v11: { h: 1.64 }, v12: { h: 1.8 }, v13: { h: 1.66 }, v14: { h: 1.78 },
+const VIS = { sp_health: { h: 1.82 }, sp_safety: { h: 1.8 }, sp_mystery: { h: 1.66 }, sp_influencer: { h: 1.65 }, sp_trainer: { h: 1.68 }, v01: { h: 1.65 }, v02: { h: 1.8 }, v03: { h: 1.68 }, v04: { h: 1.74 }, v05: { h: 1.62 }, v06: { h: 1.75 }, v07: { h: 1.63 }, v08: { h: 1.76 }, v09: { h: 1.65 }, v10: { h: 1.35, chair: true }, v11: { h: 1.64 }, v12: { h: 1.8 }, v13: { h: 1.66 }, v14: { h: 1.78 },
   v15: { h: 1.8 }, v16: { h: 1.74 }, v17: { h: 1.6 }, v18: { h: 1.7 }, v19: { h: 1.6 }, v20: { h: 1.63 }, v21: { h: 1.56 }, v22: { h: 1.78 }, v23: { h: 1.66 }, v24: { h: 1.8 }, v25: { h: 1.15, kid: 1 }, v26: { h: 1.28, kid: 1 }, v27: { h: 1.2, kid: 1 }, v28: { h: 1.22, kid: 1 } };
 const VIS_POOL = {
   london: { v01: 3, v02: 3, v03: 4, v04: 4, v05: 3, v06: 3, v07: 2, v08: 2, v09: 2, v10: 1, v11: 3, v12: 4, v15: 1, v22: 1, v25: 1, v26: 1, v27: 1, v28: 1 },
@@ -289,7 +289,7 @@ function pickVis(kid, noChair) {
   const P = visPool(), ks = Object.keys(P).filter((k) => !!VIS[k].kid === !!kid && !(noChair && VIS[k].chair)); if (!ks.length) return null;
   let r = RNG() * ks.reduce((a, k) => a + P[k], 0); for (const k of ks) { r -= P[k]; if (r <= 0) return k; } return ks[ks.length - 1];
 }
-const VIS_MALE = new Set(['v02', 'v04', 'v06', 'v08', 'v10', 'v12', 'v14', 'v15', 'v16', 'v18', 'v22', 'v23', 'v24', 'v26', 'v28']);
+const VIS_MALE = new Set(['sp_health', 'sp_safety', 'v02', 'v04', 'v06', 'v08', 'v10', 'v12', 'v14', 'v15', 'v16', 'v18', 'v22', 'v23', 'v24', 'v26', 'v28']);
 // body language by problem (shared clips, bought once): how they walk, wait and sit
 const PSTYLE = {}; const sty = (ks, st) => ks.split(' ').forEach((k) => (PSTYLE[k] = st));
 sty('doom group apps filter novela', { walk: 'WalkText' });
@@ -303,7 +303,7 @@ sty('boss hustle rent fuel subs flat', { walk: 'WalkQuick', sit: 'SitCross' });
 sty('haircut botoxfomo beauty', { idle: 'IdleMirror', phone: 'IdleMirror' }); sty('lonely ghosted', { walk: 'WalkTired', idle: 'IdleBreath' });
 sty('schoolrun toddler tablet homework sugar', { walk: 'WalkQuick' });
 const styleFor = (prob) => Object.assign({ angry: 'IdleAngry' }, PSTYLE[prob] || {});
-const EXTRA_VIS = ['v16', 'v08', 'v15', 'v22']; // inspector + the "crew"
+const EXTRA_VIS = ['v16', 'v08', 'v15', 'v22', 'sp_health', 'sp_safety', 'sp_mystery', 'sp_influencer']; // inspector + the "crew"
 function visPerson(key, fb) { if (CHAR.A.full[key]) { const a = person({ vm: key, tall: VIS[key].h / 1.75 }, 'visitor'); if (a.userData.p.glb) return a; } loadFull(key); return person(fb); }
 function preloadVisitors(c) { if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return; for (const k of Object.keys(visPool(c))) loadFull(k); for (const k of EXTRA_VIS.concat(['v25', 'v26', 'v27', 'v28'])) loadFull(k); }
 function visitorPose(v) {
@@ -1316,7 +1316,7 @@ function spawnVisitor(prob, em, vip, look0) {
   if (!prob && unlocked('lab') && S.mode === 'career' && RNG() < 0.12) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].myst && unlocked(PROBLEMS[k].room)));
   const cityOk = (k) => !PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london');
   if (!prob) { const pool = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].fam && cityOk(k) && unlocked(PROBLEMS[k].room)); const w = pool.map((k) => (hasRoom(PROBLEMS[k].room) ? 3 : 1) * (PROBLEMS[k].city ? (cityOf().sig === k ? 4 : 2) : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); prob = pool[pool.length - 1]; for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) { prob = pool[i]; break; } } }
-  const vm = look0 ? null : pickVis(spawnKid, PROBLEMS[prob] && PROBLEMS[prob].room === 'nap');
+  const vm = look0 ? null : vip && VIS.sp_influencer ? 'sp_influencer' : pickVis(spawnKid, PROBLEMS[prob] && PROBLEMS[prob].room === 'nap'); // the influencer has her own model
   const look = look0 || { vm, kid: famNext || ['toddler', 'schoolrun', 'tablet', 'homework', 'sugar'].includes(prob) ? pickVis(true) || 'v25' : null, skin: rnd(SKIN), hair: rnd(HAIR), style: rnd(STYLES), shirt: rnd(SHIRTS), pants: rnd(['#3B4A6B', '#2F3A52', '#5E6B3A', '#7A5A3A', '#2A2A2E', '#8A9AB0']), tall: 0.85 + RNG() * 0.35, wide: 0.85 + RNG() * 0.4, glasses: RNG() < 0.25, nose: RNG() < 0.5, shoes: rnd(['#2A2A2E', '#F4EFE6', '#E9785F']) };
   if (look0 && !look0.vm) look0.vm = pickVis(false, PROBLEMS[prob] && PROBLEMS[prob].room === 'nap'); // visitors from older saves
   if (look.vm && VIS[look.vm]) { look.tall = VIS[look.vm].h / 1.75; look.wide = 1; look.male = VIS_MALE.has(look.vm); look.style2 = styleFor(prob); }
@@ -1912,7 +1912,7 @@ function spawnInspector() {
   tip('insp');
   const kinds = (S.city || 'london') === 'london' ? ['health'] : Object.keys(INSP).filter((k) => k !== S.inspLast);
   const kind = rnd(kinds); S.inspLast = kind; const L = INSP[kind].look;
-  const av = visPerson('v16', { skin: rnd(SKIN), hair: L.hair, style: 'short', shirt: L.shirt, pants: L.pants, clip: kind !== 'critic', glasses: kind !== 'safety', tall: 1.12, wide: 0.9, nose: true });
+  const av = visPerson({ health: 'sp_health', safety: 'sp_safety', critic: 'sp_mystery' }[kind] || 'v16', { skin: rnd(SKIN), hair: L.hair, style: 'short', shirt: L.shirt, pants: L.pants, clip: kind !== 'critic', glasses: kind !== 'safety', tall: 1.12, wide: 0.9, nose: true });
   av.position.set(3, 0.1, 12.5); scene.add(av);
   R.inspector = { kind, av, path: [{ x: 3.2, z: 7.5 }, { x: 3, z: 3 }, { x: 1.2, z: 1.2 }, { x: 3.5, z: 2.5 }], ph: 0, stage: 0, wait: 0 };
   chat(t('ik.' + kind), t('ik.' + kind + '.arrive'), INSP[kind].e);
