@@ -782,7 +782,7 @@ function lotOwned(i) {
 const R = { rooms: {}, staff: [], visitors: [], deskQ: [], deskQs: [], litter: [], rats: [], inspector: null, later: [] }; R.deskQs[0] = R.deskQ;
 // Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional ivy + fairy lights.
 const WALL_HIP = 1.0, WALL_CUT = 0.3, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
-const ROOM_STYLE = { nap: { wall: '#DCCBF3', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', ivy: true, lights: true, h: ROOM_H } };
+const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', ivy: true, lights: true, h: ROOM_H } };
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };
 const WALL_TINT = { yoga: '#D3ECEE', lucha: '#F6D3E2', ahwa: '#F0DCC0', budget: '#F3D9B8', detox: '#D3E6F4', career: '#F2D6DE', cafe: '#D6EBDD', lab: '#DCE2EC', social: '#F8D7E2', parent: '#FBE2C0', moving: '#EADCC8', pharmacy: '#D2EDE6', glowup: '#F8DCE8', wedding: '#F8DCE6', jjim: '#F0D9C4', roda: '#D7EDD5', garage: '#F2E3BD', shop: '#F9DCCF', staffroom: '#EDE2CF', toilet: '#D9ECF8', therapy: '#D5E6D9' };
@@ -798,7 +798,6 @@ function wallSegS(x0, z0, x1, z1, S, parent) {
   if (S.posts) for (const [px, pz] of [[x0, z0], [x1, z1]]) { put(rbox(0.38, h, 0.38, S.wall, 0.06, { r: 0.95 }), px, h / 2 + 0.1, pz, parent); put(rbox(0.48, 0.14, 0.48, S.cap, 0.06, { r: 0.9 }), px, h + 0.17, pz, parent); put(rbox(0.42, 0.2, 0.42, S.base, 0.05, { r: 0.95 }), px, 0.2, pz, parent); } // square pillar: cap + plinth
   if (S.ivy && len > 1.2) for (let u = 0.35; u < len - 0.2; u += 0.42) { const k = Math.floor(u * 7) % 3, px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u;
     put(leaf(0.12, ['#5E9E5A', '#4E8F4F', '#79B266'][k], { r: 0.95 }), px, h + 0.22, pz, parent);
-    for (const sd of [-1, 1]) for (let q = 1; q <= 1 + ((k + (sd > 0 ? 1 : 0)) % 3); q++) put(leaf(0.1 - q * 0.012, ['#5E9E5A', '#79B266', '#4E8F4F'][(k + q) % 3], { r: 0.95 }), px + (alongX ? 0 : sd * 0.18), h + 0.12 - q * 0.17, pz + (alongX ? sd * 0.18 : 0), parent);
     if (k !== 1) for (let d = 1; d <= 1 + (k === 2 ? 1 : 0); d++) put(leaf(0.075, '#5E9E5A', { r: 0.95 }), px + (alongX ? 0 : 0.17), h + 0.18 - d * 0.2, pz + (alongX ? 0.17 : 0), parent); }
   if (S.lights && len > 1.5) for (let u = 0.6; u < len - 0.3; u += 0.75) put(leaf(0.045, '#FFE2A8', { e: '#FFD27A', ei: 1.6 }), alongX ? Math.min(x0, x1) + u : cx, h + 0.02 - Math.abs(Math.sin(u * 2.1)) * 0.12, alongX ? cz : Math.min(z0, z1) + u, parent);
 }
@@ -839,7 +838,7 @@ function buildRoom(r) {
   const K = clamp(Math.min(Z.W / Z.st, Z.D) / 6.2, 0.6, 1);
   for (let i = 0; i < Z.st; i++) {
     const lx = Z.st === 2 ? (i ? Z.W / 4 : -Z.W / 4) : 0, c = toW(r, lx, 0);
-    const sg = grp(c.x, c.z, r.a, g); const tmp = { spots: [], staffSpot: null, sz: r.size, w: Z.W / Z.st, st: i, nst: Z.st };
+    const sg = grp(c.x, c.z, r.a, g); const tmp = { spots: [], staffSpot: null, sz: r.size, w: Z.W / Z.st };
     furniture[r.type](sg, 0, 0, tmp, K);
     fitFurniture(sg, tmp, Z.W / Z.st, Z.D, RS ? 0.2 : 0.16);
     const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a }; };
@@ -957,21 +956,16 @@ const furniture = {
       put(rbox(1.3, 1.25, 0.32, '#FFFFFF', 0.16, { r: 0.85 }), 0, 0.72, -0.98, p);
       put(rbox(1.3, 0.16, 0.78, '#FFFFFF', 0.08, { r: 0.85 }), 0, 1.32, -0.68, p);
       put(rbox(1.0, 0.04, 0.5, BL[i % 4], 0.02, { e: BL[i % 4], ei: 0.35 }), 0, 1.23, -0.68, p);
-      glbSwap(p, 'nap_pod', { len: 2.05, rot: Math.PI / 2, y: 0.1 }); // Meshy pod from the mockup (hood at the back)
       room.spots.push({ x: cx + ox, z: cz - 0.7 * K, rot: 0, sit: true, lie: true, y: 0.12, busy: null });
     });
-    // mockup decor: crescent moon lamp and a framed print on the back wall, plant shelves on the side walls, a bookcase, a bedside lamp
-    const W = room.w || 6, D = SIZES[room.sz || 'm'].D, bz = cz - D / 2 + 0.2; const first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1;
-    if (first && room.sz !== 's') { const m = grp(cx + 0.9 * K, bz, 0, g); put(rbox(0.8, 0.8, 0.06, '#FFE7A8', 0.2, { e: '#FFD27A', ei: 1 }), 0, 1.95, 0, m); glbSwap(m, 'nap_moon', { len: 0.9, rot: 0, y: 1.55 }); }
-    if (last && room.sz !== 's') { const f = grp(cx - 1.3 * K, bz, 0, g); put(rbox(0.9, 0.7, 0.05, '#F4EFE6', 0.03), 0, 1.95, 0, f); put(rbox(0.74, 0.54, 0.02, '#C9E3C8', 0.01), 0, 1.95, 0.03, f);
-      const lf = new THREE.Mesh(GC.napLeaf || (GC.napLeaf = new THREE.CircleGeometry(0.16, 16)), mat('#6FAE6A', { r: 0.9 })); lf.scale.set(0.6, 1.3, 1); lf.position.set(0, 1.93, 0.045); f.add(lf); }
-    for (const [sx, rot] of [[-1, Math.PI / 2], [1, -Math.PI / 2]]) { if (sx < 0 ? !first : !last) continue; const sh = grp(cx + sx * (W / 2 - 0.2), cz + 1.15 * K, 0, g); put(rbox(0.25, 0.06, 0.9, '#C99A62', 0.02), 0, 1.55, 0, sh); glbSwap(sh, 'nap_wallshelf', { len: 0.95, rot, y: 1.25 }); }
-    if (room.sz !== 's' && first) { const bk = grp(cx - W / 2 + 0.4, cz + 1.75 * K, 0, g); put(rbox(0.4, 1.5, 0.9, '#D9B98C', 0.04), 0, 0.85, 0, bk); glbSwap(bk, 'nap_bookcase', { h: 1.6, rot: Math.PI / 2, y: 0.1 }); }
+    const moon = new THREE.Mesh(GC.moon || (GC.moon = new THREE.TorusGeometry(0.42, 0.09, 10, 30, Math.PI * 1.3)), mat('#FFD36E', { e: '#FFC94A', ei: 1.3 }));
+    moon.rotation.z = 0.6; put(moon, cx - 0.2 * K, 2.05, cz - 3.0 * K + 0.2, g);
+    for (const [sx, sy] of [[0.7, 2.3], [1.0, 1.85], [-0.9, 2.25]]) put(sph(0.06, '#FFE2A8', { e: '#FFD27A', ei: 1.5 }), cx + sx * K, sy, cz - 3.0 * K + 0.22, g);
     const rug = new THREE.Mesh(GC.rugN || (GC.rugN = new THREE.CylinderGeometry(1.15, 1.15, 0.03, 40)), mat('#C2A8F0', { r: 1 })); rug.position.set(cx, 0.14, cz + 1.35 * K); rug.receiveShadow = true; g.add(rug);
     const rim = new THREE.Mesh(GC.rugR || (GC.rugR = new THREE.TorusGeometry(1.15, 0.05, 6, 40)), mat('#A88BE0', { r: 1 })); rim.rotation.x = Math.PI / 2; rim.position.set(cx, 0.15, cz + 1.35 * K); g.add(rim);
     const pouf = sph(0.34, '#FFD25E', { r: 0.95 }); pouf.scale.set(1, 0.62, 1); put(pouf, cx - 0.75 * K, 0.33, cz + 1.75 * K, g);
-    { const pl = grp(cx + room.w / 2 - 0.55, cz + 2.25 * K, 0, g); put(cyl(0.25, 0.2, 0.45, '#FFFFFF'), 0, 0.33, 0, pl); put(sph(0.4, '#5DAE5E'), 0, 0.9, 0, pl); glbSwap(pl, 'nap_plant', { h: 1.25, y: 0.1 }); }
-    if (room.sz !== 's') { const bs = grp(cx - room.w / 2 + 0.45, cz + 0.4 * K, 0, g); put(cyl(0.25, 0.25, 0.5, '#FFFFFF'), 0, 0.35, 0, bs); glbSwap(bs, 'nap_bedside', { h: 0.95, rot: Math.PI, y: 0.1 }); } if (false) { const st = grp(0, 0, 0, g); put(cyl(0.22, 0.22, 0.5, '#E9D3B5', { r: 0.9 }), 0, 0.35, 0, st); put(cyl(0.03, 0.03, 0.4, '#8B6A45'), 0, 0.78, 0, st); put(new THREE.Mesh(GC.shade || (GC.shade = new THREE.CylinderGeometry(0.1, 0.18, 0.2, 16)), mat('#FFF1D6', { e: '#FFE2A8', ei: 0.8 })), 0, 1.02, 0, st); }
+    plant(cx + room.w / 2 - 0.55, cz + 2.2 * K, 0.85, '#F4EFE6', g);
+    if (room.sz !== 's') { const st = grp(cx - room.w / 2 + 0.45, cz + 0.5 * K, 0, g); put(cyl(0.22, 0.22, 0.5, '#E9D3B5', { r: 0.9 }), 0, 0.35, 0, st); put(cyl(0.03, 0.03, 0.4, '#8B6A45'), 0, 0.78, 0, st); put(new THREE.Mesh(GC.shade || (GC.shade = new THREE.CylinderGeometry(0.1, 0.18, 0.2, 16)), mat('#FFF1D6', { e: '#FFE2A8', ei: 0.8 })), 0, 1.02, 0, st); }
     room.staffSpot = { x: cx + 0.2 * K, z: cz + 1.4 * K, rot: Math.PI / 4, sit: false, y: 0 };
   },
 
