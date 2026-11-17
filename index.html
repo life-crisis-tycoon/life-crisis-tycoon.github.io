@@ -41,7 +41,7 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 /* map */
 #map .mapimg{position:relative;flex:1;min-height:0;background:#9DD1E3;overflow:hidden}
 #map .mhead{z-index:3;pointer-events:none}#map .mhead>*{pointer-events:auto}
-#mapScroll{position:absolute;inset:calc(env(safe-area-inset-top) + 98px) 0 0 0;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;scrollbar-width:none}
+#mapScroll{position:absolute;inset:calc(env(safe-area-inset-top) + 86px) 0 0 0;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;scrollbar-width:none}
 #mapScroll::-webkit-scrollbar{display:none}
 #mapInner{position:relative;height:100%;aspect-ratio:1900/880;background:url(assets/world.jpg) 0 0/100% 100% no-repeat}
 .mhead{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:12px 14px}
@@ -275,6 +275,22 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 #mapInner .pin{margin-top:-24px;font-size:12.5px;padding:2px 9px}
 #mapInner .pin.y{font-size:11px;padding:1px 7px}
 #mapInner .pin.y::after{width:10px;height:10px;margin-left:-5px;bottom:-14px}
+
+#map .mhead{padding:8px 12px}
+#map .mhead .icon{width:38px;height:38px;border-radius:12px}
+#map .mhead .icon svg{width:18px;height:18px}
+.mtitle{margin-top:6px}
+.mtitle .ribbon{font-size:17px;padding:4px 30px;border-radius:8px}
+.mchips{top:calc(env(safe-area-inset-top) + 52px)}
+#mapScroll{overflow:hidden!important;touch-action:none}
+#mapInner{position:absolute!important;left:0;top:0;transform-origin:0 0;will-change:transform}
+#mapInner .pin{margin-top:0!important;transform:translate(-50%,-100%) translateY(calc(-24px * var(--k,1))) scale(var(--k,1));transform-origin:50% 100%}
+
+#map,#map button,#map .lbl,#map .chip,#mapSheet div{font-family:'Fredoka',sans-serif}
+#mapSheet .lbl{font-weight:600;letter-spacing:.06em;color:#4A5568}
+#mapSheet>div[style*='font-size:14.5px']{font-weight:500!important;color:#2D3748!important}
+#mapSheet .maphead{min-height:104px}
+.mstars{display:inline-block;margin-top:4px;font-size:17px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.85);color:#F2A81D;text-shadow:none!important}
 </style>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icons/icon-180.png">
@@ -318,8 +334,8 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
   <div class="mapimg"><div id="mapScroll"><div id="mapInner"></div></div>
     <div class="mhead safe-t">
       <button class="icon y" id="mBack" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3A2200" stroke-width="3" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <div class="mtitle"><div class="ribbon">Life Crisis Tycoon</div><h2 class="f" data-i18n="map.title"></h2></div>
-      <div class="y" style="border-radius:14px;padding:7px 10px;font-family:Fredoka;font-weight:700" id="starTotal">0 / 66 ★</div>
+      <div class="mtitle"><div class="ribbon">Life Crisis Tycoon</div></div>
+      <div class="y" style="border-radius:12px;padding:4px 9px;font-family:Fredoka;font-weight:700;font-size:13.5px;margin-top:5px" id="starTotal">0 / 66 ★</div>
     </div>
     <div class="mchips" id="mChips"></div>
   </div>

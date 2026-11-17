@@ -3679,11 +3679,37 @@ function refreshTitle() {
 }
 let mapCity = 'london';
 let mapRegion = 'all';
+// world map pan + pinch/wheel zoom (both axes); labels keep their on-screen size while the map scales
+const MZ = { s: 1, tx: 0, ty: 0, ptrs: new Map(), moved: 0, last: null, ready: false };
+function mzApply() {
+  const sc = $('mapScroll'), inn = $('mapInner'); if (!sc || !inn) return;
+  const cw = sc.clientWidth, ch = sc.clientHeight, w = inn.offsetWidth * MZ.s, h = inn.offsetHeight * MZ.s;
+  MZ.tx = Math.min(0, Math.max(cw - w, MZ.tx)); MZ.ty = Math.min(0, Math.max(ch - h, MZ.ty));
+  inn.style.transform = `translate(${MZ.tx}px,${MZ.ty}px) scale(${MZ.s})`; inn.style.setProperty('--k', 1 / MZ.s);
+}
+function mzZoom(f, cx, cy) { const s2 = Math.min(3.2, Math.max(1, MZ.s * f)); MZ.tx = cx - (cx - MZ.tx) * s2 / MZ.s; MZ.ty = cy - (cy - MZ.ty) * s2 / MZ.s; MZ.s = s2; mzApply(); }
+function mzCenter(px, py, smooth) { const sc = $('mapScroll'), inn = $('mapInner'); if (!sc || !inn) return;
+  MZ.tx = sc.clientWidth / 2 - inn.offsetWidth * MZ.s * px / 100; MZ.ty = sc.clientHeight / 2 - inn.offsetHeight * MZ.s * py / 100;
+  inn.style.transition = smooth ? 'transform .45s ease' : ''; mzApply(); if (smooth) setTimeout(() => { inn.style.transition = ''; }, 480); }
+function mzInit() {
+  if (MZ.ready) return; const sc = $('mapScroll'); if (!sc) return; MZ.ready = true;
+  const pt = (e) => { const r = sc.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  sc.addEventListener('pointerdown', (e) => { MZ.ptrs.set(e.pointerId, pt(e)); MZ.moved = 0; MZ.last = null; });
+  sc.addEventListener('pointermove', (e) => { if (!MZ.ptrs.has(e.pointerId)) return; const p = pt(e), q = MZ.ptrs.get(e.pointerId); MZ.ptrs.set(e.pointerId, p);
+    if (MZ.ptrs.size === 1) { MZ.tx += p[0] - q[0]; MZ.ty += p[1] - q[1]; MZ.moved += Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]); mzApply(); }
+    else if (MZ.ptrs.size === 2) { const [a, b] = [...MZ.ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      if (MZ.last) { MZ.tx += m[0] - MZ.last.m[0]; MZ.ty += m[1] - MZ.last.m[1]; mzZoom(d / MZ.last.d, m[0], m[1]); } MZ.last = { d, m }; MZ.moved += 99; } });
+  const up = (e) => { MZ.ptrs.delete(e.pointerId); MZ.last = null; };
+  sc.addEventListener('pointerup', up); sc.addEventListener('pointercancel', up); sc.addEventListener('pointerleave', up);
+  sc.addEventListener('click', (e) => { if (MZ.moved > 8) { e.stopPropagation(); e.preventDefault(); } }, true); // a drag is not a tap on a pin
+  sc.addEventListener('wheel', (e) => { e.preventDefault(); const [x, y] = pt(e); mzZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15, x, y); }, { passive: false });
+  addEventListener('resize', mzApply);
+}
 function renderMap() {
   const inner = $('mapInner'); inner.querySelectorAll('.pin').forEach((x) => x.remove());
   const chips = $('mChips'); if (chips) { chips.innerHTML = ['all', 'rg.europe', 'rg.africa', 'rg.americas', 'rg.asia'].map((r) => `<button class="${mapRegion === r ? 'g' : 'y'}" data-r="${r}">${t('map.' + (r === 'all' ? 'all' : r.slice(3)))}</button>`).join('');
     chips.querySelectorAll('button').forEach((bt) => { bt.onclick = () => { mapRegion = bt.dataset.r; const first = Object.keys(CITIES).find((c) => mapRegion === 'all' ? c === mapCity : CITIES[c].region === mapRegion);
-      if (first && mapRegion !== 'all' && cityUnlocked(first)) mapCity = first; renderMap(); const sc = $('mapScroll'), w = $('mapInner').clientWidth; sc.scrollTo({ left: w * CITIES[first || mapCity].pin[0] / 100 - sc.clientWidth / 2, behavior: 'smooth' }); }; }); }
+      if (first && mapRegion !== 'all' && cityUnlocked(first)) mapCity = first; renderMap(); const P = CITIES[first || mapCity].pin; mzCenter(P[0], P[1], true); }; }); }
   for (const [k, C] of Object.entries(CITIES)) {
     if (mapRegion !== 'all' && C.region !== mapRegion) continue;
     const ok = cityUnlocked(k), b = document.createElement('button'); b.className = 'pin ' + (k === mapCity ? 'g' : ok ? 'w' : 'y');
@@ -3692,13 +3718,12 @@ function renderMap() {
   }
   for (const [nk, x, y] of LOCKED_PINS) { const b = document.createElement('button'); b.className = 'pin y'; b.style.cssText = `left:${x}%;top:${y}%;font-size:12px`; b.textContent = '🔒 ' + t(nk); b.onclick = () => toast(t('map.soon')); inner.appendChild(b); }
   const C = CITIES[mapCity], s = load(mapCity), st = cityStars(mapCity);
-  $('mapSheet').innerHTML = `<div class="grab"></div><div class="maphead" style="background-image:linear-gradient(90deg,#fff 0%,rgba(255,255,255,.92) 26%,rgba(255,255,255,0) 52%),url(assets/banners/${mapCity}_${mgrBanner()}.webp)"><div><div class="lbl">${t('map.lvl', { n: C.lvl + 1 })} · ${t(C.region)}</div><h2 class="f" style="margin:0;font-size:30px">${t('city.' + mapCity)}</h2></div><div class="stars" style="font-size:22px">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</div></div>
+  $('mapSheet').innerHTML = `<div class="grab"></div><div class="maphead" style="background-image:linear-gradient(90deg,rgba(255,255,255,.88) 0%,rgba(255,255,255,.6) 28%,rgba(255,255,255,0) 50%),url(assets/banners/${mapCity}.webp)"><div><div class="lbl">${t('map.lvl', { n: C.lvl + 1 })} · ${t(C.region)}</div><h2 class="f" style="margin:0;font-size:30px">${t('city.' + mapCity)}</h2><div class="stars mstars">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</div></div></div>
     <div style="font-weight:700;color:#2D3748;font-size:14.5px">${t(C.desc)}</div><div>${C.chips.map(([c, k]) => `<span class="chip ${c}">${t(k)}</span>`).join('')}</div>
     <button class="btn g" id="mOpen" style="font-size:20px">${s ? t('map.contC', { city: t('city.' + mapCity) }) : t('map.openC', { city: t('city.' + mapCity) })}</button>`;
   $('mOpen').onclick = openBrief;
 }
-function mgrBanner() { try { const m = (typeof MGR !== 'undefined' && MGR) || null; const k = m && (m.model || defaultModel(m)); return MGR_MODELS.includes(k) ? k : 'mgr_f'; } catch (e) { return 'mgr_f'; } } // the city card banner shows the player's own manager
-function showMap() { const l = profile().last; if (l && CITIES[l] && cityUnlocked(l)) mapCity = l; renderMap(); show('map'); requestAnimationFrame(() => { const sc = $('mapScroll'), w = $('mapInner').clientWidth; sc.scrollLeft = w * CITIES[mapCity].pin[0] / 100 - sc.clientWidth / 2; }); }
+function showMap() { const l = profile().last; if (l && CITIES[l] && cityUnlocked(l)) mapCity = l; renderMap(); show('map'); mzInit(); requestAnimationFrame(() => { MZ.s = 1; const P = CITIES[mapCity].pin; mzCenter(P[0], P[1], false); }); }
 function openBrief() {
   const C = CITIES[mapCity], s = load(mapCity);
   buildCityDecor(mapCity); view.tx = 19; view.tz = 18; view.half = 24; placeCam();
