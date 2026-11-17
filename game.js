@@ -3687,11 +3687,12 @@ function renderMap() {
   }
   for (const [nk, x, y] of LOCKED_PINS) { const b = document.createElement('button'); b.className = 'pin y'; b.style.cssText = `left:${x}%;top:${y}%;font-size:12px`; b.textContent = '🔒 ' + t(nk); b.onclick = () => toast(t('map.soon')); inner.appendChild(b); }
   const C = CITIES[mapCity], s = load(mapCity), st = cityStars(mapCity);
-  $('mapSheet').innerHTML = `<div class="grab"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="lbl">${t('map.lvl', { n: C.lvl + 1 })} · ${t(C.region)}</div><h2 class="f" style="margin:0;font-size:30px">${t('city.' + mapCity)}</h2></div><div class="stars" style="font-size:22px">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</div></div>
+  $('mapSheet').innerHTML = `<div class="grab"></div><div class="maphead" style="background-image:linear-gradient(90deg,#fff 0%,rgba(255,255,255,.92) 26%,rgba(255,255,255,0) 52%),url(assets/banners/${mapCity}_${mgrBanner()}.webp)"><div><div class="lbl">${t('map.lvl', { n: C.lvl + 1 })} · ${t(C.region)}</div><h2 class="f" style="margin:0;font-size:30px">${t('city.' + mapCity)}</h2></div><div class="stars" style="font-size:22px">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</div></div>
     <div style="font-weight:700;color:#2D3748;font-size:14.5px">${t(C.desc)}</div><div>${C.chips.map(([c, k]) => `<span class="chip ${c}">${t(k)}</span>`).join('')}</div>
     <button class="btn g" id="mOpen" style="font-size:20px">${s ? t('map.contC', { city: t('city.' + mapCity) }) : t('map.openC', { city: t('city.' + mapCity) })}</button>`;
   $('mOpen').onclick = openBrief;
 }
+function mgrBanner() { try { const m = (typeof MGR !== 'undefined' && MGR) || null; const k = m && (m.model || defaultModel(m)); return MGR_MODELS.includes(k) ? k : 'mgr_f'; } catch (e) { return 'mgr_f'; } } // the city card banner shows the player's own manager
 function showMap() { const l = profile().last; if (l && CITIES[l] && cityUnlocked(l)) mapCity = l; renderMap(); show('map'); requestAnimationFrame(() => { const sc = $('mapScroll'), w = $('mapInner').clientWidth; sc.scrollLeft = w * CITIES[mapCity].pin[0] / 100 - sc.clientWidth / 2; }); }
 function openBrief() {
   const C = CITIES[mapCity], s = load(mapCity);
