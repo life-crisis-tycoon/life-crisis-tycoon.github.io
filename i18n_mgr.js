@@ -1110,11 +1110,11 @@ ja: {"dc.doormat": "玄関マット", "dc.doormatD": "雨・雪・砂ぼこり�
 ko: {"dc.doormat": "현관 매트", "dc.doormatD": "비·눈·먼지 날의 발자국을 절반으로 줄여요. 입구에 두세요."} };
 
 export const EXTRA34 = {
-en: {"map.all": "All", "map.europe": "Europe", "map.africa": "Africa", "map.americas": "Americas", "map.asia": "Asia"},
-fr: {"map.all": "Tout", "map.europe": "Europe", "map.africa": "Afrique", "map.americas": "Amériques", "map.asia": "Asie"},
-es: {"map.all": "Todo", "map.europe": "Europa", "map.africa": "África", "map.americas": "Américas", "map.asia": "Asia"},
-pt: {"map.all": "Tudo", "map.europe": "Europa", "map.africa": "África", "map.americas": "Américas", "map.asia": "Ásia"},
-de: {"map.all": "Alle", "map.europe": "Europa", "map.africa": "Afrika", "map.americas": "Amerika", "map.asia": "Asien"},
-ja: {"map.all": "すべて", "map.europe": "ヨーロッパ", "map.africa": "アフリカ", "map.americas": "アメリカ", "map.asia": "アジア"},
-ko: {"map.all": "전체", "map.europe": "유럽", "map.africa": "아프리카", "map.americas": "아메리카", "map.asia": "아시아"},
+en: {"title.savedOnline": "Saved online", "title.new": "New career", "map.all": "All", "map.europe": "Europe", "map.africa": "Africa", "map.americas": "Americas", "map.asia": "Asia"},
+fr: {"title.savedOnline": "Sauvegardé en ligne", "title.new": "Nouvelle carrière", "map.all": "Tout", "map.europe": "Europe", "map.africa": "Afrique", "map.americas": "Amériques", "map.asia": "Asie"},
+es: {"title.savedOnline": "Guardado en línea", "title.new": "Nueva carrera", "map.all": "Todo", "map.europe": "Europa", "map.africa": "África", "map.americas": "Américas", "map.asia": "Asia"},
+pt: {"title.savedOnline": "Salvo online", "title.new": "Nova carreira", "map.all": "Tudo", "map.europe": "Europa", "map.africa": "África", "map.americas": "Américas", "map.asia": "Ásia"},
+de: {"title.savedOnline": "Online gespeichert", "title.new": "Neue Karriere", "map.all": "Alle", "map.europe": "Europa", "map.africa": "Afrika", "map.americas": "Amerika", "map.asia": "Asien"},
+ja: {"title.savedOnline": "オンライン保存済み", "title.new": "新しいキャリア", "map.all": "すべて", "map.europe": "ヨーロッパ", "map.africa": "アフリカ", "map.americas": "アメリカ", "map.asia": "アジア"},
+ko: {"title.savedOnline": "온라인 저장됨", "title.new": "새 커리어", "map.all": "전체", "map.europe": "유럽", "map.africa": "아프리카", "map.americas": "아메리카", "map.asia": "아시아"},
 };

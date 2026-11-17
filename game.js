@@ -3657,7 +3657,7 @@ async function cloudInit() {
       addEventListener('pagehide', () => { if (inGame) save(); cloudPush(); });
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { if (inGame) save(); cloudPush(); } }); }
     if (got && !inGame) { refreshTitle(); toast(t('sv.cloudGot'), 4000); }
-    const ci = document.getElementById('cloudInfo'); if (ci) ci.textContent = t(window.MLT_APP ? 'sv.cloudOnApp' : 'sv.cloudOn');
+    const ci = document.getElementById('cloudInfo'); if (ci && !inGame) ci.innerHTML = '<svg width=\"26\" height=\"20\" viewBox=\"0 0 28 20\" fill=\"none\" stroke=\"#18962F\" stroke-width=\"2\"><path d=\"M7 18h14a5 5 0 0 0 .5-10A7 7 0 0 0 8 7a5.5 5.5 0 0 0-1 11z\"/><path d=\"M10.5 12.5l2.5 2.5 4.5-4.5\" stroke-linecap=\"round\"/></svg>' + t('title.savedOnline');
   } catch (e) { console.warn('[cloud] init', e && (e.code || e.message)); }
 }
 window.mltCloudStart = cloudInit; // the account screen calls this after sign-in
@@ -3671,11 +3671,11 @@ function cityUnlocked(c) { const C = CITIES[c]; return !C.unlock || localStorage
 { let n = 0, tm = 0; document.getElementById('starTotal').addEventListener('click', () => { clearTimeout(tm); tm = setTimeout(() => (n = 0), 1500); if (++n < 5) return; n = 0;
   const on = localStorage.getItem('ahq_unlock') !== '1'; localStorage.setItem('ahq_unlock', on ? '1' : '0'); toast(on ? '🔓 ' + t('dev.unlockOn') : '🔒 ' + t('dev.unlockOff'), 3000); refreshTitle(); renderMap(); }); }
 function refreshTitle() {
-  $('bRestore').textContent = '📥 ' + t('sv.import'); $('bRestore').onclick = importSave;
+  $('bRestore').innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#18962F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M4 19h16"/></svg>' + t('sv.import'); $('bRestore').onclick = importSave;
   const last = profile().last || 'london', s = load(last) || load('london'); $('bContinue').disabled = !s;
   $('contInfo').textContent = s ? t('city.' + (s.city || 'london')) + ' · ' + dayN(s.day) + ' · ' + money(s.cash) : t('title.noSave');
   $('starTotal').textContent = Object.keys(CITIES).reduce((a, c) => a + cityStars(c), 0) + ' / 66 ★';
-  const ci = document.getElementById('cloudInfo'); if (ci) ci.textContent = CLOUD.on ? t(window.MLT_APP ? 'sv.cloudOnApp' : 'sv.cloudOn') : t(window.MLT_APP ? 'sv.cloudOffApp' : 'sv.cloudOff');
+  const ci = document.getElementById('cloudInfo'); if (ci) ci.innerHTML = (CLOUD.on ? '<svg width=\"26\" height=\"20\" viewBox=\"0 0 28 20\" fill=\"none\" stroke=\"#18962F\" stroke-width=\"2\"><path d=\"M7 18h14a5 5 0 0 0 .5-10A7 7 0 0 0 8 7a5.5 5.5 0 0 0-1 11z\"/><path d=\"M10.5 12.5l2.5 2.5 4.5-4.5\" stroke-linecap=\"round\"/></svg>' : '') + t(CLOUD.on ? 'title.savedOnline' : (window.MLT_APP ? 'sv.cloudOffApp' : 'sv.cloudOff'));
 }
 let mapCity = 'london';
 let mapRegion = 'all';
@@ -3753,8 +3753,8 @@ $('bNew').onclick = () => {
   else go();
 };
 if ($('bMgr')) $('bMgr').onclick = () => openCreate('title');
-$('bQuick').onclick = () => startQuick(false);
-$('bDaily').onclick = () => startQuick(true);
+
+
 $('bLang').onclick = openLang;
 $('mBack').onclick = () => { refreshTitle(); show('title'); };
 $('bBack').onclick = () => { buildCityDecor('london'); showMap(); };

@@ -298,6 +298,38 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 #mapInner{margin-top:0}
 .mtitle .ribbon{position:static!important;transform:none!important;margin:0!important}
 #map .mhead{background:#2F9AD6}
+
+#title{background:#FBF4EA}
+#title .thero{position:relative;flex:1;min-height:0;background:url(assets/title_hero.webp) center 62%/cover}
+#title .ttop{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;padding:14px 16px 0}
+.tpill{display:flex;align-items:center;gap:6px;border-radius:999px;padding:8px 14px;font-family:'Fredoka';font-weight:700;font-size:16px;color:#16233F;border:none}
+.tpill.gold{background:linear-gradient(#FFDA6A,#F6C043);box-shadow:0 3px 0 #D99A1E,inset 0 2px 0 rgba(255,255,255,.5)}
+.tpill.cream{background:rgba(255,250,242,.95);box-shadow:0 3px 10px rgba(80,60,40,.18)}
+#title .tlogo{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 64px);text-align:center;pointer-events:none}
+#title .tlogo h1{margin:0;font-family:'Fredoka';font-weight:700;font-size:clamp(42px,12.5vw,60px);line-height:1;color:#16233F;letter-spacing:-.5px;text-shadow:0 2px 0 rgba(255,255,255,.7),0 0 18px rgba(255,255,255,.65)}
+#title .ttyc{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:2px}
+#title .ttyc span{font-family:'Fredoka';font-weight:700;font-size:clamp(26px,7.5vw,36px);letter-spacing:.32em;margin-right:-.32em;text-transform:uppercase;color:#18962F;text-shadow:0 2px 0 rgba(255,255,255,.7)}
+#title .ttyc i{display:block;width:28px;height:4px;border-radius:4px;background:#F2B32E}
+#title .tlogo p{margin:6px 0 0;font-family:'Fredoka';font-weight:600;font-size:18px;color:#3A4256;text-shadow:0 0 10px rgba(255,255,255,.9)}
+#title .tsheet{position:relative;margin-top:-34px;background:#FBF4EA;border-radius:30px 30px 0 0;padding:26px 20px 12px;display:flex;flex-direction:column;gap:14px;box-shadow:0 -6px 18px rgba(80,60,40,.12)}
+.tbtn{display:flex;align-items:center;justify-content:center;gap:12px;border-radius:26px;font-family:'Fredoka';color:#16233F;border:none;width:100%}
+.tbtn.g{background:linear-gradient(#27A53F,#178A2E);color:#fff;padding:14px 18px;box-shadow:0 5px 0 #0F6B22,inset 0 2px 0 rgba(255,255,255,.3);justify-content:flex-start}
+.tbtn.g .ticon{display:grid;place-items:center;width:58px;padding-right:14px;border-right:2px solid rgba(255,255,255,.35)}
+.tbtn.g .ttxt{display:flex;flex-direction:column;align-items:flex-start;text-align:left;flex:1;padding-left:4px}
+.tbtn.g b{font-size:clamp(22px,6.4vw,28px);font-weight:700;line-height:1.1}
+.tbtn.g small{font-family:'Fredoka';font-weight:500;font-size:clamp(14px,4vw,17px);opacity:.95}
+.tbtn.g:disabled{filter:grayscale(.6);opacity:.6}
+.tbtn.y{background:linear-gradient(#FFDA6A,#F6C043);padding:14px;box-shadow:0 5px 0 #D99A1E,inset 0 2px 0 rgba(255,255,255,.5)}
+.tbtn.y b{font-size:clamp(20px,5.8vw,26px);font-weight:700}
+.tfoot{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:4px;font-family:'Fredoka'}
+.tfoot button{display:flex;align-items:center;gap:8px;background:none;border:none;font-family:'Fredoka';font-weight:600;font-size:16px;color:#16233F;padding:6px}
+.tsep{width:1.5px;height:22px;background:#E3D6C3}
+#cloudInfo{display:flex;align-items:center;gap:7px;font-size:15px;color:#566070}
+#title .thero{background-position:center top!important;background-size:100% auto!important;background-color:#F7E3D2}
+#title .tlogo{top:calc(env(safe-area-inset-top) + 58px)!important}
+#title .tlogo h1{font-size:clamp(40px,11.5vw,56px)!important}
+.tfoot button{white-space:nowrap;font-size:15px}
+#cloudInfo{font-size:13px;line-height:1.25;max-width:52%}
 </style>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icons/icon-180.png">
@@ -315,18 +347,17 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 <div id="labels"></div>
 
 <section id="title" class="screen on">
-  <div class="hero"><button class="y" id="bLang" style="position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;border-radius:14px;padding:8px 12px;font-family:Fredoka;font-weight:700;font-size:15px">🌐 <span id="langCode">EN</span></button></div>
-  <div class="panel safe-b">
-    <div class="logo"><span class="ribbon y" data-i18n="title.ribbon"></span><h1 class="f">Life Crisis<span class="tyc">Tycoon</span></h1><p data-i18n="title.tag"></p></div>
-    <button class="btn g" id="bNew" data-i18n="title.new" style="font-size:21px"></button>
-    <button class="btn y" id="bContinue" style="text-align:left"><span style="font-size:19px" data-i18n="title.continue"></span><br><span id="contInfo" style="font-family:Nunito;font-size:13px;font-weight:800;opacity:.85"></span></button>
-    <button class="btn w" id="bRestore" style="font-size:14px;padding:8px">📥</button>
-    <button class="btn w" id="bAccount" style="font-size:14px;padding:8px">👤</button>
-    <div id="cloudInfo" style="font-family:Nunito;font-size:11.5px;opacity:.75;text-align:center;margin-top:4px"></div>
-    <div class="row2">
-      <button class="card w" id="bQuick"><b data-i18n="title.quick"></b><span data-i18n="title.quickSub"></span></button>
-      <button class="card w" id="bDaily"><b data-i18n="title.daily"></b><span data-i18n="title.dailySub"></span></button>
+  <div class="thero">
+    <div class="ttop safe-t">
+      <button class="tpill gold" id="bLang"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16233F" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg><span id="langCode">EN</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16233F" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></button>
+      <button class="tpill cream" id="bAccount"></button>
     </div>
+    <div class="tlogo"><h1>Life Crisis</h1><div class="ttyc"><i></i><span>Tycoon</span><i></i></div><p data-i18n="title.tag"></p></div>
+  </div>
+  <div class="tsheet safe-b">
+    <button class="tbtn g" id="bContinue"><span class="ticon"><svg width="30" height="30" viewBox="0 0 24 24" fill="#fff"><path d="M7 4.5v15l12.5-7.5z"/></svg></span><span class="ttxt"><b data-i18n="title.continue"></b><small id="contInfo"></small></span></button>
+    <button class="tbtn y" id="bNew"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16233F" stroke-width="3" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg><b data-i18n="title.new"></b></button>
+    <div class="tfoot"><button id="bRestore"></button><span class="tsep"></span><span id="cloudInfo"></span></div>
   </div>
 </section>
 

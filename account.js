@@ -152,7 +152,7 @@ async function openAccount(opts = {}) {
 
 async function paintButton() {
   const b = document.getElementById('bAccount'); if (!b) return; const s = await session();
-  b.textContent = s ? '👤 ' + (profile ? profile.username : tr('acc')) + ' ☁️' : '👤 ' + tr('acc');
+  b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#16233F"><circle cx="12" cy="8" r="4.5"/><path d="M3.5 21c.8-4.3 4.3-7 8.5-7s7.7 2.7 8.5 7z"/></svg><span></span>'; b.querySelector('span').textContent = s ? (profile ? profile.username : tr('acc')) : tr('acc');
 }
 const btn = document.getElementById('bAccount'); if (btn) { btn.onclick = () => openAccount(); paintButton(); }
 // never lock the game offline: a signed-in player keeps playing in the train even if the token can't refresh
