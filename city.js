@@ -1,4 +1,5 @@
 // City surroundings: dense, recognizable blocks + landmarks + moving traffic, laid out around each city's plot.
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 export function buildCity(kind, cg, H, box) {
   const { THREE, put, rbox, cyl, sph, grp, mat, canvasTex } = H;
   let seed = { london: 11, lagos: 23, mumbai: 37, seoul: 41, saopaulo: 53, cairo: 61, mexico: 71, newyork: 83 }[kind] || 7;
@@ -127,7 +128,7 @@ export function buildCity(kind, cg, H, box) {
     B.push({ o: g, x, z, h: hh, r: Math.max(w, d) / 2 }); return g;
   }
   function bld(x, z, w, d, h, o = {}) {
-    if (H.glb && kind === 'saopaulo' && o.row != null && o.row < (H.low ? 1 : 3)) return spBld(x, z, w, d, h, o);
+    if (H.glb && kind === 'saopaulo' && o.row != null && o.row < (H.low ? 1 : 2)) return spBld(x, z, w, d, h, o);
     if (KIT && ['brick', 'plain', 'glass'].includes(o.style || 'plain')) return kitBld(x, z, w, d, h, o);
     const col = o.col || '#E9E1D3', style = o.style || 'plain', win = o.win || '#9FC6DA';
     const t = facade(style, col, win), mk = (rx, ry) => { const c = t.clone(); c.needsUpdate = true; c.wrapS = c.wrapT = THREE.RepeatWrapping; c.repeat.set(Math.max(1, Math.round(rx)), Math.max(1, Math.round(ry))); return new THREE.MeshStandardMaterial({ map: c, roughness: style === 'glass' ? 0.35 : 0.85, metalness: style === 'glass' ? 0.2 : 0 }); };
@@ -151,6 +152,7 @@ export function buildCity(kind, cg, H, box) {
 
   // ---------- trees & props ----------
   function tree(x, z, type, s = 1) {
+    if (H.low && kind === 'saopaulo' && (tree.n = (tree.n || 0) + 1) % 2) return; // low graphics: half the trees
     const g = grp(x, z, R() * 6, cg); g.position.y = GY;
     if (type === 'palm') { for (let i = 0; i < 6; i++) put(cyl(0.15 - i * 0.012, 0.17 - i * 0.012, 0.7 * s, '#A0794E'), Math.sin(i * 0.4) * 0.15, (i + 0.5) * 0.7 * s, 0, g); for (let k = 0; k < 7; k++) { const lf = rbox(0.25, 0.06, 1.7, k % 2 ? '#4E9E58' : '#3F8A4D', 0.03); lf.position.set(Math.cos(k * 0.9) * 0.75, 4.2 * s, Math.sin(k * 0.9) * 0.75); lf.rotation.y = -k * 0.9 + Math.PI / 2; lf.rotation.x = 0.35; g.add(lf); } if (H.glb && kind === 'saopaulo') H.glb(g, 'sp_palm', { h: 4.6 * s }); return; }
     if (type === 'cone') { put(cyl(0.14, 0.18, 1.2, '#7A5A3A'), 0, 0.6, 0, g); put(new THREE.Mesh(new THREE.ConeGeometry(0.9 * s, 2.6 * s, 8), mat('#3F7A4D')), 0, 2.2 * s, 0, g); return; }
@@ -363,6 +365,77 @@ export function buildCity(kind, cg, H, box) {
   function mosque(x, z) { const g = C(x, z); put(rbox(7, 3.2, 6, '#E8DCC4', 0.1), 0, GY + 1.6, 0, g); const d = sph(2.2, '#D6C7A8'); d.scale.y = 0.85; put(d, 0, GY + 3.4, 0, g); put(cyl(0.08, 0.08, 1, '#C9A54A'), 0, GY + 5.6, 0, g);
     for (const sx of [-3.8, 3.8]) { put(cyl(0.35, 0.45, 11, '#E8DCC4'), sx, GY + 5.5, -2.4, g); for (const y of [6.5, 9.5]) put(cyl(0.6, 0.6, 0.25, '#D6C7A8'), sx, GY + y, -2.4, g); put(new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.4, 12), mat('#C9B48E')), sx, GY + 11.7, -2.4, g); }
     for (let i = -2; i <= 2; i++) put(rbox(0.6, 1.4, 0.05, '#8A6A45', 0.2), i * 1.3, GY + 1.2, 3.02, g); reserve(x - 5, x + 5, z - 4, z + 4); }
+  // ---------- dense filler (São Paulo first) ----------
+  // Back rows are light buildings: boxes + setbacks + rooftop kit, textured from one 4×4 atlas (a shader picks the cell and
+  // repeats it per floor), merged into one mesh per ~20 m stretch of street so a whole block costs one draw call.
+  // Each chunk is registered like a building, so the camera cutaway can still squash it when it hides the view.
+  const DENSE = kind === 'saopaulo', DCH = new Map(), UNIT = 2.4;
+  let dMat = null;
+  const dAtlas = () => canvasTex(1024, 1024, (g) => {
+    const cell = (i, f) => { g.save(); g.translate((i % 4) * 256, Math.floor(i / 4) * 256); f(g); g.restore(); };
+    const facade = (i, wall, win, o = {}) => cell(i, (c) => {
+      c.fillStyle = wall; c.fillRect(0, 0, 256, 256);
+      c.fillStyle = 'rgba(0,0,0,.10)'; c.fillRect(0, 236, 256, 20); // floor slab line
+      if (o.pil) { c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(0, 0, 18, 256); c.fillRect(128 - 9, 0, 18, 256); }
+      for (const x of [30, 146]) { c.fillStyle = win; c.fillRect(x, 50, 80, 150); c.fillStyle = 'rgba(255,255,255,.22)'; c.fillRect(x + 6, 56, 20, 138); c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(x, 192, 80, 8); }
+      if (o.balc) { c.fillStyle = o.balc; c.fillRect(14, 196, 228, 22); c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(14, 214, 228, 4); }
+    });
+    const glass = (i, a, b) => cell(i, (c) => { const gr = c.createLinearGradient(0, 0, 256, 256); gr.addColorStop(0, a); gr.addColorStop(1, b); c.fillStyle = gr; c.fillRect(0, 0, 256, 256);
+      c.fillStyle = 'rgba(255,255,255,.55)'; for (const x of [0, 85, 170]) c.fillRect(x, 0, 6, 256); c.fillRect(0, 0, 256, 8); c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(20, 20, 50, 200); });
+    const solid = (i, col, f) => cell(i, (c) => { c.fillStyle = col; c.fillRect(0, 0, 256, 256); if (f) f(c); });
+    facade(0, '#F1EEE8', '#4A5868'); facade(1, '#E9A48F', '#4A5868'); facade(2, '#E5D2B2', '#4A5868', { pil: 1 }); facade(3, '#C9CCD1', '#3E4C5C', { pil: 1 });
+    glass(4, '#7CC3C9', '#3F8C99'); glass(5, '#7FA6CF', '#3C6690');
+    facade(6, '#EFE6D2', '#4A5868', { balc: '#FFFFFF' }); facade(7, '#EAB8C2', '#4A5868', { balc: '#F7F1EC' });
+    solid(8, '#B9B5AE', (c) => { c.strokeStyle = '#D8D4CC'; c.lineWidth = 18; c.strokeRect(9, 9, 238, 238); });
+    solid(9, '#D6D1C8', (c) => { c.strokeStyle = '#EFEBE4'; c.lineWidth = 18; c.strokeRect(9, 9, 238, 238); });
+    solid(10, '#AEB4BB', (c) => { c.fillStyle = 'rgba(0,0,0,.15)'; for (let y = 30; y < 230; y += 26) c.fillRect(20, y, 216, 8); });
+    solid(11, '#3E6FB0'); solid(12, '#4A4F57', (c) => { c.strokeStyle = '#F2C230'; c.lineWidth = 14; c.beginPath(); c.arc(128, 128, 100, 0, 7); c.stroke(); c.fillStyle = '#FFFFFF'; c.font = '900 120px sans-serif'; c.textAlign = 'center'; c.fillText('H', 128, 172); });
+    facade(13, '#B8664C', '#3E4C5C'); facade(14, '#F4E9C9', '#4A5868', { balc: '#E9785F' }); solid(15, '#F6F3EE');
+  });
+  function denseMat() {
+    if (dMat) return dMat;
+    const tex = dAtlas(); tex.anisotropy = 4; tex.generateMipmaps = true;
+    const m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
+    m.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aCell;\nvarying float vCell;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvCell = aCell;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vCell;').replace('#include <map_fragment>',
+        'vec2 cellO = vec2(mod(vCell, 4.0), 3.0 - floor(vCell / 4.0 + 0.01)) * 0.25;\nvec2 cuv = cellO + (fract(vMapUv) * 0.94 + 0.03) * 0.25;\nvec4 sampledDiffuseColor = textureGrad(map, cuv, dFdx(vMapUv) * 0.235, dFdy(vMapUv) * 0.235);\ndiffuseColor *= sampledDiffuseColor;');
+    };
+    m.customProgramCacheKey = () => 'dense-atlas-1';
+    return dMat = m;
+  }
+  const dGeo = (list, geo, cells) => { const n = geo.attributes.position.count, a = new Float32Array(n); for (let i = 0; i < n; i++) a[i] = cells(i); geo.setAttribute('aCell', new THREE.BufferAttribute(a, 1)); if (geo.index) geo = geo.toNonIndexed(); list.push(geo); };
+  function dBox(list, x, y, z, w, h, d, rot, side, top) { // side cell repeats every UNIT metres; top cell is stretched once
+    const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv;
+    for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i; let u = uv.getX(k), v = uv.getY(k);
+      if (f === 2 || f === 3) { u *= 0.999; v *= 0.999; } else { u *= (f < 2 ? d : w) / UNIT; v *= h / UNIT; } uv.setXY(k, u, v); }
+    g.rotateY(rot); g.translate(x, y + h / 2, z); dGeo(list, g, (i) => (Math.floor(i / 4) === 2 || Math.floor(i / 4) === 3 ? top : side));
+  }
+  function dCyl(list, x, y, z, r, h, cellN, seg = 8) { const g = new THREE.CylinderGeometry(r, r, h, seg); g.scale(1, 1, 1); g.translate(x, y + h / 2, z); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.999, uv.getY(i) * 0.999); dGeo(list, g, () => cellN); }
+  const SP_FAC = [0, 0, 1, 2, 3, 4, 5, 6, 7, 0, 2, 6, 14, 13];
+  function denseBld(key, x, z, w, d, h, rot, tall) {
+    let c = DCH.get(key); if (!c) DCH.set(key, c = { list: [], x0: 1e9, x1: -1e9, z0: 1e9, z1: -1e9, h: 0 });
+    const L = c.list, fac = pick(SP_FAC), glassy = fac === 4 || fac === 5, roofC = R() < 0.5 ? 8 : 9;
+    const cosr = Math.cos(rot), sinr = Math.sin(rot), off = (lx, lz) => [x + lx * cosr + lz * sinr, z - lx * sinr + lz * cosr];
+    dBox(L, x, 0, z, w, h, d, rot, fac, roofC);
+    let top = h;
+    if (tall && R() < 0.55) { const sw = w * (0.6 + R() * 0.2), sd = d * (0.6 + R() * 0.2), sh = 2 + R() * 4; dBox(L, x, h, z, sw, sh, sd, rot, glassy ? fac : (R() < 0.5 ? fac : 15), roofC); top = h + sh;
+      if (R() < 0.45) dCyl(L, x, top, z, Math.min(sw, sd) * 0.38, 0.12, 12, 14); }
+    else {
+      if (R() < 0.35) dCyl(L, x, h, z, Math.min(w, d) * 0.36, 0.12, 12, 14);
+      for (let k = 0, n = 1 + Math.floor(R() * 3); k < n; k++) { const [ax, az] = off((R() - 0.5) * (w - 1.2), (R() - 0.5) * (d - 1.2)); dBox(L, ax, h, az, 0.7, 0.45, 0.55, rot, 10, 10); }
+      if (!glassy && R() < 0.5) for (let k = 0; k < 2; k++) { const [ax, az] = off(-w / 2 + 0.8 + k * 0.9, d / 2 - 0.8); dCyl(L, ax, h, az, 0.35, 0.7, 11, 8); }
+    }
+    c.x0 = Math.min(c.x0, x - w / 2); c.x1 = Math.max(c.x1, x + w / 2); c.z0 = Math.min(c.z0, z - d / 2); c.z1 = Math.max(c.z1, z + d / 2); c.h = Math.max(c.h, top);
+  }
+  function denseFlush() {
+    for (const c of DCH.values()) { if (!c.list.length) continue;
+      const geo = mergeGeometries(c.list, false); for (const g of c.list) g.dispose(); if (!geo) continue;
+      const m = new THREE.Mesh(geo, denseMat()); m.position.y = GY; m.castShadow = !H.low; m.receiveShadow = true; cg.add(m);
+      const cx = (c.x0 + c.x1) / 2, cz = (c.z0 + c.z1) / 2; B.push({ o: m, x: cx, z: cz, h: c.h, r: Math.hypot(c.x1 - c.x0, c.z1 - c.z0) / 2 }); }
+    DCH.clear();
+  }
+
   // ---------- city recipe ----------
   const P = {
     london: { bg: '#B9B3CB', ground: ['#9EA3AE', '#979CA8'], trees: 'plane', styles: [['brick', '#B5654A', '#FFD48A', { chim: 1, pitched: '#5A5F66' }], ['plain', '#F1EBDD', '#FFCF85', { chim: 1 }], ['brick', '#9C5440', '#FFD9A0', { chim: 1 }], ['glass', '#9CC3D5', '#FFE3B0', {}]], h: [3.5, 7, 6, 12, 10, 18] },
@@ -464,32 +537,34 @@ export function buildCity(kind, cg, H, box) {
   const rowH = (row) => { const [a, b] = [RC.h[row * 2], RC.h[row * 2 + 1]]; return a + R() * (b - a); };
   function band(ax, bx, az, bz, depthAxis) {
     // depthAxis: 'z-' grows away north, 'z+' south, 'x-' west, 'x+' east
-    const rows = H.low ? 2 : 3;
+    const rows = DENSE ? (H.low ? 4 : 6) : H.low ? 2 : 3, lim = DENSE ? 74 : 46;
     for (let row = 0; row < rows; row++) {
       const dd = 5 + R() * 1.5;
       let off = 2.6 + row * 7.5;
       for (let u = depthAxis[0] === 'z' ? ax : az; u < (depthAxis[0] === 'z' ? bx : bz);) {
-        const w = 3.6 + R() * 3.4, st = pick(RC.styles), h = rowH(row), gap = 0.8 + R() * 1.4;
+        const w = 3.6 + R() * 3.4, st = pick(RC.styles), h = rowH(Math.min(row, 2)) * (row > 2 ? 0.8 + R() * 0.5 : 1), gap = DENSE ? 0.25 + R() * 0.5 : 0.8 + R() * 1.4;
         let x, z, bw, bd;
         if (depthAxis === 'z-') { x = u + w / 2; z = az - off - dd / 2; bw = w; bd = dd; }
         else if (depthAxis === 'z+') { x = u + w / 2; z = az + off + dd / 2; bw = w; bd = dd; }
         else if (depthAxis === 'x-') { x = ax - off - dd / 2; z = u + w / 2; bw = dd; bd = w; }
         else { x = ax + off + dd / 2; z = u + w / 2; bw = dd; bd = w; }
-        if (free(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2) && Math.abs(x) < 46 && Math.abs(z - 3) < 46) {
+        if (free(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2) && Math.abs(x) < lim && Math.abs(z - 3) < lim) {
           const o = { style: st[0], col: st[1], win: st[2], ...st[3] };
           if (row > 0) { delete o.laundry; delete o.mural; delete o.neon; }
           if (row === 0 && kind === 'saopaulo' && R() < 0.35) o.mural = 1;
           if (kind === 'seoul' && st[0] === 'apt') o.num = String(101 + Math.floor(R() * 9));
           const rot = depthAxis === 'z-' ? Math.PI : depthAxis === 'x-' ? -Math.PI / 2 : depthAxis === 'x+' ? Math.PI / 2 : 0;
           const swap = rot === Math.PI / 2 || rot === -Math.PI / 2;
-          bld(x, z, swap ? bd : bw, swap ? bw : bd, h, { ...o, rot, row });
+          if (DENSE && row >= (H.low ? 1 : 2)) denseBld(depthAxis + row + ':' + Math.floor(u / 22), x, z, bw, bd, h, 0, row > 1);
+          else bld(x, z, swap ? bd : bw, swap ? bw : bd, h, { ...o, rot, row });
           reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2);
         }
         u += w + gap;
       }
     }
   }
-  band(-44, 50, zN - 2.2, 0, 'z-'); band(-44, 50, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+');
+  if (DENSE) { band(-74, 76, zN - 2.2, 0, 'z-'); band(-74, 76, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); denseFlush(); }
+  else { band(-44, 50, zN - 2.2, 0, 'z-'); band(-44, 50, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); }
   // street trees & lamps along the inner sidewalks
   for (let x = xW + 3; x < xE - 2; x += 5.5) if (free(x - 0.5, x + 0.5, zS + 1.6, zS + 2.4) || true) tree(x, zS - 2.0, RC.trees, 0.8);
   for (let z = zN + 3; z < zS - 2; z += 6) { if (z < 6 || z > 13) { tree(xW + 2.0, z, RC.trees, 0.8); tree(xE - 2.0, z, RC.trees, 0.8); } }

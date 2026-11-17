@@ -756,10 +756,20 @@ function buildAnnexLot(c) {
     const st = S && S.city === c ? lotSt(i) : 'locked', cx = (L[0] + L[1]) / 2, cz = (L[2] + L[3]) / 2;
     if (st === 'owned') return;
     put(rbox(L[1] - L[0] - 0.2, 0.3, L[3] - L[2] - 0.2, '#CBBFA9', 0.06), cx, -0.4, cz, g);
-    floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, mat('#C2B59C', { r: 1 }), -0.24, g);
+    // a vacant lot rather than bare sand: rough grass with a worn dirt patch, a few shrubs, a low wooden fence along the edges
+    floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, mat('#A9C47F', { r: 1 }), -0.24, g);
+    { const w = L[1] - L[0], d = L[3] - L[2]; floorPlane(cx - w * 0.22, cx + w * 0.18, cz - d * 0.15, cz + d * 0.25, mat('#C9B48E', { r: 1 }), -0.23, g);
+      let sd = i * 7 + 3; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+      for (let k = 0; k < Math.min(9, Math.round(w * d / 18)); k++) { const b = sph(0.35 + rr() * 0.35, rr() < 0.5 ? '#7FAE5A' : '#93BD62'); b.scale.y = 0.7; put(b, L[0] + 0.8 + rr() * (w - 1.6), -0.1, L[2] + 0.8 + rr() * (d - 1.6), g); }
+      const fc = '#C9A577', y0 = -0.24;
+      for (const [x0, z0, x1, z1] of [[L[0] + 0.2, L[2] + 0.2, L[1] - 0.2, L[2] + 0.2], [L[0] + 0.2, L[3] - 0.2, L[1] - 0.2, L[3] - 0.2], [L[0] + 0.2, L[2] + 0.2, L[0] + 0.2, L[3] - 0.2], [L[1] - 0.2, L[2] + 0.2, L[1] - 0.2, L[3] - 0.2]]) {
+        const len = Math.hypot(x1 - x0, z1 - z0), along = x0 === x1 ? 'z' : 'x';
+        for (const h of [0.35, 0.65]) put(rbox(along === 'x' ? len : 0.06, 0.07, along === 'x' ? 0.06 : len, fc, 0.02), (x0 + x1) / 2, y0 + h, (z0 + z1) / 2, g);
+        for (let t = 0; t <= len + 0.01; t += 2.4) put(rbox(0.1, 0.8, 0.1, '#A8845A', 0.02), along === 'x' ? x0 + t : x0, y0 + 0.4, along === 'x' ? z0 : z0 + t, g); } }
     if (st === 'pending') { for (let k = 0; k < 4; k++) put(cyl(0.05, 0.05, 2.4, '#E3B341'), L[0] + 1 + k * (L[1] - L[0] - 2) / 3, 0.95, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 2.0, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 1.2, L[2] + 1, g); }
     else { const s = grp(cx, cz, 0, g); put(cyl(0.05, 0.05, 1.6, '#8B6A45'), 0, 0.5, 0, s); put(rbox(1.4, 0.8, 0.08, '#FFD25E', 0.04), 0, 1.4, 0, s); }
   });
+  if (GFX.batch) batchNode(g); // fences, shrubs and signs: a few draw calls instead of hundreds
 }
 function lotOwned(i) {
   setLot(i, 'owned'); setRent(); buildAnnexLot(); rebuildGrid();
