@@ -142,13 +142,14 @@ export function buildCity(kind, cg, H, box) {
   // ---------- trees & props ----------
   function tree(x, z, type, s = 1) {
     const g = grp(x, z, R() * 6, cg); g.position.y = GY;
-    if (type === 'palm') { for (let i = 0; i < 6; i++) put(cyl(0.15 - i * 0.012, 0.17 - i * 0.012, 0.7 * s, '#A0794E'), Math.sin(i * 0.4) * 0.15, (i + 0.5) * 0.7 * s, 0, g); for (let k = 0; k < 7; k++) { const lf = rbox(0.25, 0.06, 1.7, k % 2 ? '#4E9E58' : '#3F8A4D', 0.03); lf.position.set(Math.cos(k * 0.9) * 0.75, 4.2 * s, Math.sin(k * 0.9) * 0.75); lf.rotation.y = -k * 0.9 + Math.PI / 2; lf.rotation.x = 0.35; g.add(lf); } return; }
+    if (type === 'palm') { for (let i = 0; i < 6; i++) put(cyl(0.15 - i * 0.012, 0.17 - i * 0.012, 0.7 * s, '#A0794E'), Math.sin(i * 0.4) * 0.15, (i + 0.5) * 0.7 * s, 0, g); for (let k = 0; k < 7; k++) { const lf = rbox(0.25, 0.06, 1.7, k % 2 ? '#4E9E58' : '#3F8A4D', 0.03); lf.position.set(Math.cos(k * 0.9) * 0.75, 4.2 * s, Math.sin(k * 0.9) * 0.75); lf.rotation.y = -k * 0.9 + Math.PI / 2; lf.rotation.x = 0.35; g.add(lf); } if (H.glb && kind === 'saopaulo') H.glb(g, 'sp_palm', { h: 4.6 * s }); return; }
     if (type === 'cone') { put(cyl(0.14, 0.18, 1.2, '#7A5A3A'), 0, 0.6, 0, g); put(new THREE.Mesh(new THREE.ConeGeometry(0.9 * s, 2.6 * s, 8), mat('#3F7A4D')), 0, 2.2 * s, 0, g); return; }
     const c = { round: '#5FA05A', plane: '#6DAA5A', cherry: '#F4A7C3', jacaranda: '#9B7FD6', ipe: '#F2C230', ginkgo: '#E8C547', banyan: '#3F8A4D' }[type] || '#5FA05A';
     put(cyl(0.18, 0.24, 1.8 * s, '#7A5A3A'), 0, 0.9 * s, 0, g); put(sph(1.15 * s, c, { r: 0.85 }), 0, 2.2 * s, 0, g); put(sph(0.8 * s, c, { r: 0.85 }), 0.65 * s, 1.85 * s, 0.35 * s, g); put(sph(0.75 * s, c, { r: 0.85 }), -0.6 * s, 1.9 * s, -0.3 * s, g);
     if (H.glb && type === 'plane') H.glb(g, 'tree', { h: 3.9 * s });
+    if (H.glb && kind === 'saopaulo') H.glb(g, type === 'ipe' ? 'sp_ipe_y' : 'sp_ipe_p', { h: 3.9 * s });
   }
-  const lamp = (x, z, c = '#2F3A44') => { const g = grp(x, z, 0, cg); g.position.y = GY; put(cyl(0.06, 0.08, 3, c), 0, 1.5, 0, g); put(sph(0.2, '#FFE7A8', { e: '#FFD98A', ei: 1.2 }), 0, 3.1, 0, g); if (H.glb) H.glb(g, 'lamp', { h: 3.2 }); };
+  const lamp = (x, z, c = '#2F3A44') => { const g = grp(x, z, 0, cg); g.position.y = GY; put(cyl(0.06, 0.08, 3, c), 0, 1.5, 0, g); put(sph(0.2, '#FFE7A8', { e: '#FFD98A', ei: 1.2 }), 0, 3.1, 0, g); if (H.glb) H.glb(g, kind === 'saopaulo' ? 'sp_lamp' : 'lamp', { h: kind === 'saopaulo' ? 3.8 : 3.2 }); };
   function strip(a, b, c, d, col, y = GY + 0.03) { const m = new THREE.Mesh(new THREE.BoxGeometry(b - a, 0.06, d - c), mat(col, { r: 0.95 })); m.position.set((a + b) / 2, y, (c + d) / 2); m.receiveShadow = true; cg.add(m); return m; }
   function water(a, b, c, d, col = '#5FB3C9') { const m = new THREE.Mesh(new THREE.BoxGeometry(b - a, 0.1, d - c), mat(col, { r: 0.2, m: 0.1 })); m.position.set((a + b) / 2, GY - 0.02, (c + d) / 2); cg.add(m); reserve(a, b, c, d); }
 
@@ -181,16 +182,17 @@ export function buildCity(kind, cg, H, box) {
     else if (kindV === 'taxiMx') { body(1.6, 0.8, 3.2, '#F4F2EE'); put(rbox(1.5, 0.6, 1.8, '#E85A9C', 0.28), 0, GY + 1.45, -0.1, g); glass(1.52, 0.35, 1.6, 1.5); put(rbox(1.62, 0.18, 3.22, '#E85A9C', 0.02), 0, GY + 0.75, 0, g); wheels(3.2); }
     else if (kindV === 'pesero') { body(1.8, 1.6, 4.2, '#7ACB4E', 0.3); put(rbox(1.85, 0.16, 4.22, '#F4F2EE', 0.02), 0, GY + 1.1, 0, g); glass(1.85, 0.45, 3.6, 1.45); wheels(4.2); }
     if (H.glb && (kindV === 'dd' || kindV === 'cab')) H.glb(g, kindV === 'dd' ? 'bus' : 'cab', { len: kindV === 'dd' ? 5.2 : 3.3, rot: Math.PI / 2, y: GY });
+    if (H.glb && kind === 'saopaulo') { const sp = { bus: (vehicle.nb = (vehicle.nb || 0) + 1) % 2 ? 'sp_bus_g' : 'sp_bus_r', taxiSP: 'sp_taxi', okada: 'sp_moto' }[kindV]; if (sp) H.glb(g, sp, { len: { sp_taxi: 3.3, sp_moto: 1.5 }[sp] || 5.2, rot: Math.PI, y: GY }); }
     else if (kindV === 'taxiC') { body(1.6, 0.8, 3.2, '#F4F2EE'); put(rbox(1.5, 0.6, 1.8, '#F4F2EE', 0.28), 0, GY + 1.45, -0.1, g); glass(1.52, 0.35, 1.6, 1.5); for (let i = 0; i < 8; i++) put(rbox(1.62, 0.1, 0.2, i % 2 ? '#1C1C1C' : '#F4F2EE', 0.01), 0, GY + 0.95, -1.4 + i * 0.4, g); wheels(3.2); }
     else if (kindV === 'micro') { body(1.8, 1.5, 4.0, '#F4F2EE', 0.3); put(rbox(1.85, 0.2, 4.02, '#2E6BB8', 0.02), 0, GY + 0.9, 0, g); glass(1.85, 0.45, 3.4, 1.4); wheels(4); }
     else if (kindV === 'tuk') { put(rbox(1.1, 0.7, 1.8, '#C93A2E', 0.2), 0, GY + 0.7, 0, g); put(rbox(1.15, 0.12, 1.9, '#1C1C1C', 0.06), 0, GY + 1.75, 0, g); for (const sx of [-0.5, 0.5]) put(cyl(0.04, 0.04, 0.7, '#1C1C1C'), sx, GY + 1.4, -0.6, g); wheels(1.8, 1.0); }
     else if (kindV === 'taxiM') { body(1.6, 0.8, 3.2, '#1C1C1C'); put(rbox(1.5, 0.6, 1.7, '#F7C531', 0.3), 0, GY + 1.45, -0.1, g); wheels(3.2); }
     else if (kindV === 'bus') { const c = { seoul: '#3BB16A', saopaulo: '#E9EEF2', mumbai: '#C8352B', mexico: '#C8352B', newyork: '#2F6FC4' }[kind] || '#E9EEF2'; body(1.9, 2.2, 5.2, c, 0.25); glass(1.95, 0.6, 4.6, 1.7); if (kind === 'saopaulo') put(rbox(1.95, 0.25, 5.22, '#1F74C4', 0.02), 0, GY + 0.75, 0, g); wheels(5.2, 1.7); }
-    else { const c = kindV === 'taxiS' ? '#FF8A3D' : pick(['#E9EEF2', '#2F3A52', '#C93A2E', '#5AB8F0', '#8A9AB0', '#FFFFFF', '#3B4452']); body(1.6, 0.7, 3.4, c); put(rbox(1.45, 0.6, 1.9, c, 0.25), 0, GY + 1.3, -0.1, g); glass(1.47, 0.35, 1.7, 1.35); wheels(3.4); }
+    else { const c = kindV === 'taxiS' ? '#FF8A3D' : kindV === 'taxiSP' ? '#F4F4F2' : pick(['#E9EEF2', '#2F3A52', '#C93A2E', '#5AB8F0', '#8A9AB0', '#FFFFFF', '#3B4452']); body(1.6, 0.7, 3.4, c); put(rbox(1.45, 0.6, 1.9, c, 0.25), 0, GY + 1.3, -0.1, g); glass(1.47, 0.35, 1.7, 1.35); wheels(3.4); }
     g.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = false; } });
     return g;
   }
-  const VK = { london: ['dd', 'cab', 'cab', 'car', 'dd', 'car'], lagos: ['danfo', 'danfo', 'okada', 'keke', 'car', 'okada', 'danfo'], mumbai: ['taxiM', 'auto', 'auto', 'bus', 'taxiM', 'car', 'auto'], seoul: ['bus', 'taxiS', 'car', 'car', 'bus', 'taxiS'], saopaulo: ['bus', 'car', 'okada', 'car', 'bus', 'car', 'car'], cairo: ['taxiC', 'micro', 'tuk', 'car', 'taxiC', 'micro', 'car'], mexico: ['taxiMx', 'pesero', 'car', 'taxiMx', 'bus', 'car', 'pesero'], newyork: ['nycab', 'nycab', 'bus', 'car', 'nycab', 'car', 'nycab'] }[kind] || ['car', 'car', 'bus'];
+  const VK = { london: ['dd', 'cab', 'cab', 'car', 'dd', 'car'], lagos: ['danfo', 'danfo', 'okada', 'keke', 'car', 'okada', 'danfo'], mumbai: ['taxiM', 'auto', 'auto', 'bus', 'taxiM', 'car', 'auto'], seoul: ['bus', 'taxiS', 'car', 'car', 'bus', 'taxiS'], saopaulo: ['bus', 'taxiSP', 'okada', 'car', 'bus', 'taxiSP', 'okada', 'car'], cairo: ['taxiC', 'micro', 'tuk', 'car', 'taxiC', 'micro', 'car'], mexico: ['taxiMx', 'pesero', 'car', 'taxiMx', 'bus', 'car', 'pesero'], newyork: ['nycab', 'nycab', 'bus', 'car', 'nycab', 'car', 'nycab'] }[kind] || ['car', 'car', 'bus'];
   (H.low ? VK.slice(0, 3) : VK).forEach((k, i) => movers.push({ o: vehicle(k), path: i % 2 ? loop2 : loop, s: i / VK.length + R() * 0.05, sp: (k === 'okada' ? 0.045 : 0.03) * (0.85 + R() * 0.3) }));
 
   // ---------- landmarks ----------
@@ -410,6 +412,14 @@ export function buildCity(kind, cg, H, box) {
   } else if (kind === 'saopaulo') {
     water(-44, 50, zN - 21, zN - 13, '#7E9A8A'); estaiada(cx + 4, zN - 17); masp(cx - 4, zS + 6, 0); copan(xE + 12, zN + 6);
     for (let i = 0; i < 8; i++) tree(-38 + i * 11, zS + 3.2, i % 3 ? 'jacaranda' : 'ipe', 1);
+    // street life (Blender models; plain boxes until they load): benches, a bus shelter, traffic lights at the corners, and food carts under MASP's open plaza
+    const spProp = (x, z, r, n, o, fb) => { const g = C(x, z, r); g.position.y = GY; put(rbox(fb[0], fb[1], fb[2], fb[3], 0.05), 0, fb[1] / 2, 0, g); if (H.glb) H.glb(g, n, o); return g; };
+    for (const bx of [-30, -14, 18, 34]) spProp(bx, zS + 1.95, Math.PI, 'sp_bench', { len: 1.6 }, [1.6, 0.5, 0.45, '#9C6B3E']);
+    spProp(cx + 3, zS + 2.05, Math.PI, 'sp_shelter', { len: 2.8 }, [2.6, 2.3, 1.2, '#AEB4BC']);
+    for (const [tx, tz] of [[xW + 1.9, zS - 1.9], [xE - 1.9, zS - 1.9], [xW + 1.9, zN + 1.9], [xE - 1.9, zN + 1.9]]) spProp(tx, tz, 0, 'sp_light', { h: 3.4 }, [0.15, 3.2, 0.15, '#8A9099']);
+    spProp(cx - 7, zS + 6.4, 0.2, 'sp_fruit', { len: 2.2 }, [2, 1.2, 1.2, '#B98352']);
+    spProp(cx - 2.5, zS + 5.4, -0.4, 'sp_coco', { h: 2.6 }, [1.3, 1, 0.8, '#7DBA3F']);
+    spProp(cx + 1.8, zS + 6.6, 0.5, 'sp_popcorn', { h: 2.6 }, [0.9, 1.5, 0.6, '#E2443A']);
   }
 
   // fill blocks
