@@ -1099,3 +1099,12 @@ pt: {"staff.tiredMany": "Somos {n} no bagaço, Chefe. Uma sala de descanso (ou u
 de: {"staff.tiredMany": "{n} von uns sind am Ende, Chef. Ein Pausenraum (oder ein größerer) würde helfen…"},
 ja: {"staff.tiredMany": "ボス、{n}人がもう限界です。休憩室（か、もっと広い休憩室）があれば…"},
 ko: {"staff.tiredMany": "사장님, {n}명이 지쳤어요. 휴게실(아니면 더 큰 휴게실)이 있으면 좋겠어요…"} };
+
+export const EXTRA33 = {
+en: {"dc.doormat": "Doormat", "dc.doormatD": "Halves the muddy footprints on rainy, snowy and dusty days. Put it by the entrance."},
+fr: {"dc.doormat": "Paillasson", "dc.doormatD": "Divise par deux les traces de pas les jours de pluie, de neige ou de poussière. À mettre à l’entrée."},
+es: {"dc.doormat": "Felpudo", "dc.doormatD": "Reduce a la mitad las huellas los días de lluvia, nieve o polvo. Ponlo en la entrada."},
+pt: {"dc.doormat": "Capacho", "dc.doormatD": "Reduz pela metade as pegadas em dias de chuva, neve ou poeira. Coloque na entrada."},
+de: {"dc.doormat": "Fußmatte", "dc.doormatD": "Halbiert die Fußspuren an Regen-, Schnee- und Staubtagen. Am Eingang platzieren."},
+ja: {"dc.doormat": "玄関マット", "dc.doormatD": "雨・雪・砂ぼこりの日の足あとを半分に。入口に置こう。"},
+ko: {"dc.doormat": "현관 매트", "dc.doormatD": "비·눈·먼지 날의 발자국을 절반으로 줄여요. 입구에 두세요."} };

@@ -7,8 +7,8 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30, EXTRA31, EXTRA32 } from './i18n_mgr.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l], EXTRA30[l], EXTRA31[l], EXTRA32[l]);
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30, EXTRA31, EXTRA32, EXTRA33 } from './i18n_mgr.js';
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l], EXTRA30[l], EXTRA31[l], EXTRA32[l], EXTRA33[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -484,7 +484,7 @@ function markObstacles(blk) {
   if (!S) return;
   if (S.desk) for (const D of desks()) box(D.x, D.z, 2.5, 0.9, D.r);
   for (const [x, z] of LOBBY_PLANTS) box(x, z, 0.5, 0.5, 0);
-  for (const d of S.decor || []) box(d.x, d.z, d.k === 'sofa' ? 2.2 : 0.7, d.k === 'sofa' ? 0.9 : 0.7, d.r || 0);
+  for (const d of S.decor || []) if (!(DECOR[d.k] && DECOR[d.k].flat)) box(d.x, d.z, d.k === 'sofa' ? 2.2 : 0.7, d.k === 'sofa' ? 0.9 : 0.7, d.r || 0); // a doormat is walked on
 }
 function makeGrid(rooms) {
   const blk = new Uint8Array(GW * GH);
@@ -1476,7 +1476,7 @@ function applyDirt(room) {
   room.g.traverse((o) => { if (!o.isMesh || o.isInstancedMesh || !o.material || Array.isArray(o.material) || o.userData.stain) return; if (!o.userData.m0) o.userData.m0 = o.material; o.material = lv ? dirtyMat(o.userData.m0, lv) : o.userData.m0; });
   if (!lv) return;
   const sg = new THREE.Group(), q = roomRect(room.def), n = lv * 3 + (ROOMS[room.type].loo ? 2 : 0);
-  for (let i = 0; i < n; i++) { const m = stainDecal([0, 4, 5, 1, 0, 5][i % 6], 0.55 + Math.random() * 0.35);
+  for (let i = 0; i < n; i++) { const m = stainDecal((ROOMS[room.type].loo ? [7, 0, 4] : room.type === 'garage' ? [5, 5, 0] : room.type === 'cafe' ? [1, 2, 0] : [0, 4, 5, 1])[i % (ROOMS[room.type].loo || room.type === 'garage' || room.type === 'cafe' ? 3 : 4)], 0.55 + Math.random() * 0.35);
     m.position.set(q.x0 + 0.5 + Math.random() * Math.max(0.1, q.x1 - q.x0 - 1), 0.166, q.z0 + 0.5 + Math.random() * Math.max(0.1, q.z1 - q.z0 - 1)); m.userData.stain = true; sg.add(m); }
   if (lv === 2) { const fl = new THREE.Sprite(iconTex('🪰')); fl.scale.set(0.4, 0.4, 1); fl.position.set(room.cx, 1.7, room.cz); fl.userData.stain = true; sg.add(fl); }
   room.stains = sg; room.g.add(sg);
@@ -1693,6 +1693,8 @@ function patienceRate(v) {
 function roomSpeed(type) { return (type === 'nap' && done('nap')) || (type === 'detox' && done('mute')) ? 1.3 : type === 'budget' && done('sheet') ? 1.25 : 1; }
 function exitPath(v) { const x = 2 + Math.random() * 3; return findPath(v.av.position, { x, z: 11.8 }).concat([{ x, z: 13.4 }]); }
 function visitorUpdate(v, dt) {
+  if (v.markAt === undefined) { const mk = v.state === 'toQueue' ? arrivalMark(v) : null; v.markAt = mk ? 1 + RNG() * 2.5 : null; v.mark = mk; }
+  if (v.markAt != null && (v.markAt -= dt) <= 0) { v.markAt = null; dropMark(v.av.position.x + 0.2, v.av.position.z, v.mark[0], v.mark[1]); }
   if (v.asleep) { v.sleepT = (v.sleepT || 0) + dt; if (v.sleepT > (v.state === 'queue' ? (DQ(v.desk || 0)[0] === v && deskHost(v.desk || 0, true) ? 5 : 15) : 20) || (R.mgr && Math.hypot(R.mgr.av.position.x - v.av.position.x, R.mgr.av.position.z - v.av.position.z) < 1.6)) wakeUp(v); v.hud.position.copy(v.av.position); return; } // asleep: doesn't move, blocks the line
   const p = v.av.userData.p, walkSpeed = 2.3 * (beh('slowdoom') && DOOM.has(v.prob) && !v.cured ? 0.55 : 1) * (v.state === 'angry' ? 1.6 : 1) * (v.av.userData.p.anim ? 1 : !v.cured && v.look.style2 && v.look.style2.walk === 'WalkTired' ? 0.72 : 1);
   switch (v.state) {
@@ -1722,7 +1724,7 @@ function visitorUpdate(v, dt) {
     case 'toCafe': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.lspot); v.state = 'cafe'; v.prog = 0; } break;
     case 'cafe': {
       v.prog += dt / 3;
-      if (v.prog >= 1) { const spend = Math.round((7 + RNG() * 6) * (S.price || 1) * (done('oat') ? 1.2 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.25); incCnt('matcha'); { const cr = roomOfSpot(v.lspot); if (cr) { roomEarn(cr.id, spend); addDirt(cr, 0.03); } }
+      if (v.prog >= 1) { const spend = Math.round((7 + RNG() * 6) * (S.price || 1) * (done('oat') ? 1.2 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.25); incCnt('matcha'); { const cr = roomOfSpot(v.lspot); if (cr) { roomEarn(cr.id, spend); addDirt(cr, 0.03); } } if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 1, null, 0.5);
         AU.sfx('cash'); floatAt(v.av.position, '🍵 +' + money(spend)); v.lspot.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
         const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
@@ -1734,7 +1736,7 @@ function visitorUpdate(v, dt) {
     case 'amen': {
       const A = v.lspot; v.prog += dt / (A.k === 'massage' ? 5 : 2.5);
       if (v.prog >= 1) {
-        if (A.k === 'vending') { const spend = Math.round((4 + RNG() * 5) * (S.price || 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.15); incCnt('snack'); AU.sfx('cash'); floatAt(v.av.position, '🥤 +' + money(spend)); }
+        if (A.k === 'vending') { const spend = Math.round((4 + RNG() * 5) * (S.price || 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.15); incCnt('snack'); if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 2, null, 0.55); AU.sfx('cash'); floatAt(v.av.position, '🥤 +' + money(spend)); }
         else { v.pat = Math.min(1, v.pat + 0.4); vb('decor', 0 + 0.3); floatAt(v.av.position, '💆'); }
         A.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
         const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
@@ -1889,6 +1891,25 @@ function stainMat(i, tint) { const k = i + '|' + (tint || '');
     STAIN_MAT.set(k, new THREE.MeshLambertMaterial({ map: tx, color: tint || '#ffffff', transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })); }
   return STAIN_MAT.get(k); }
 function stainDecal(i, size, tint) { const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), stainMat(i, tint)); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * Math.PI * 2; m.renderOrder = 2; m.receiveShadow = true; return m; }
+// ---- floor marks tied to what is going on: rain footprints, snow slush, desert dust, café/vending spills, crowds, emergencies, garden grass
+// (light marks: the crew wipes them in a few seconds; London keeps only light rain footprints)
+const snowy = () => !!(S && S.rainy && outsideT() < 2), notLondon = () => (S.city || 'london') !== 'london';
+function dropMark(x, z, idx, tint, size) { if (!S || S.mode !== 'career' || R.litter.length >= 32) return; const m = stainDecal(idx, size || 0.7, tint); m.position.set(x, 0.168, z); scene.add(m); R.litter.push({ mesh: m, mark: true, wet: !!tint && snowy() }); }
+function arrivalMark(v) { // decided once, when a visitor comes in from the street
+  if (S.mode !== 'career') return null; const mat = (S.decor || []).some((d) => d.k === 'doormat') ? 0.5 : 1;
+  if (snowy() && notLondon()) return RNG() < 0.45 * mat ? [0, '#9FB3C8'] : null;
+  if (S.rainy) return RNG() < (notLondon() ? (cityOf().monsoon ? 0.5 : 0.35) : 0.2) * mat ? [0, null] : null;
+  if (S.dusty) return RNG() < 0.4 * mat ? [4, null] : null;
+  if (v.em && notLondon()) return RNG() < 0.4 ? [S.em && S.em.k === 'marathon' ? 4 : 0, null] : null;
+  if (notLondon() && typeof GARDEN_OK === 'function' && GARDEN_OK() && RNG() < 0.15) return [6, null];
+  return null;
+}
+function marksTick(dt) {
+  if (!S || S.mode !== 'career' || !notLondon()) return; marksTick.t = (marksTick.t || 0) + dt; if (marksTick.t < 10) return; marksTick.t = 0;
+  const waiting = R.visitors.filter((v) => v.state === 'wait' || v.state === 'queue');
+  if (waiting.length > 10 && RNG() < 0.5) { const v = rnd(waiting); dropMark(v.av.position.x + (RNG() - 0.5), v.av.position.z + (RNG() - 0.5), RNG() < 0.5 ? 4 : 5); } // a packed waiting room gets grubby
+  if (snowy() && R.litter.filter((l) => l.wet).length >= 4 && waiting.length && RNG() < 0.5) { const v = rnd(waiting); v.pat = Math.max(0.05, v.pat - 0.1); floatAt(v.av.position, '💫'); vb('dirt', -0.3); } // slush: someone slips
+}
 function dropPuddle(x, z, col) { AU.sfx('pop');
   const vomit = col === '#9BCB4E' || col === '#A3B04A', accident = col === '#A0784A';
   const m = stainDecal(vomit ? 3 : accident ? 7 : 2, vomit || accident ? 1.5 : 1.2, vomit || accident ? null : col); m.position.set(x, 0.17, z); // above room floors and rugs, so it can be seen
@@ -2603,7 +2624,7 @@ function dayTick(dt) {
     if (cityOf().quake && S.day >= 3 && Math.random() < 0.3) S.quakeAt = 15 + Math.random() * 50;
     if (S.iou) { S.cash += S.iou; chat(t('from.hq'), t('bh.iouPaid', { m: money(S.iou) }), '🧾'); S.iou = 0; }
     if (RENT_EVERY - ((S.day - 1) % RENT_EVERY) === 1) say('rent', t('pa.rent', { m: money(RENT) }), 0);
-    S.rainy = Math.random() < cityOf().rain;
+    S.rainy = Math.random() < cityOf().rain; S.dusty = S.city === 'cairo' && !S.rainy && Math.random() < 0.3; // khamsin wind: dusty footprints
     if (S.rainy) { chat(t('from.weather'), t('weather.rain'), '🌧️'); tip('rain'); }
     if (S.day === 3 && unlocked('lab') && !hasRoom('lab')) tip('lab');
     plotOf().lots.forEach((_, i) => { if (lotSt(i) === 'pending' && S.day >= lotDay(i)) lotOwned(i); });
@@ -2738,7 +2759,7 @@ function step(dt, now = performance.now(), rdt = dt) {
     if (rs.data.role === 'maint' && !rs.onBreak) maintUpdate(rs, dt);
   }
   doorsUpdate(dt); staffCover(dt); mgrUpdate(dt); if (S.pepT > 0) S.pepT -= dt; if (S.pepCd > 0) S.pepCd -= dt;
-  pestUpdate(dt); vibeTick(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); decorUpdate(dt); checkGoals();
+  pestUpdate(dt); vibeTick(dt); marksTick(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); decorUpdate(dt); checkGoals();
   saveT += rdt; if (saveT > 3) { saveT = 0; save(); }
 }
 const fpsW = { t: 0, n: 0, sum: 0, done: false };
@@ -3035,12 +3056,13 @@ function poachCheck() {
 }
 
 // ---------------- equipment, decor, kudos ----------------
-const DECOR = { sofa: { cost: 500, e: '🛋️', calm: 0.95, vibe: 0.001, seats: 2 }, radiator: { cost: 400, e: '🔥', calm: 1, vibe: 0, temp: 1 }, aircon: { cost: 600, e: '❄️', calm: 1, vibe: 0, temp: -1 }, plant: { cost: 150, e: '🪴', calm: 0.94, vibe: 0.0015 }, neon: { cost: 300, e: '💡', calm: 0.96, vibe: 0.002 }, vending: { cost: 600, e: '🥤', calm: 0.9, vibe: 0 }, massage: { kd: 15, e: '💆', calm: 0.8, vibe: 0.001 }, gold: { kd: 10, e: '🌟', calm: 0.92, vibe: 0.005 } };
+const DECOR = { sofa: { cost: 500, e: '🛋️', calm: 0.95, vibe: 0.001, seats: 2 }, radiator: { cost: 400, e: '🔥', calm: 1, vibe: 0, temp: 1 }, aircon: { cost: 600, e: '❄️', calm: 1, vibe: 0, temp: -1 }, plant: { cost: 150, e: '🪴', calm: 0.94, vibe: 0.0015 }, neon: { cost: 300, e: '💡', calm: 0.96, vibe: 0.002 }, vending: { cost: 600, e: '🥤', calm: 0.9, vibe: 0 }, massage: { kd: 15, e: '💆', calm: 0.8, vibe: 0.001 }, gold: { kd: 10, e: '🌟', calm: 0.92, vibe: 0.005 }, doormat: { cost: 300, e: '🟫', calm: 1, vibe: 0, flat: true } };
 function profile() { try { return JSON.parse(localStorage.getItem('ahq_profile')) || { kudos: 0 }; } catch (e) { return { kudos: 0 }; } }
 function kudos() { return profile().kudos || 0; }
 function addKudos(n) { if (S.mode !== 'career') return; const p = profile(); p.kudos = (p.kudos || 0) + n; try { localStorage.setItem('ahq_profile', JSON.stringify(p)); } catch (e) {} toast(t('kd.got', { n }), 1800); }
 function decorMesh(k) {
   const g = new THREE.Group();
+  if (k === 'doormat') { put(rbox(1.4, 0.03, 0.9, '#6B4F35', 0.02), 0, 0.03, 0, g); put(rbox(1.2, 0.035, 0.7, '#9C7B52', 0.02), 0, 0.035, 0, g); }
   if (k === 'plant' || k === 'gold') { const pl = plant(0, 0, k === 'gold' ? 1.3 : 1.15, k === 'gold' ? '#E3B341' : '#FFFFFF', g); pl.position.y = 0; if (k === 'gold') pl.traverse((m) => { if (m.isMesh && m.geometry.type === 'SphereGeometry') m.material = mat('#F2C14E', { m: 0.6, r: 0.3, e: '#FFD25E', ei: 0.25 }); }); }
   if (k === 'radiator') { for (let i = -3; i <= 3; i++) put(rbox(0.12, 0.7, 0.14, '#F4F2EE', 0.04), i * 0.14, 0.55, 0, g); put(rbox(1.05, 0.06, 0.16, '#E3E0DA', 0.02), 0, 0.92, 0, g); for (const x of [-0.42, 0.42]) put(cyl(0.025, 0.025, 0.2, '#8A8E96'), x, 0.12, 0, g); put(sph(0.05, '#E9785F', { e: '#E9785F', ei: 0.8 }), 0.48, 0.7, 0.08, g); glbSwap(g, 'radiator', { len: 1.1 }); }
   if (k === 'aircon') { put(rbox(0.55, 1.5, 0.4, '#F4F2EE', 0.08), 0, 0.8, 0, g); for (let i = 0; i < 5; i++) put(rbox(0.42, 0.03, 0.02, '#BFC6CE', 0.01), 0, 1.15 + i * 0.07, 0.21, g); put(rbox(0.4, 0.06, 0.02, '#5AB8F0', 0.01, { e: '#5AB8F0', ei: 0.9 }), 0, 0.55, 0.21, g); glbSwap(g, 'aircon', { h: 1.15 }); }
@@ -3087,7 +3109,7 @@ function amenSpot(v) {
     if (!a.busy) free.push(a); }
   if (!free.length) return null; const m = free.filter((a) => a.k === 'massage'); return v.pat < 0.6 && m.length ? m[0] : rnd(free);
 }
-const DECOR_HALF = (k) => (k === 'sofa' ? [1.15, 0.5] : [0.3, 0.3]);
+const DECOR_HALF = (k) => (k === 'sofa' ? [1.15, 0.5] : k === 'doormat' ? [0.7, 0.45] : [0.3, 0.3]);
 function decorValid(x, z, id, k = placingD ? placingD.k : 'plant', r = placingD ? placingD.mesh.rotation.y : 0) { // the whole footprint, rotated, must be clear
   const [hx, hz] = DECOR_HALF(k), c = Math.cos(r), sn = Math.sin(r), pts = [[0, 0]];
   for (const u of [-hx, 0, hx]) for (const w of [-hz, hz]) pts.push([u, w]);
