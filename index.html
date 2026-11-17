@@ -291,6 +291,13 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 #mapSheet>div[style*='font-size:14.5px']{font-weight:500!important;color:#2D3748!important}
 #mapSheet .maphead{min-height:104px}
 .mstars{display:inline-block;margin-top:4px;font-size:17px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.85);color:#F2A81D;text-shadow:none!important}
+
+#map .mhead{align-items:center!important;padding:8px 12px;background:linear-gradient(#2F9AD6 70%,rgba(47,154,214,0))}
+.mtitle{margin-top:0!important}
+#mapScroll{inset:calc(env(safe-area-inset-top) + 54px) 0 0 0!important}
+#mapInner{margin-top:0}
+.mtitle .ribbon{position:static!important;transform:none!important;margin:0!important}
+#map .mhead{background:#2F9AD6}
 </style>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icons/icon-180.png">
@@ -335,9 +342,8 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
     <div class="mhead safe-t">
       <button class="icon y" id="mBack" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3A2200" stroke-width="3" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="mtitle"><div class="ribbon">Life Crisis Tycoon</div></div>
-      <div class="y" style="border-radius:12px;padding:4px 9px;font-family:Fredoka;font-weight:700;font-size:13.5px;margin-top:5px" id="starTotal">0 / 66 ★</div>
+      <div class="y" style="border-radius:12px;padding:4px 9px;font-family:Fredoka;font-weight:700;font-size:13.5px" id="starTotal">0 / 66 ★</div>
     </div>
-    <div class="mchips" id="mChips"></div>
   </div>
   <div class="sheetbox safe-b" id="mapSheet"></div>
 </section>

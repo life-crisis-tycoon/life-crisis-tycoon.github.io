@@ -3707,9 +3707,6 @@ function mzInit() {
 }
 function renderMap() {
   const inner = $('mapInner'); inner.querySelectorAll('.pin').forEach((x) => x.remove());
-  const chips = $('mChips'); if (chips) { chips.innerHTML = ['all', 'rg.europe', 'rg.africa', 'rg.americas', 'rg.asia'].map((r) => `<button class="${mapRegion === r ? 'g' : 'y'}" data-r="${r}">${t('map.' + (r === 'all' ? 'all' : r.slice(3)))}</button>`).join('');
-    chips.querySelectorAll('button').forEach((bt) => { bt.onclick = () => { mapRegion = bt.dataset.r; const first = Object.keys(CITIES).find((c) => mapRegion === 'all' ? c === mapCity : CITIES[c].region === mapRegion);
-      if (first && mapRegion !== 'all' && cityUnlocked(first)) mapCity = first; renderMap(); const P = CITIES[first || mapCity].pin; mzCenter(P[0], P[1], true); }; }); }
   for (const [k, C] of Object.entries(CITIES)) {
     if (mapRegion !== 'all' && C.region !== mapRegion) continue;
     const ok = cityUnlocked(k), b = document.createElement('button'); b.className = 'pin ' + (k === mapCity ? 'g' : ok ? 'w' : 'y');
@@ -3719,7 +3716,7 @@ function renderMap() {
   for (const [nk, x, y] of LOCKED_PINS) { const b = document.createElement('button'); b.className = 'pin y'; b.style.cssText = `left:${x}%;top:${y}%;font-size:12px`; b.textContent = '🔒 ' + t(nk); b.onclick = () => toast(t('map.soon')); inner.appendChild(b); }
   const C = CITIES[mapCity], s = load(mapCity), st = cityStars(mapCity);
   $('mapSheet').innerHTML = `<div class="grab"></div><div class="maphead" style="background-image:linear-gradient(90deg,rgba(255,255,255,.88) 0%,rgba(255,255,255,.6) 28%,rgba(255,255,255,0) 50%),url(assets/banners/${mapCity}.webp)"><div><div class="lbl">${t('map.lvl', { n: C.lvl + 1 })} · ${t(C.region)}</div><h2 class="f" style="margin:0;font-size:30px">${t('city.' + mapCity)}</h2><div class="stars mstars">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</div></div></div>
-    <div style="font-weight:700;color:#2D3748;font-size:14.5px">${t(C.desc)}</div><div>${C.chips.map(([c, k]) => `<span class="chip ${c}">${t(k)}</span>`).join('')}</div>
+    <div style="font-weight:700;color:#2D3748;font-size:14.5px">${t(C.desc)}</div>
     <button class="btn g" id="mOpen" style="font-size:20px">${s ? t('map.contC', { city: t('city.' + mapCity) }) : t('map.openC', { city: t('city.' + mapCity) })}</button>`;
   $('mOpen').onclick = openBrief;
 }
