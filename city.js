@@ -117,7 +117,17 @@ export function buildCity(kind, cg, H, box) {
     }).catch((e) => console.warn('[kit]', e && e.message));
   }
   // ---------- building ----------
+  const SP_LOW = ['sp_b_padaria', 'sp_b_boteco', 'sp_b_shops', 'sp_b_houses', 'sp_b_mural', 'sp_b_depot', 'sp_b_selfbuilt', 'sp_b_padaria', 'sp_b_shops', 'sp_b_houses', 'sp_b_boteco'];
+  const SP_TALL = ['sp_b_tower', 'sp_b_pixo', 'sp_b_glass', 'sp_b_tower'];
+  function spBld(x, z, w, d, h, o) { // Meshy models face −X in their file: rot −π/2 turns the front to the group's −Z, i.e. towards the street
+    const g = grp(x, z, o.rot || 0, cg); g.position.y = GY; const len = Math.min(w, d);
+    const tall = o.row > 0, name = tall ? pick(SP_TALL) : pick(SP_LOW), hh = tall ? Math.min(h, len * 4.2) : len * 1.1;
+    const fb = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, hh, d * 0.9), mat(o.col || '#E3DDD2', { r: 0.9 })); fb.position.y = hh / 2; g.add(fb);
+    H.glb(g, name, { fit: [w * 0.98, d * 0.98], h: tall ? hh : null, hk: 1.15, rot: -Math.PI / 2 });
+    B.push({ o: g, x, z, h: hh, r: Math.max(w, d) / 2 }); return g;
+  }
   function bld(x, z, w, d, h, o = {}) {
+    if (H.glb && kind === 'saopaulo' && o.row != null && o.row < (H.low ? 1 : 3)) return spBld(x, z, w, d, h, o);
     if (KIT && ['brick', 'plain', 'glass'].includes(o.style || 'plain')) return kitBld(x, z, w, d, h, o);
     const col = o.col || '#E9E1D3', style = o.style || 'plain', win = o.win || '#9FC6DA';
     const t = facade(style, col, win), mk = (rx, ry) => { const c = t.clone(); c.needsUpdate = true; c.wrapS = c.wrapT = THREE.RepeatWrapping; c.repeat.set(Math.max(1, Math.round(rx)), Math.max(1, Math.round(ry))); return new THREE.MeshStandardMaterial({ map: c, roughness: style === 'glass' ? 0.35 : 0.85, metalness: style === 'glass' ? 0.2 : 0 }); };
@@ -147,7 +157,7 @@ export function buildCity(kind, cg, H, box) {
     const c = { round: '#5FA05A', plane: '#6DAA5A', cherry: '#F4A7C3', jacaranda: '#9B7FD6', ipe: '#F2C230', ginkgo: '#E8C547', banyan: '#3F8A4D' }[type] || '#5FA05A';
     put(cyl(0.18, 0.24, 1.8 * s, '#7A5A3A'), 0, 0.9 * s, 0, g); put(sph(1.15 * s, c, { r: 0.85 }), 0, 2.2 * s, 0, g); put(sph(0.8 * s, c, { r: 0.85 }), 0.65 * s, 1.85 * s, 0.35 * s, g); put(sph(0.75 * s, c, { r: 0.85 }), -0.6 * s, 1.9 * s, -0.3 * s, g);
     if (H.glb && type === 'plane') H.glb(g, 'tree', { h: 3.9 * s });
-    if (H.glb && kind === 'saopaulo') H.glb(g, type === 'ipe' ? 'sp_ipe_y' : 'sp_ipe_p', { h: 3.9 * s });
+    if (H.glb && kind === 'saopaulo') H.glb(g, type === 'ipe' ? 'sp_ipe_y' : type === 'green' ? 'sp_tree_g' : 'sp_ipe_p', { h: (type === 'green' ? 4.4 : 3.9) * s });
   }
   const lamp = (x, z, c = '#2F3A44') => { const g = grp(x, z, 0, cg); g.position.y = GY; put(cyl(0.06, 0.08, 3, c), 0, 1.5, 0, g); put(sph(0.2, '#FFE7A8', { e: '#FFD98A', ei: 1.2 }), 0, 3.1, 0, g); if (H.glb) H.glb(g, kind === 'saopaulo' ? 'sp_lamp' : 'lamp', { h: kind === 'saopaulo' ? 3.8 : 3.2 }); };
   function strip(a, b, c, d, col, y = GY + 0.03) { const m = new THREE.Mesh(new THREE.BoxGeometry(b - a, 0.06, d - c), mat(col, { r: 0.95 })); m.position.set((a + b) / 2, y, (c + d) / 2); m.receiveShadow = true; cg.add(m); return m; }
@@ -182,7 +192,7 @@ export function buildCity(kind, cg, H, box) {
     else if (kindV === 'taxiMx') { body(1.6, 0.8, 3.2, '#F4F2EE'); put(rbox(1.5, 0.6, 1.8, '#E85A9C', 0.28), 0, GY + 1.45, -0.1, g); glass(1.52, 0.35, 1.6, 1.5); put(rbox(1.62, 0.18, 3.22, '#E85A9C', 0.02), 0, GY + 0.75, 0, g); wheels(3.2); }
     else if (kindV === 'pesero') { body(1.8, 1.6, 4.2, '#7ACB4E', 0.3); put(rbox(1.85, 0.16, 4.22, '#F4F2EE', 0.02), 0, GY + 1.1, 0, g); glass(1.85, 0.45, 3.6, 1.45); wheels(4.2); }
     if (H.glb && (kindV === 'dd' || kindV === 'cab')) H.glb(g, kindV === 'dd' ? 'bus' : 'cab', { len: kindV === 'dd' ? 5.2 : 3.3, rot: Math.PI / 2, y: GY });
-    if (H.glb && kind === 'saopaulo') { const sp = { bus: (vehicle.nb = (vehicle.nb || 0) + 1) % 2 ? 'sp_bus_g' : 'sp_bus_r', taxiSP: 'sp_taxi', okada: 'sp_moto' }[kindV]; if (sp) H.glb(g, sp, { len: { sp_taxi: 3.3, sp_moto: 1.5 }[sp] || 5.2, rot: Math.PI / 2, y: GY }); }
+    if (H.glb && kind === 'saopaulo') { const sp = { bus: (vehicle.nb = (vehicle.nb || 0) + 1) % 2 ? 'sp_bus_g' : 'sp_bus_r', taxiSP: 'sp_taxi', okada: 'sp_moto', busArt: 'sp_bus_art' }[kindV]; if (sp) H.glb(g, sp, { len: { sp_taxi: 3.3, sp_moto: 1.5, sp_bus_art: 9 }[sp] || 5.2, rot: Math.PI / 2, y: GY }); }
     else if (kindV === 'taxiC') { body(1.6, 0.8, 3.2, '#F4F2EE'); put(rbox(1.5, 0.6, 1.8, '#F4F2EE', 0.28), 0, GY + 1.45, -0.1, g); glass(1.52, 0.35, 1.6, 1.5); for (let i = 0; i < 8; i++) put(rbox(1.62, 0.1, 0.2, i % 2 ? '#1C1C1C' : '#F4F2EE', 0.01), 0, GY + 0.95, -1.4 + i * 0.4, g); wheels(3.2); }
     else if (kindV === 'micro') { body(1.8, 1.5, 4.0, '#F4F2EE', 0.3); put(rbox(1.85, 0.2, 4.02, '#2E6BB8', 0.02), 0, GY + 0.9, 0, g); glass(1.85, 0.45, 3.4, 1.4); wheels(4); }
     else if (kindV === 'tuk') { put(rbox(1.1, 0.7, 1.8, '#C93A2E', 0.2), 0, GY + 0.7, 0, g); put(rbox(1.15, 0.12, 1.9, '#1C1C1C', 0.06), 0, GY + 1.75, 0, g); for (const sx of [-0.5, 0.5]) put(cyl(0.04, 0.04, 0.7, '#1C1C1C'), sx, GY + 1.4, -0.6, g); wheels(1.8, 1.0); }
@@ -192,7 +202,7 @@ export function buildCity(kind, cg, H, box) {
     g.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = false; } });
     return g;
   }
-  const VK = { london: ['dd', 'cab', 'cab', 'car', 'dd', 'car'], lagos: ['danfo', 'danfo', 'okada', 'keke', 'car', 'okada', 'danfo'], mumbai: ['taxiM', 'auto', 'auto', 'bus', 'taxiM', 'car', 'auto'], seoul: ['bus', 'taxiS', 'car', 'car', 'bus', 'taxiS'], saopaulo: ['bus', 'taxiSP', 'okada', 'car', 'bus', 'taxiSP', 'okada', 'car'], cairo: ['taxiC', 'micro', 'tuk', 'car', 'taxiC', 'micro', 'car'], mexico: ['taxiMx', 'pesero', 'car', 'taxiMx', 'bus', 'car', 'pesero'], newyork: ['nycab', 'nycab', 'bus', 'car', 'nycab', 'car', 'nycab'] }[kind] || ['car', 'car', 'bus'];
+  const VK = { london: ['dd', 'cab', 'cab', 'car', 'dd', 'car'], lagos: ['danfo', 'danfo', 'okada', 'keke', 'car', 'okada', 'danfo'], mumbai: ['taxiM', 'auto', 'auto', 'bus', 'taxiM', 'car', 'auto'], seoul: ['bus', 'taxiS', 'car', 'car', 'bus', 'taxiS'], saopaulo: ['bus', 'taxiSP', 'okada', 'busArt', 'bus', 'taxiSP', 'okada', 'car'], cairo: ['taxiC', 'micro', 'tuk', 'car', 'taxiC', 'micro', 'car'], mexico: ['taxiMx', 'pesero', 'car', 'taxiMx', 'bus', 'car', 'pesero'], newyork: ['nycab', 'nycab', 'bus', 'car', 'nycab', 'car', 'nycab'] }[kind] || ['car', 'car', 'bus'];
   (H.low ? VK.slice(0, 3) : VK).forEach((k, i) => movers.push({ o: vehicle(k), path: i % 2 ? loop2 : loop, s: i / VK.length + R() * 0.05, sp: (k === 'okada' ? 0.045 : 0.03) * (0.85 + R() * 0.3) }));
 
   // ---------- landmarks ----------
@@ -327,7 +337,7 @@ export function buildCity(kind, cg, H, box) {
     const g = C(x, z); g.position.y = GY; put(rbox(30, 0.4, 2.2, '#E9E1D3', 0.05), 0, 1.6, 0, g); put(rbox(2, 0.4, 24, '#E9E1D3', 0.05), 0, 1.6, 0, g);
     const legA = rbox(0.8, 26, 0.8, '#F4EFE6', 0.1); legA.rotation.z = 0.28; put(legA, -1.6, 12, 0, g); const legB = rbox(0.8, 26, 0.8, '#F4EFE6', 0.1); legB.rotation.z = -0.28; put(legB, 1.6, 12, 0, g);
     for (let i = 1; i <= 7; i++) for (const sg of [-1, 1]) { const ty = 14 + i * 1.2, dx = i * 1.8; const len = Math.hypot(dx, ty - 1.8); const c = cyl(0.03, 0.03, len, '#FFD25E'); c.position.set(sg * dx / 2, (ty + 1.8) / 2, 0); c.rotation.z = -sg * Math.atan2(dx, ty - 1.8); g.add(c); }
-    lm(g, x, z, 26, 2);
+    return lm(g, x, z, 26, 2);
   }
 
   function empire(x, z) { const g = C(x, z); const st = [[8, 14], [6, 10], [4.5, 8], [3, 6], [2, 4]]; let y = 0; for (const [w, h] of st) { put(rbox(w, h, w, '#C9C3B6', 0.08), 0, GY + y + h / 2, 0, g); for (let k = 1; k < h; k += 1.5) put(rbox(w + 0.04, 0.08, w + 0.04, '#9C978D', 0.01), 0, GY + y + k, 0, g); y += h; }
@@ -410,7 +420,25 @@ export function buildCity(kind, cg, H, box) {
     for (const [px, pz, ps] of [[cx - 30, zN - 44, 9], [cx - 18, zN - 47, 7], [cx - 41, zN - 41, 5]]) pyramid(px, pz, ps);
     mosque(xE + 11, zS + 9); for (let i = 0; i < 8; i++) tree(-38 + i * 11, zN - 10.5, 'palm', 1.1);
   } else if (kind === 'saopaulo') {
-    water(-44, 50, zN - 21, zN - 13, '#7E9A8A'); estaiada(cx + 4, zN - 17); masp(cx - 4, zS + 6, 0); copan(xE + 12, zN + 6);
+    water(-44, 50, zN - 21, zN - 13, '#7E9A8A'); const eg = estaiada(cx + 4, zN - 24); if (H.glb) H.glb(eg, 'sp_lm_bridge', { len: 22, y: -0.5 }); reserve(cx - 8, cx + 16, zN - 36, zN - 12);
+    masp(cx - 4, zS + 6, 0); copan(xE + 12, zN + 6);
+    // Meshy landmarks (sheet Nov 2026); a plain block stands in until each model loads
+    const spLM = (x, z, r, n, o, fh, fw = 3) => { const g = C(x, z, r); g.position.y = GY; put(rbox(fw, fh, fw, '#E9E1D3', 0.1), 0, fh / 2, 0, g); if (H.glb) H.glb(g, n, o); return lm(g, x, z, fh, fw); };
+    { // Ibirapuera Park on the west side: Oca, the winding Marquise, the Auditório, a pond and green trees
+      const px0 = xW - 21, px1 = xW - 3.4, pz0 = zN + 3, pz1 = zS - 3.4, pm = (px0 + px1) / 2;
+      strip(px0, px1, pz0, pz1, '#8DBF6A', GY + 0.05); reserve(px0, px1, pz0, pz1);
+      spLM(pm, pz0 + 7, 0, 'sp_lm_oca', { len: 11 }, 3, 8);
+      spLM(pm + 1, (pz0 + pz1) / 2 + 0.5, Math.PI / 2, 'sp_lm_marquise', { len: 16 }, 1.2, 4);
+      spLM(pm, pz1 - 6, 0, 'sp_lm_auditorio', { len: 10 }, 5, 7);
+      spLM(px0 + 3.5, (pz0 + pz1) / 2 - 7, 0, 'sp_pond', { len: 6 }, 0.3, 4);
+      for (let i = 0; i < 12; i++) tree(i % 2 ? px0 + 1.2 : px1 - 1.2, pz0 + 2 + i * 3.4, i % 4 === 1 ? 'ipe' : 'green', 0.95);
+      for (const [tx, tz] of [[px0 + 4, pz1 - 2.5], [px1 - 4, pz0 + 15], [px0 + 4.5, pz0 + 15]]) tree(tx, tz, 'green', 1.05);
+    }
+    spLM(xE + 12, zN + 21, 0, 'sp_lm_luz', { len: 15 }, 8, 10); reserve(xE + 4, xE + 20, zN + 14, zN + 28);
+    spLM(xE + 11, zN + 35, 0, 'sp_lm_pinacoteca', { len: 10 }, 7, 8); reserve(xE + 5, xE + 17, zN + 30, zN + 40);
+    spLM(xW - 9, zS + 11, 0, 'sp_lm_obelisco', { len: 7 }, 12, 4); reserve(xW - 14, xW - 4, zS + 6, zS + 16);
+    spLM(xE + 9, zS + 9, 0, 'sp_lm_torii', { len: 8 }, 5, 4); reserve(xE + 4.5, xE + 13.5, zS + 4.5, zS + 13.5);
+    { const g = C(xE + 18.5, zS + 9, 0); g.position.y = GY; put(rbox(6, 6, 6, '#C9483E', 0.1), 0, 3, 0, g); if (H.glb) H.glb(g, 'sp_b_liberdade', { len: 6.5, rot: Math.PI }); reserve(xE + 15, xE + 22, zS + 5.5, zS + 12.5); B.push({ o: g, x: xE + 18.5, z: zS + 9, h: 7, r: 3.5 }); }
     for (let i = 0; i < 8; i++) tree(-38 + i * 11, zS + 3.2, i % 3 ? 'jacaranda' : 'ipe', 1);
     // street life (Blender models; plain boxes until they load): benches, a bus shelter, traffic lights at the corners, and food carts under MASP's open plaza
     // Meshy models (Nov 2026) face −X in their file; rot turns them so the front faces the street or the direction of travel
@@ -421,6 +449,15 @@ export function buildCity(kind, cg, H, box) {
     spProp(cx - 7, zS + 6.4, 0.2, 'sp_fruit', { len: 2.2, rot: -Math.PI / 2 }, [2, 1.2, 1.2, '#B98352']);
     spProp(cx - 2.5, zS + 5.4, -0.4, 'sp_coco', { h: 2.6, rot: -Math.PI / 2 }, [1.3, 1, 0.8, '#7DBA3F']);
     spProp(cx + 1.8, zS + 6.6, 0.5, 'sp_popcorn', { h: 2.6, rot: -Math.PI / 2 }, [0.9, 1.5, 0.6, '#E2443A']);
+    spProp(cx + 5.5, zS + 6.0, -0.3, 'sp_pastel', { len: 2.4, rot: -Math.PI / 2 }, [2.2, 2.2, 1.2, '#3F7BC9']);
+    spProp(cx - 10.5, zS + 5.6, 0.3, 'sp_caldo', { len: 1.8, rot: -Math.PI / 2 }, [1.6, 1.4, 0.9, '#9AA1AA']);
+    // sidewalk life: orelhão phones, a newsstand (banca), bins and a metro entrance
+    for (const bx of [-22, 26]) spProp(bx, zS + 2.0, Math.PI, 'sp_orelhao', { h: 2.3, rot: Math.PI / 2 }, [0.6, 2.2, 0.6, '#F2862E']);
+    spProp(cx + 12, zS + 3.7, Math.PI, 'sp_banca', { len: 2.6, rot: Math.PI / 2 }, [2.4, 2.4, 1.6, '#4C9A5A']);
+    for (const bx of [-26, -10, 10, 30]) spProp(bx, zS + 2.0, Math.PI, 'sp_bin', { h: 1.1, rot: Math.PI / 2 }, [0.45, 1.0, 0.45, '#F2862E']);
+    spProp(xW - 6, zS + 4.2, Math.PI, 'sp_metro', { len: 3.4, rot: Math.PI / 2 }, [3, 2.6, 2.4, '#2F4A7A']); reserve(xW - 8, xW - 4, zS + 2.5, zS + 6);
+    // a helicopter circling over the towers (São Paulo has one of the world's biggest helicopter fleets)
+    if (H.glb && !H.low) { const hg = new THREE.Group(); cg.add(hg); H.glb(hg, 'sp_heli', { len: 4.2, rot: Math.PI / 2 }); movers.push({ o: hg, orbit: [cx + 6, -2, 46, 30], a: 0, sp: 0.09 }); }
   }
 
   // fill blocks
@@ -466,6 +503,7 @@ export function buildCity(kind, cg, H, box) {
 export function moveCity(movers, dt) {
   for (const m of movers) {
     if (m.spin) { m.spin.rotation.z += m.sp * dt; continue; }
+    if (m.orbit) { const [ox, oz, r, y] = m.orbit; m.a += m.sp * dt; const s = Math.sin(m.a), c = Math.cos(m.a); m.o.position.set(ox + r * c, y + Math.sin(m.a * 3) * 1.5, oz + r * s); m.o.rotation.y = Math.atan2(-s, c); continue; }
     if (m.rail) { m.o.position.x += m.sp * dt; if (m.o.position.x > m.rail[1]) m.o.position.x = m.rail[0]; continue; }
     const P = m.path; let L = 0; const seg = []; for (let i = 0; i < 4; i++) { const a = P[i], b = P[(i + 1) % 4]; const l = Math.hypot(b[0] - a[0], b[1] - a[1]); seg.push(l); L += l; }
     m.s = (m.s + m.sp * dt * 30 / L) % 1; let d = m.s * L, i = 0; while (d > seg[i]) { d -= seg[i]; i++; }

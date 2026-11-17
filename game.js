@@ -630,7 +630,7 @@ function propModel(name) {
     return gl.scene;
   })());
 }
-const INST = {}, INST_NAMES = new Set(['tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light']);
+const INST = {}, INST_NAMES = new Set(['tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true;
   let rec = INST[name]; if (!rec || rec.done) { rec = INST[name] = { list: [], done: false }; const R0 = rec; propModel(name).then((src) => { R0.done = true; buildInst(src, R0.list); }).catch((e) => console.warn('[props]', name, e.message)); }
@@ -664,6 +664,7 @@ function glbSwap(g, name, o = {}) {
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
     const sl = o.len ? o.len / Math.max(sz.x, sz.z) : null, sh = o.h ? o.h / sz.y : null;
     const k = sl || sh || 1; m.scale.set(k, sh && sl ? sh : k, k);
+    if (o.fit) { const fx = o.fit[0] / sz.x, fz = o.fit[1] / sz.z; m.scale.set(fx, o.h ? sh : Math.min(fx, fz) * (o.hk || 1), fz); } // fit a footprint [w, d] (group axes); height follows the narrower side unless h is given
     let rid; g.traverse((c) => { if (c.userData.roomId != null && rid == null) rid = c.userData.roomId; });
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
     m.position.y = o.y || 0; g.add(m); g.userData.glb = name;
