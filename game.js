@@ -3748,11 +3748,11 @@ function openBrief() {
 function resetCareer() { for (const c of Object.keys(CITIES)) localStorage.removeItem(saveKey(c)); const p = profile(); p.stars = {}; p.last = 'london'; localStorage.setItem('ahq_profile', JSON.stringify(p)); }
 $('bContinue').onclick = showMap;
 $('bNew').onclick = () => {
-  const go = () => { resetCareer(); mapCity = 'london'; if (!loadMgr()) openCreate('map'); else showMap(); };
+  const go = () => { resetCareer(); mapCity = 'london'; openCreate('map'); }; // every new career starts by creating (or tweaking) the manager
   if (Object.keys(CITIES).some((c) => load(c))) { modal(`<div style="font-size:44px">🧹</div><h2>${t('new.confirmT')}</h2><p>${t('new.confirmP')}</p><div class="row2" style="margin-top:10px"><button class="btn y" id="nNo">${t('new.no')}</button><button class="btn g" id="nYes">${t('new.yes')}</button></div>`); $('nNo').onclick = closeModal; $('nYes').onclick = () => { closeModal(); go(); }; }
   else go();
 };
-$('bMgr').onclick = () => openCreate('title');
+if ($('bMgr')) $('bMgr').onclick = () => openCreate('title');
 $('bQuick').onclick = () => startQuick(false);
 $('bDaily').onclick = () => startQuick(true);
 $('bLang').onclick = openLang;
