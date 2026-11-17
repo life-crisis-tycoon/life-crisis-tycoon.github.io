@@ -314,8 +314,25 @@ function swapVisitorAvatar(v) {
   const old = v.av, av = person(v.look, 'visitor'); if (!av.userData.p.glb) return;
   av.position.copy(old.position); av.rotation.copy(old.rotation); scene.remove(old); scene.add(av); av.userData.p.waitPose = old.userData.p.waitPose; if (v.cured && av.userData.p.anim && av.userData.p.anim.calm) av.userData.p.anim.calm(); v.av = av; v.gag = addGag(av, v.prob, v.look); visitorPose(v);
 }
+// props held in the hands of the special characters (Blender-made, models/props/hp_*): [bone, prop, rotation x/y/z in degrees, offset along the hand]
+const HAND_PROPS = { sp_health: [['RightHand', 'hp_pen'], ['LeftHand', 'hp_clipboard']], sp_safety: [['RightHand', 'hp_flashlight'], ['LeftHand', 'hp_tablet']], sp_mystery: [['RightHand', 'hp_notebook']], sp_influencer: [['RightHand', 'hp_selfie']], sp_trainer: [['RightHand', 'hp_clicker'], ['LeftHand', 'hp_tablet']] };
+// how each prop sits in the hand, in the character's own space while standing (facing +Z, its left = +X): long axis, which way its face points, offset from the wrist (m)
+const HP_POSE = { hp_clipboard: [[0.15, -1, 0.1], [0.3, 0, 1], [0, -0.08, 0.05]], hp_tablet: [[0.15, -1, 0.1], [0.3, 0, 1], [0, -0.08, 0.05]], hp_pen: [[0, -0.6, 1], [0, 1, 0], [0, -0.07, 0.03]],
+  hp_flashlight: [[0, -0.5, 1], [0, 1, 0], [0, -0.07, 0.03]], hp_notebook: [[-0.1, -1, 0.2], [-0.3, 0, 1], [0, -0.06, 0.09]], hp_selfie: [[0, 1, 0.25], [0, 0, 1], [0, -0.05, 0.03]], hp_clicker: [[0, -0.3, 1], [0, 1, 0], [0, -0.07, 0.03]] };
+function attachHandProps(av, key) {
+  const list = HAND_PROPS[key]; if (!list || !PROPS_ON) return; const bones = {}; av.traverse((b) => { if (b.isBone && !bones[b.name]) bones[b.name] = b; });
+  for (const [bn, name] of list) { const bone = bones[bn]; if (!bone) continue;
+    propModel(name).then((src) => { const m = src.clone(), P = HP_POSE[name]; if (!P) return; const V = (a) => new THREE.Vector3(...a).normalize();
+      av.updateMatrixWorld(true); const ws = bone.getWorldScale(new THREE.Vector3()), as = av.getWorldScale(new THREE.Vector3());
+      const Y = V(P[0]), Z = V(P[1]).sub(Y.clone().multiplyScalar(V(P[1]).dot(Y))).normalize(), X = new THREE.Vector3().crossVectors(Y, Z);
+      const qd = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, Z));
+      const aq = av.getWorldQuaternion(new THREE.Quaternion()), bq = bone.getWorldQuaternion(new THREE.Quaternion());
+      m.quaternion.copy(bq.clone().invert().multiply(aq).multiply(qd));
+      const wp = bone.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(...P[2]).multiplyScalar(as.x).applyQuaternion(aq)); bone.worldToLocal(wp); m.position.copy(wp);
+      m.scale.setScalar(as.x / (ws.x || 1)); m.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.frustumCulled = false; } }); bone.add(m); }).catch(() => {}); }
+}
 function person(o, kind) {
-  if (kind && canGLB(kind, outfitKey(kind, o))) { try { return makeGLBAvatar(o, kind, outfitKey(kind, o)); } catch (e) { CHAR.errors.push('avatar ' + e.message); } }
+  if (kind && canGLB(kind, outfitKey(kind, o))) { try { const a = makeGLBAvatar(o, kind, outfitKey(kind, o)); if (o && o.vm && HAND_PROPS[o.vm]) attachHandProps(a, o.vm); return a; } catch (e) { CHAR.errors.push('avatar ' + e.message); } }
   return proceduralPerson(o);
 }
 function proceduralPerson(o) {

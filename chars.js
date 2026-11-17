@@ -67,14 +67,15 @@ export function loadFull(key) {
   const f = CHAR.man && CHAR.man.visitors && CHAR.man.visitors[key]; if (!f) return Promise.resolve(null);
   const url = new URL(CHAR.dir + f, location.href).href;
   const shared = key === 'anims' ? Promise.resolve(null) : loadFull('anims');
-  const pr = Promise.all([loadGLB(url), shared]).then(([g, sh]) => { if (sh) adaptClips(g, sh); CHAR.A.full[key] = g; if (CHAR.onModel && key !== 'anims') CHAR.onModel(key); return g; }).catch((e) => { CHAR.errors.push('vis ' + key + ': ' + (e && e.message)); return null; });
+  const pr = Promise.all([loadGLB(url), shared]).then(([g, sh]) => { if (sh) adaptClips(g, sh, key); CHAR.A.full[key] = g; if (CHAR.onModel && key !== 'anims') CHAR.onModel(key); return g; }).catch((e) => { CHAR.errors.push('vis ' + key + ': ' + (e && e.message)); return null; });
   pending.set(key, pr); return pr;
 }
 // shared visitor clips are authored on one skeleton: copy them onto this character, hips height rescaled to its size
 function hipsY(root) { let y = null; root.traverse((o) => { if (y == null && o.name === 'Hips') y = o.position.y; }); return y; }
-function adaptClips(g, sh) {
+const KEEP_HEAD = new Set(['sp_safety']); // models whose head rest pose differs from the shared clips' skeleton: keep their own head/neck
+function adaptClips(g, sh, key) {
   const ty = hipsY(g.scene), sy = hipsY(sh.scene); if (ty == null) return; const k = sy ? ty / sy : 1, have = new Set(g.animations.map((c) => c.name));
-  for (const c of sh.animations) { if (have.has(c.name)) continue; const cc = c.clone(); for (const tr of cc.tracks) if (/Hips\.position$/.test(tr.name)) for (let i = 0; i < tr.values.length; i++) tr.values[i] *= k; g.animations.push(cc); }
+  for (const c of sh.animations) { if (have.has(c.name)) continue; const cc = c.clone(); if (KEEP_HEAD.has(key)) cc.tracks = cc.tracks.filter((tr) => !/(Head|Neck)\.quaternion$/.test(tr.name)); for (const tr of cc.tracks) if (/Hips\.position$/.test(tr.name)) for (let i = 0; i < tr.values.length; i++) tr.values[i] *= k; g.animations.push(cc); }
 }
 export function canGLB(kind, outfitKey) {
   if (CHAR.status !== 'ready') return false;
