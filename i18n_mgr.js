@@ -1108,3 +1108,13 @@ pt: {"dc.doormat": "Capacho", "dc.doormatD": "Reduz pela metade as pegadas em di
 de: {"dc.doormat": "Fußmatte", "dc.doormatD": "Halbiert die Fußspuren an Regen-, Schnee- und Staubtagen. Am Eingang platzieren."},
 ja: {"dc.doormat": "玄関マット", "dc.doormatD": "雨・雪・砂ぼこりの日の足あとを半分に。入口に置こう。"},
 ko: {"dc.doormat": "현관 매트", "dc.doormatD": "비·눈·먼지 날의 발자국을 절반으로 줄여요. 입구에 두세요."} };
+
+export const EXTRA34 = {
+en: {"map.all": "All", "map.europe": "Europe", "map.africa": "Africa", "map.americas": "Americas", "map.asia": "Asia"},
+fr: {"map.all": "Tout", "map.europe": "Europe", "map.africa": "Afrique", "map.americas": "Amériques", "map.asia": "Asie"},
+es: {"map.all": "Todo", "map.europe": "Europa", "map.africa": "África", "map.americas": "Américas", "map.asia": "Asia"},
+pt: {"map.all": "Tudo", "map.europe": "Europa", "map.africa": "África", "map.americas": "Américas", "map.asia": "Ásia"},
+de: {"map.all": "Alle", "map.europe": "Europa", "map.africa": "Afrika", "map.americas": "Amerika", "map.asia": "Asien"},
+ja: {"map.all": "すべて", "map.europe": "ヨーロッパ", "map.africa": "アフリカ", "map.americas": "アメリカ", "map.asia": "アジア"},
+ko: {"map.all": "전체", "map.europe": "유럽", "map.africa": "아프리카", "map.americas": "아메리카", "map.asia": "아시아"},
+};
