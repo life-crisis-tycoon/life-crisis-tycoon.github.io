@@ -1476,7 +1476,7 @@ function applyDirt(room) {
   room.g.traverse((o) => { if (!o.isMesh || o.isInstancedMesh || !o.material || Array.isArray(o.material) || o.userData.stain) return; if (!o.userData.m0) o.userData.m0 = o.material; o.material = lv ? dirtyMat(o.userData.m0, lv) : o.userData.m0; });
   if (!lv) return;
   const sg = new THREE.Group(), q = roomRect(room.def), n = lv * 3 + (ROOMS[room.type].loo ? 2 : 0);
-  for (let i = 0; i < n; i++) { const m = new THREE.Mesh(new THREE.CircleGeometry(0.16 + Math.random() * 0.22, 14), mat(i % 3 ? '#4E3C22' : '#7F8F2E', { r: 1, op: 0.72 })); m.rotation.x = -Math.PI / 2; m.scale.set(1, 0.6 + Math.random() * 0.5, 1);
+  for (let i = 0; i < n; i++) { const m = stainDecal([0, 3, 4, 1, 0, 4][i % 6], 0.55 + Math.random() * 0.35);
     m.position.set(q.x0 + 0.5 + Math.random() * Math.max(0.1, q.x1 - q.x0 - 1), 0.166, q.z0 + 0.5 + Math.random() * Math.max(0.1, q.z1 - q.z0 - 1)); m.userData.stain = true; sg.add(m); }
   if (lv === 2) { const fl = new THREE.Sprite(iconTex('🪰')); fl.scale.set(0.4, 0.4, 1); fl.position.set(room.cx, 1.7, room.cz); fl.userData.stain = true; sg.add(fl); }
   room.stains = sg; room.g.add(sg);
@@ -1881,10 +1881,18 @@ function leave(v, quiet) {
 function removeVisitor(v) { scene.remove(v.av); scene.remove(v.hud); R.visitors.splice(R.visitors.indexOf(v), 1); if (sel === v) selectVisitor(null); }
 
 // ---------------- litter & pests ----------------
+// floor stains drawn as flat decals (assets/stains.png, 3x2: footprints, brown splat, soda, dust, grease, green smear)
+let STAIN_IMG = null; const STAIN_MAT = new Map();
+function stainMat(i, tint) { const k = i + '|' + (tint || '');
+  if (!STAIN_MAT.has(k)) { if (!STAIN_IMG) { STAIN_IMG = new THREE.TextureLoader().load('assets/stains.png', () => { for (const m of STAIN_MAT.values()) m.map.needsUpdate = true; }); STAIN_IMG.colorSpace = THREE.SRGBColorSpace; }
+    const tx = STAIN_IMG.clone(); tx.repeat.set(1 / 3, 1 / 2); tx.offset.set((i % 3) / 3, i < 3 ? 0.5 : 0); if (STAIN_IMG.image) tx.needsUpdate = true;
+    STAIN_MAT.set(k, new THREE.MeshLambertMaterial({ map: tx, color: tint || '#ffffff', transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })); }
+  return STAIN_MAT.get(k); }
+function stainDecal(i, size, tint) { const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), stainMat(i, tint)); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * Math.PI * 2; m.renderOrder = 2; m.receiveShadow = true; return m; }
 function dropPuddle(x, z, col) { AU.sfx('pop');
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.025, 18), mat(col, { r: 0.2 })); m.scale.set(1, 1, 0.7); m.position.set(x, 0.165, z); // above room floors and rugs, so it can be seen m.receiveShadow = true; scene.add(m);
-  for (let i = 0; i < 3; i++) { const b = sph(0.1, col, { r: 0.2 }); b.scale.y = 0.3; put(b, x + (Math.random() - 0.5) * 1.0, 0.17, z + (Math.random() - 0.5) * 0.7); m.attach(b); }
-  R.litter.push({ mesh: m, heavy: true });
+  const vomit = col === '#9BCB4E' || col === '#A3B04A', accident = col === '#A0784A';
+  const m = stainDecal(vomit ? 5 : accident ? 1 : 2, vomit || accident ? 1.5 : 1.2, vomit || accident ? null : col); m.position.set(x, 0.17, z); // above room floors and rugs, so it can be seen
+  scene.add(m); R.litter.push({ mesh: m, heavy: true });
 }
 function dropVomit(x, z) { if (R.litter.length >= 25) return; dropPuddle(x + 0.35, z, '#A3B04A'); R.litter[R.litter.length - 1].vomit = true; floatAt({ x, y: 1.6, z }, '🤢'); }
 function dropLitter(x, z) {
