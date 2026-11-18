@@ -1185,9 +1185,8 @@ function cafeKit(g, cx, cz, room) {
   const ccx = -w / 2 + 0.5 + 0.9 + 0.53, ccz = S ? 0.35 : 0.45; // counter: 0.5 m cabinet, 0.9 m barista aisle, then the counter (1.06 deep)
   if (first) L.push({ p: 'k_cabinet', h: 1.0, wall: 'left', u: S ? -0.4 : -0.6 }, { p: 'k_counter', h: 1.15, x: ccx, z: ccz, rot: H }, { p: 'k_case', h: 1.25, x: ccx + 0.07, z: ccz - 1.48, rot: H });
   const tbl = (tx, tz) => L.push({ p: 'k_table', h: 0.78, x: tx, z: tz }, { p: 'k_chair', h: 0.95, x: tx - 0.68, z: tz, rot: H }, { p: 'k_chair', h: 0.95, x: tx + 0.68, z: tz, rot: -H });
-  if (!two) { if (!S) { L.push({ p: 'k_bench', h: 0.95, wall: 'back', u: 1.0 }, { p: '@plant', s: 1.8, wall: 'right', u: 'B' }); tbl(1.3, -0.9); tbl(0.85, 1.75); } else tbl(1.2, -0.95); }
+  if (!two) { if (!S) { L.push({ p: 'k_bench', h: 0.95, wall: 'back', u: 1.0 }, { p: '@plant', s: 1.8, wall: 'right', u: 'B' }); tbl(1.3, -0.9); tbl(0.85, 1.75); } else L.push({ p: 'k_table', h: 0.78, x: 1.45, z: -0.75 }, { p: 'k_chair', h: 0.95, x: 1.45, z: -1.43, rot: 0 }, { p: 'k_chair', h: 0.95, x: 1.45, z: -0.07, rot: Math.PI }); } // small café: one table, chairs front and back
   else if (!first) { L.push({ p: 'k_bench', h: 0.95, wall: 'back', u: 0 }, { p: '@plant', s: 1.8, wall: 'right', u: 'B' }); tbl(0.1, -1.0); tbl(0.1, 1.4); }
-  else tbl(ccx + 2.0, 1.9);
   kitRoom(g, cx, cz, room, ROOM_STYLE.cafe.model, L, CAFE_DIMS);
   const n = S ? 2 : 3; // barista behind the counter, customers queue along its front
   room.staffSpot = { x: cx + xo + ccx - 1.0, z: cz + ccz + (two ? (first ? -0.35 : 0.35) : 0), rot: H, sit: false, y: 0 };
