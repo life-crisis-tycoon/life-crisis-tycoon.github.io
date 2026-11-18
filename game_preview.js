@@ -1067,7 +1067,7 @@ const CAREER_RUG = () => GC.cRug || (GC.cRug = canvasTex(256, 256, (c, w, h) => 
 // sizes below are the real footprint at the set height, so wall pieces sit flush against their wall (layout = the room painting)
 function careerKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, S = D < 5, N = w < 5;
-  const dx = first && N ? 0.3 : 0, KIT = ROOM_STYLE.career.model, lx = cx - w / 2, rx = cx + w / 2, bz = cz - D / 2, zc = cz - (S ? 0.3 : 0.45), H = Math.PI / 2;
+  const dx = first && N && !S ? 0.3 : 0, KIT = ROOM_STYLE.career.model, lx = cx - w / 2, rx = cx + w / 2, bz = cz - D / 2, zc = cz - (S ? 0.3 : 0.45), H = Math.PI / 2;
   const pc = (name, x, z, rot, h, fw, fd, o = {}) => { let p = grp(x, z, rot, g); if (o.hang) { p.userData.hang = o.hang; p.userData.swap = true; p = grp(0, o.inset || 0, 0, p); }
     if (fw) put(rbox(fw, Math.min(h, 1), fd, o.col || '#2A3354', 0.04), 0, Math.min(h, 1) / 2 + 0.1, 0, p);
     glbSwap(p, KIT + '/' + name, { h, y: (o.y || 0) + 0.11 }); return p; };
@@ -1209,7 +1209,8 @@ function napKit(g, cx, cz, room) {
   const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp });
   if (first) L.push({ p: 'k_moon', h: 0.9, wall: 'back', u: 0, hang: true, y: 1.15, glow: true });
   if (!S) L.push({ p: 'k_rug', len: 2.0, x: 0, z: D / 2 - 1.4, solid: false });
-  if (first && !S) L.push({ p: 'k_lamp', h: 0.9, wall: 'back', u: 'L' }, { p: 'k_dresser', h: 0.85, wall: 'left', u: -0.6 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: 1.0, r: -H }); // armchair model faces +x
+  const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
+  if (first && !S) L.push(two ? null : { p: 'k_lamp', h: 0.9, wall: 'back', u: 'L' }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? 0 : -0.6 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: 1.0, r: -H }); // armchair model faces +x
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
