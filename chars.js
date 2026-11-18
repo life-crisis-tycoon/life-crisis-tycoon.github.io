@@ -207,6 +207,6 @@ function fullAvatar(root, gltf, look, man) {
   root.traverse((m) => { if (m.isMesh) m.userData.owner = root; });
   return root;
 }
-export function updateCharacters(dt) {
-  for (const a of CHAR.active) { if (!a.root.parent) { CHAR.active.delete(a); continue; } a.update(dt); }
+export function updateCharacters(dt, held) {
+  for (const a of CHAR.active) { if (!a.root.parent) { CHAR.active.delete(a); continue; } if (held && /walk/.test(a.state || '')) continue; a.update(dt); }
 }
