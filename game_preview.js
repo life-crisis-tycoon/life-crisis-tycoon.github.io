@@ -1131,12 +1131,12 @@ function pharmacyKit(g, cx, cz, room) {
   else if (first) L.push({ p: 'k_shelfvit', h: 2.15, wall: 'back', u: -0.65 }, { p: 'k_shelfcross', h: 2.15, wall: 'back', u: 0.6 });
   else L.push({ p: 'k_shelftea', h: 2.15, wall: 'back', u: -0.55 });
   L.push({ p: 'k_counter', h: 1.05, x: cxo, z: zc - cz, rot: 0 });
-  if (first) { if (!S) L.push({ p: 'k_lavender', h: 0.8, wall: 'left', u: 'B' }); L.push({ p: 'k_lavender', h: 0.8, wall: 'left', u: 'F' }); if (!S) L.push({ p: 'k_planter', h: 0.55, wall: 'left', u: 0.9 }); }
+  if (first) { if (!S) L.push({ p: 'k_lavender', h: 0.8, wall: 'left', u: 'B' }); L.push({ p: 'k_lavender', h: 0.8, wall: 'left', u: 'F' }); if (!S) L.push({ p: 'k_planter', h: 0.55, wall: 'left', u: 0.9 }); if (two) L.push({ p: 'k_tearack', h: 1.4, x: 1.0, z: D / 2 - 0.7, rot: 0 }); }
   if (last) {
     if (!S) L.push({ p: 'k_cooler', h: 1.25, wall: 'back', u: 'R' });
     if (!S) { const tz = two ? 1.0 : zc - cz - 0.3; // two desks: the seating goes in front, there is no room beside the counter // seating corner beside the tea shelf, like the painting: armchair, side table, second armchair facing it
       L.push({ p: 'k_sidetable', h: 0.6, x: w / 2 - 0.6, z: tz, rot: 0 }, { p: 'k_armchair', h: 0.95, x: w / 2 - 1.6, z: tz, rot: 0 }, { p: 'k_armchair', h: 0.95, x: w / 2 - 0.6, z: tz + 1.0, rot: Math.PI });
-      L.push({ p: 'k_snakestand', h: 1.2, wall: 'right', u: 'F' }, { p: 'k_tearack', h: 1.4, x: two ? -0.9 : 1.3, z: D / 2 - 0.7, rot: 0 }); }
+      L.push({ p: 'k_snakestand', h: 1.2, wall: 'right', u: two ? 0 : 'F' }); if (!two) L.push({ p: 'k_tearack', h: 1.4, x: 1.3, z: D / 2 - 0.7, rot: 0 }); }
   }
   kitRoom(g, cx, cz, room, ROOM_STYLE.pharmacy.model, L, PHARMA_DIMS);
   room.staffSpot = { x: cx + cxo, z: zc - 0.85, rot: 0, sit: false, y: 0 };
