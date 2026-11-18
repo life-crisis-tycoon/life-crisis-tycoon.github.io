@@ -1114,6 +1114,7 @@ function kitFrame(room, frontDoor) {
 function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
   const w = F.w, D = F.D, lx = -w / 2, rx = w / 2, bz = -D / 2, fz = D / 2, H = Math.PI / 2, out = [], rep = [], door = F.door;
   const W = (x, z) => { const p = F.T(x, z); return { x: cx + p.x, z: cz + p.z }; }; // layout frame -> station coords
+  const lane = door ? (Math.abs(door.z) / (D / 2) >= Math.abs(door.x) / (w / 2) ? { x0: door.x - 0.55, x1: door.x + 0.55, z0: door.z > 0 ? door.z - 2.2 : door.z, z1: door.z > 0 ? door.z : door.z + 2.2 } : { z0: door.z - 0.55, z1: door.z + 0.55, x0: door.x > 0 ? door.x - 2.2 : door.x, x1: door.x > 0 ? door.x : door.x + 2.2 }) : null; // 1.1 m wide, 2.2 m in from the door
   for (const it of items) { if (!it) continue; const dm = it.p === '@plant' ? [0.45, 1, 0.45] : dims[it.p]; if (!dm) { rep.push('no piece ' + it.p); continue; }
     const k = it.p === '@plant' ? (it.s || 1.5) : it.len ? it.len / Math.max(dm[0], dm[2]) : it.h / dm[1], pw = dm[0] * k, pd = dm[2] * k, gp = it.gap ?? 0.04; let x, z, rot;
     const along = (u, half, lo, hi) => u === 'L' || u === 'B' ? lo + half + gp : u === 'R' || u === 'F' ? hi - half - gp : (lo + hi) / 2 + (u || 0);
@@ -1127,6 +1128,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     const box = { p: it.p, x0: x - ex, x1: x + ex, z0: z - ez, z1: z + ez, solid: it.solid !== false && !it.hang };
     if (door && box.solid && door.x > box.x0 - 0.75 && door.x < box.x1 + 0.75 && door.z > box.z0 - 0.75 && door.z < box.z1 + 0.75) { rep.push('skip ' + it.p + ' (door)'); continue; } // keep the doorway clear
     if (box.x0 < lx - 0.01 || box.x1 > rx + 0.01 || box.z0 < bz - 0.01 || box.z1 > fz + 0.01) rep.push('outside ' + it.p);
+    if (lane && box.solid && box.x0 < lane.x1 && box.x1 > lane.x0 && box.z0 < lane.z1 && box.z1 > lane.z0) rep.push('in the doorway lane ' + it.p); // people walk straight in from the door
     for (const o of out) if (o.solid && box.solid && box.x0 < o.x1 - 0.02 && box.x1 > o.x0 + 0.02 && box.z0 < o.z1 - 0.02 && box.z1 > o.z0 + 0.02) rep.push('overlap ' + it.p + ' / ' + o.p);
     out.push(box); const P = W(x, z), R = rot + F.rho;
     let p; if (it.hang) { const wn = it.wall === 'back' ? [0, -1] : it.wall === 'left' ? [-1, 0] : it.wall === 'right' ? [1, 0] : [0, 1], o = pd / 2 + gp; // anchor on the wall line (the cutaway judges it there), piece set into the room
@@ -1189,7 +1191,8 @@ function glowupKit(g, cx, cz, room) {
   const L = [{ p: 'k_vanity', h: 1.9, wall: 'back', u: vx }, { p: 'k_chair', h: 1.15, x: vx, z: chz, rot: Math.PI }, { p: 'k_ring', h: 1.6, x: vx + 1.0, z: chz + 0.15, rot: -1.41 } /* ring turned to the chair (checked on the model) */];
   if (last && !S) L.push({ p: 'k_shelf', h: 1.0, wall: 'back', u: 'R', hang: true, y: 0.75 });
   if (first) { L.push({ p: 'k_rack', h: 1.7, wall: 'left', u: S ? -0.3 : -0.55 }); if (!S) L.push({ p: '@plant', s: 1.6, wall: 'back', u: 'L' }); }
-  if (!S) L.push({ p: 'k_rug', len: 1.7, x: -0.3, z: D / 2 - 1.5, solid: false }, { p: 'k_pouf', h: 0.45, x: -0.3, z: D / 2 - 1.5 });
+  const dr = kitFrame(room, false).door, px = (dr && dr.x > 0 ? -1 : 1) * (w / 2 - 1.15); // rug and pouf on the side away from the door, out of the way in
+  if (!S) L.push({ p: 'k_rug', len: 1.7, x: px, z: D / 2 - 1.25, solid: false }, { p: 'k_pouf', h: 0.45, x: px, z: D / 2 - 1.25 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.glowup.model, L, GLOWUP_DIMS);
   room.spots.push({ x: cx + vx, z: cz + chz, rot: Math.PI, sit: true, y: 0.12, busy: null });
   room.staffSpot = { x: cx + vx - 0.75, z: cz + chz + 0.1, rot: H, sit: false, y: 0 };
