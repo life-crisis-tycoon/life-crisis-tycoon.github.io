@@ -1052,6 +1052,7 @@ function careerDecor(g, cx, cz, room, k) {
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.67), mat('#FFFFFF', { map: CAREER_SIGN(), r: 0.95, mapK: 'csign' })); pl.position.set(0, 1.45, 0.045); fr.add(pl); }
 }
 const CAREER_RUG = () => GC.cRug || (GC.cRug = canvasTex(256, 256, (c, w, h) => { c.fillStyle = '#F1E6CF'; c.fillRect(0, 0, w, h); c.fillStyle = '#24305A'; for (let i = 0; i < 9; i++) c.fillRect(0, 14 + i * 28, w, i % 3 === 1 ? 10 : 4); c.fillStyle = '#C9A54A'; c.fillRect(0, 0, w, 6); c.fillRect(0, h - 6, w, 6); }));
+// kit pieces face different ways in the source: rotations below turn each one to face the right spot (clients face the desk)
 // Career Coach Office from the Tripo furniture kit (one model, named pieces): the room painting is the layout reference
 function careerKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, S = D < 5;
@@ -1064,10 +1065,10 @@ function careerKit(g, cx, cz, room) {
   // striped rug under the desk and client chairs
   { const rg = new THREE.Mesh(new THREE.PlaneGeometry(2.7, S ? 2.3 : 2.6), mat('#FFFFFF', { map: CAREER_RUG(), r: 0.95, mapK: 'crug' })); rg.rotation.x = -Math.PI / 2; rg.position.set(cx, 0.135, zc + 0.35); g.add(rg); }
   pc('k_desk', cx, zc, 0, 1.15, 1.75, 1.0, { col: '#EFE6D6' });
-  pc('k_ochair', cx, zc - 1.05, 0, 1.12, 0.55, 0.55);
+  pc('k_ochair', cx, zc - 1.05, 0.23, 1.12, 0.55, 0.55);
   { const s = grp(cx, zc - 0.72, 0, g); put(cyl(0.035, 0.035, 0.18, '#3A2A1E'), 0, 0.42, 0, s); } // chair stem (the kit leaves a gap between seat and wheels)
-  pc('k_chairA', cx - 0.55, zc + 1.1, Math.PI + 0.2, 1.05, 0.7, 0.7, { col: '#E0A53A' });
-  pc('k_chairB', cx + 0.55, zc + 1.1, Math.PI - 0.2, 1.05, 0.7, 0.7, { col: '#E0A53A' });
+  pc('k_chairA', cx - 0.55, zc + 1.1, 1.59, 1.05, 0.7, 0.7, { col: '#E0A53A' });
+  pc('k_chairB', cx + 0.55, zc + 1.1, 2.09, 1.05, 0.7, 0.7, { col: '#E0A53A' });
   if (first) {
     pc('k_seat', lx + 0.6, cz, Math.PI / 2, 0.95, 0.9, 1.4, { col: '#F4EEE2' }); // window seat under the window, facing the room
     if (!S) pc('k_lamp', lx + 0.65, cz - 1.15, 0, 2.15, 0.35, 0.35);
@@ -1082,7 +1083,7 @@ function careerKit(g, cx, cz, room) {
   }
   if (last) {
     pc('k_bookcase', cx + w / 2 - 0.55, bz + 0.35, 0, 2.0, 1.0, 0.5, { col: '#7A4A2A' });
-    pc('k_armchair', cx + w / 2 - (w < 5 ? 0.5 : 1.0), zc + (w < 5 ? 1.55 : 1.0), -0.5, 1.1, 0.85, 0.85);
+    pc('k_armchair', cx + w / 2 - (w < 5 ? 0.5 : 1.0), zc + (w < 5 ? 1.55 : 1.0), -1.01, 1.1, 0.85, 0.85);
     if (w >= 5) pc('k_ottoman', cx + w / 2 - 1.75, zc + 1.75, 0, 0.46, 0.55, 0.5);
   }
   room.staffSpot = { x: cx, z: zc - 0.95, rot: 0, sit: true, y: 0.02 };
