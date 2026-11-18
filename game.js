@@ -3153,7 +3153,7 @@ function fpsWatch(rdt) {
 function loop(now) {
   const rdt = Math.min(0.1, (now - last) / 1000); last = now; fpsWatch(Math.min(0.5, rdt));
   if (inGame) {
-    const dt = sheetPaused || modalPaused || (!liveBuild() && (moving || placingR || placingD)) ? 0 : rdt * speedMul;
+    const dt = sheetPaused || modalPaused || (!liveBuild() && (moving || placingR || placingD)) ? 0 : rdt * speedMul; loop.held = dt === 0;
     if (dt > 0) { const n = Math.ceil(dt / 0.1); for (let i = 0; i < n; i++) step(dt / n, now, i === 0 ? rdt : 0); }
     if (sel) { selRing.position.set(sel.av.position.x, 0.14, sel.av.position.z); if (Math.floor(now / 250) !== loop.vc) { loop.vc = Math.floor(now / 250); renderVCard(); } }
     camAnim(rdt);
@@ -3161,7 +3161,7 @@ function loop(now) {
   }
   if (world.movers) moveCity(world.movers, rdt * (inGame ? Math.max(speedMul, 0.4) : 0.6));
   if (scMixer) scMixer.update(rdt);
-  if (CHAR.active.size) updateCharacters(rdt * (inGame ? (speedMul || 0) : 1));
+  if (CHAR.active.size) updateCharacters(rdt * (inGame ? (speedMul || 0) : 1), inGame && loop.held); // while the game is held (menu, build mode) walkers stop mid-stride instead of marching on the spot
   if (creating) renderPreview(now);
   renderer.render(scene, cam);
   requestAnimationFrame(loop);
