@@ -1127,15 +1127,16 @@ function pharmacyKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, two = (room.nst || 1) > 1, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, H = Math.PI / 2;
   const bz = cz - D / 2, rx = cx + w / 2, cxo = two ? 0 : -0.45, zc = bz + 1.95; // counter: 1.1 m aisle for the pharmacist between it and the shelves
   const L = [];
-  if (!two) L.push({ p: 'k_shelfvit', h: 2.0, wall: 'back', u: -1.2 }, { p: 'k_shelfcross', h: 2.0, wall: 'back', u: -0.05 }, { p: 'k_shelftea', h: 2.0, wall: 'back', u: 1.1 });
-  else if (first) L.push({ p: 'k_shelfvit', h: 2.0, wall: 'back', u: -0.75 }, { p: 'k_shelfcross', h: 2.0, wall: 'back', u: 0.5 });
-  else L.push({ p: 'k_shelftea', h: 2.0, wall: 'back', u: -0.5 });
+  if (!two) L.push({ p: 'k_shelfvit', h: 2.15, wall: 'back', u: S ? -1.15 : -1.3 }, { p: 'k_shelfcross', h: 2.15, wall: 'back', u: S ? -0.05 : -0.1 }, { p: 'k_shelftea', h: 2.15, wall: 'back', u: S ? 1.12 : 1.15 });
+  else if (first) L.push({ p: 'k_shelfvit', h: 2.15, wall: 'back', u: -0.65 }, { p: 'k_shelfcross', h: 2.15, wall: 'back', u: 0.6 });
+  else L.push({ p: 'k_shelftea', h: 2.15, wall: 'back', u: -0.55 });
   L.push({ p: 'k_counter', h: 1.05, x: cxo, z: zc - cz, rot: 0 });
   if (first) { if (!S) L.push({ p: 'k_lavender', h: 0.8, wall: 'left', u: 'B' }); L.push({ p: 'k_lavender', h: 0.8, wall: 'left', u: 'F' }); if (!S) L.push({ p: 'k_planter', h: 0.55, wall: 'left', u: 0.9 }); }
   if (last) {
     if (!S) L.push({ p: 'k_cooler', h: 1.25, wall: 'back', u: 'R' });
-    if (!S) { L.push({ p: 'k_sidetable', h: 0.6, x: w / 2 - 0.6, z: 0.35, rot: 0 }, { p: 'k_armchair', h: 0.95, x: w / 2 - 1.5, z: 0.35, rot: H }, { p: 'k_armchair', h: 0.95, x: w / 2 - 0.6, z: 1.3, rot: Math.PI });
-      L.push({ p: 'k_snakestand', h: 1.2, wall: 'right', u: 'F' }, { p: 'k_tearack', h: 1.4, x: two ? -0.4 : 0.55, z: D / 2 - 0.75, rot: 0 }); }
+    if (!S) { const tz = zc - cz - 0.3; // seating corner beside the tea shelf, like the painting: armchair, side table, second armchair facing it
+      L.push({ p: 'k_sidetable', h: 0.6, x: w / 2 - 0.6, z: tz, rot: 0 }, { p: 'k_armchair', h: 0.95, x: w / 2 - 1.6, z: tz, rot: 0 }, { p: 'k_armchair', h: 0.95, x: w / 2 - 0.6, z: tz + 1.0, rot: Math.PI });
+      L.push({ p: 'k_snakestand', h: 1.2, wall: 'right', u: 'F' }, { p: 'k_tearack', h: 1.4, x: two ? 0.3 : 1.3, z: D / 2 - 0.7, rot: 0 }); }
     else L.push({ p: 'k_sidetable', h: 0.6, x: w / 2 - 0.45, z: 1.25, rot: 0 }, { p: 'k_armchair', h: 0.95, x: w / 2 - 1.35, z: 1.25, rot: H });
   }
   kitRoom(g, cx, cz, room, ROOM_STYLE.pharmacy.model, L, PHARMA_DIMS);
