@@ -1,0 +1,12 @@
+[{"f":"../ph/ph0.glb","name":"k_snakestand","rot":7,"tex":512},
+ {"f":"../ph/ph1.glb","name":"k_shelfcross","rot":-90,"tex":1024},
+ {"f":"../ph/ph2.glb","name":"k_planter","rot":-90,"tex":512},
+ {"f":"../ph/ph3.glb","name":"k_lavender","rot":0,"tex":512},
+ {"f":"../ph/ph4.glb","name":"k_succulent","rot":0,"tex":512},
+ {"f":"../ph/ph5.glb","name":"k_cooler","rot":-90,"tex":512},
+ {"f":"../ph/ph6.glb","name":"k_armchair","rot":-90,"tex":512},
+ {"f":"../ph/ph7.glb","name":"k_shelfvit","rot":-90,"tex":1024},
+ {"f":"../ph/ph9.glb","name":"k_counter","rot":-96,"tex":1024},
+ {"f":"../ph/ph10.glb","name":"k_shelftea","rot":-90,"tex":1024},
+ {"f":"../ph/ph11.glb","name":"k_sidetable","rot":0,"tex":512},
+ {"f":"../ph/ph12.glb","name":"k_tearack","rot":-90,"tex":512}]

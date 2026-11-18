@@ -806,6 +806,7 @@ ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4
 // 2026 room design (v2): cream outside shared by every room, the room's own colour drenched inside, arched window, sign plate over the door
 const OUT_WALL = '#F3E8D6', OUT_CAP = '#FBF4E8', OUT_BASE = '#A9C29E';
 ROOM_STYLE.career = { v2: true, model: 'career_kit', kit: true, winOuter: true, wood: ['#7A4428', '#8C5232'], winSide: '-1,0', winOff: 0, wall: '#22305A', inBase: '#151E3A', floor: '#6E3324', door: '#22305A', panel: '#22305A', pop: '#F0A830', posts: true, h: ROOM_H };
+ROOM_STYLE.pharmacy = { v2: true, model: 'pharmacy_kit', kit: true, floorMap: () => PHARMA_FLOOR(), wall: '#CFE6D4', inBase: '#A9D3B6', floor: '#F6F3EC', door: '#8FC7A0', panel: '#8FC7A0', pop: '#5BB37A', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_in', wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
@@ -880,7 +881,7 @@ function buildRoom(r) {
   const g = new THREE.Group(); scene.add(g); world.roomGroups[r.id] = g;
   const def = ROOMS[r.type], Z = SIZES[r.size], q = roomRect(r), dp = doorPt(r, 0);
   const RS = ROOM_STYLE[r.type];
-  const fm = RS && RS.wood ? mat('#FFFFFF', { map: woodTex(RS.wood[0], RS.wood[1], [5, 5]), mapK: 'wk' + r.type, r: 0.8 }) : RS && RS.floor ? mat(RS.floor, { r: 1 }) : r.type === 'budget' || r.type === 'cafe' ? mat('#FFFFFF', { map: woodTex(def.floor, '#D9AE78', [3, 3]), mapK: 'w' + r.type }) : mat(def.floor, { r: 0.9 });
+  const fm = RS && RS.floorMap ? mat('#FFFFFF', { map: RS.floorMap(), mapK: 'fm' + r.type, r: 0.6 }) : RS && RS.wood ? mat('#FFFFFF', { map: woodTex(RS.wood[0], RS.wood[1], [5, 5]), mapK: 'wk' + r.type, r: 0.8 }) : RS && RS.floor ? mat(RS.floor, { r: 1 }) : r.type === 'budget' || r.type === 'cafe' ? mat('#FFFFFF', { map: woodTex(def.floor, '#D9AE78', [3, 3]), mapK: 'w' + r.type }) : mat(def.floor, { r: 0.9 });
   floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] && !(RS && RS.model) ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
@@ -900,6 +901,7 @@ function buildRoom(r) {
   for (let i = 0; i < Z.st; i++) {
     const lx = Z.st === 2 ? (i ? Z.W / 4 : -Z.W / 4) : 0, c = toW(r, lx, 0);
     const sg = grp(c.x, c.z, r.a, g); const tmp = { spots: [], staffSpot: null, sz: r.size, w: Z.W / Z.st, st: i, nst: Z.st };
+    { const ddx = dp.x - r.x, ddz = dp.z - r.z, ca = Math.cos(r.a), sa = Math.sin(r.a); tmp.door = { x: ca * ddx - sa * ddz - lx, z: sa * ddx + ca * ddz }; } // door in station coords
     furniture[r.type](sg, 0, 0, tmp, K);
     fitFurniture(sg, tmp, Z.W / Z.st, Z.D, RS ? 0.2 : 0.16);
     const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a }; };
@@ -1087,6 +1089,59 @@ function careerKit(g, cx, cz, room) {
   room.staffSpot = { x: cx + dx, z: zc - 0.95, rot: 0, sit: true, y: 0.02 };
   room.spots.push({ x: cx + dx - 0.5, z: zc + 1.05, rot: Math.PI, sit: true, y: 0.02, busy: null });
 }
+// ---- kit layout tool: a room is a list of pieces placed by wall / corner, sized from their real footprint, then checked ----
+// item: { p: piece, h: height, wall: 'back'|'left'|'right'|'front' (flush, facing into the room) | none (free: x,z,rot),
+//   u: along the wall in m from its middle, or 'L'/'R' (back/front walls: left/right corner) / 'B'/'F' (side walls: back/front corner),
+//   gap, hang (wall-hung, follows the cutaway), y, solid (default true: blocks walking) }
+const KIT_DIMS = {};
+function kitRoom(g, cx, cz, room, kit, items, dims) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, lx = cx - w / 2, rx = cx + w / 2, bz = cz - D / 2, fz = cz + D / 2, H = Math.PI / 2, out = [], rep = [];
+  const door = room.door ? { x: room.door.x + cx, z: room.door.z + cz } : null;
+  for (const it of items) { if (!it) continue; const dm = dims[it.p]; if (!dm) { rep.push('no piece ' + it.p); continue; }
+    const k = it.h / dm[1], pw = dm[0] * k, pd = dm[2] * k, gp = it.gap ?? 0.04; let x, z, rot;
+    const along = (u, half, lo, hi) => u === 'L' || u === 'B' ? lo + half + gp : u === 'R' || u === 'F' ? hi - half - gp : (lo + hi) / 2 + (u || 0);
+    if (it.wall === 'back') { rot = 0; z = bz + pd / 2 + gp; x = along(it.u, pw / 2, lx, rx); }
+    else if (it.wall === 'front') { rot = Math.PI; z = fz - pd / 2 - gp; x = along(it.u, pw / 2, lx, rx); }
+    else if (it.wall === 'left') { rot = H; x = lx + pd / 2 + gp; z = along(it.u, pw / 2, bz, fz); }
+    else if (it.wall === 'right') { rot = -H; x = rx - pd / 2 - gp; z = along(it.u, pw / 2, bz, fz); }
+    else { x = cx + it.x; z = cz + it.z; rot = it.rot || 0; }
+    const q = Math.abs(Math.sin(rot)) > 0.7, ex = (q ? pd : pw) / 2, ez = (q ? pw : pd) / 2;
+    const box = { p: it.p, x0: x - ex, x1: x + ex, z0: z - ez, z1: z + ez, solid: it.solid !== false && !it.hang };
+    if (door && box.solid && door.x > box.x0 - 0.75 && door.x < box.x1 + 0.75 && door.z > box.z0 - 0.75 && door.z < box.z1 + 0.75) { rep.push('skip ' + it.p + ' (door)'); continue; } // keep the doorway clear
+    if (box.x0 < lx - 0.01 || box.x1 > rx + 0.01 || box.z0 < bz - 0.01 || box.z1 > fz + 0.01) rep.push('outside ' + it.p);
+    for (const o of out) if (o.solid && box.solid && box.x0 < o.x1 - 0.02 && box.x1 > o.x0 + 0.02 && box.z0 < o.z1 - 0.02 && box.z1 > o.z0 + 0.02) rep.push('overlap ' + it.p + ' / ' + o.p);
+    out.push(box);
+    let p = grp(x, z, rot, g); if (it.hang) { p.userData.hang = it.wall === 'back' ? [0, -1] : it.wall === 'left' ? [-1, 0] : it.wall === 'right' ? [1, 0] : [0, 1]; p.userData.swap = true; }
+    if (box.solid) put(rbox(pw * 0.9, Math.min(it.h, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
+    glbSwap(p, kit + '/' + it.p, { h: it.h, y: (it.y || 0) + 0.11 }); box.g = p; box.at = { x, z, rot, pw, pd }; }
+  try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
+  return Object.fromEntries(out.map((b) => [b.p, b.at]));
+}
+const PHARMA_FLOOR = () => GC.phFloor || (GC.phFloor = canvasTex(180, 104, (c, W, Hh) => { const r = 30, h3 = Math.sqrt(3) * r; c.fillStyle = '#DAD5CB'; c.fillRect(0, 0, W, Hh);
+  for (let i = -1; i <= 4; i++) for (let j = -1; j <= 2; j++) { const x = i * 1.5 * r, y = j * h3 + (i & 1 ? h3 / 2 : 0); c.beginPath(); for (let a = 0; a < 6; a++) { const t = a * Math.PI / 3; c.lineTo(x + Math.cos(t) * (r - 2), y + Math.sin(t) * (r - 2)); } c.closePath();
+    c.fillStyle = ((i + 4) * 7 + (j + 4) * 3) % 5 === 0 ? '#BFE3CF' : '#F6F3EC'; c.fill(); } }, [8, 8]));
+const PHARMA_DIMS = {"k_snakestand": [0.5034, 0.998, 0.5051], "k_shelfcross": [0.459, 0.998, 0.1973], "k_planter": [0.998, 0.4746, 0.3184], "k_lavender": [0.5098, 0.998, 0.5527], "k_succulent": [0.6777, 0.998, 0.7832], "k_cooler": [0.4902, 0.998, 0.3535], "k_armchair": [0.9824, 0.998, 0.9355], "k_shelfvit": [0.627, 0.998, 0.1973], "k_counter": [1.0026, 0.627, 0.5451], "k_shelftea": [0.6504, 0.998, 0.1973], "k_sidetable": [0.8809, 0.9746, 0.9316], "k_tearack": [0.5879, 0.998, 0.3926]};
+// Pharmacy from the Tripo pieces (layout = the pharmacy painting): shelves along the back wall, counter in front with the pharmacist behind it,
+// a seating corner (2 armchairs + side table) on the right, tea rack near the front, lavender and herbs on the left
+function pharmacyKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, two = (room.nst || 1) > 1, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, H = Math.PI / 2;
+  const bz = cz - D / 2, rx = cx + w / 2, cxo = two ? 0 : -0.45, zc = bz + 1.95; // counter: 1.1 m aisle for the pharmacist between it and the shelves
+  const L = [];
+  if (!two) L.push({ p: 'k_shelfvit', h: 2.0, wall: 'back', u: -1.2 }, { p: 'k_shelfcross', h: 2.0, wall: 'back', u: -0.05 }, { p: 'k_shelftea', h: 2.0, wall: 'back', u: 1.1 });
+  else if (first) L.push({ p: 'k_shelfvit', h: 2.0, wall: 'back', u: -0.75 }, { p: 'k_shelfcross', h: 2.0, wall: 'back', u: 0.5 });
+  else L.push({ p: 'k_shelftea', h: 2.0, wall: 'back', u: -0.5 });
+  L.push({ p: 'k_counter', h: 1.05, x: cxo, z: zc - cz, rot: 0 });
+  if (first) { if (!S) L.push({ p: 'k_lavender', h: 0.8, wall: 'left', u: 'B' }); L.push({ p: 'k_lavender', h: 0.8, wall: 'left', u: 'F' }); if (!S) L.push({ p: 'k_planter', h: 0.55, wall: 'left', u: 0.9 }); }
+  if (last) {
+    if (!S) L.push({ p: 'k_cooler', h: 1.25, wall: 'back', u: 'R' });
+    if (!S) { L.push({ p: 'k_sidetable', h: 0.6, x: w / 2 - 0.6, z: 0.35, rot: 0 }, { p: 'k_armchair', h: 0.95, x: w / 2 - 1.5, z: 0.35, rot: H }, { p: 'k_armchair', h: 0.95, x: w / 2 - 0.6, z: 1.3, rot: Math.PI });
+      L.push({ p: 'k_snakestand', h: 1.2, wall: 'right', u: 'F' }, { p: 'k_tearack', h: 1.4, x: two ? -0.4 : 0.55, z: D / 2 - 0.75, rot: 0 }); }
+    else L.push({ p: 'k_sidetable', h: 0.6, x: w / 2 - 0.45, z: 1.25, rot: 0 }, { p: 'k_armchair', h: 0.95, x: w / 2 - 1.35, z: 1.25, rot: H });
+  }
+  kitRoom(g, cx, cz, room, ROOM_STYLE.pharmacy.model, L, PHARMA_DIMS);
+  room.staffSpot = { x: cx + cxo, z: zc - 0.85, rot: 0, sit: false, y: 0 };
+  room.spots.push({ x: cx + cxo, z: zc + 0.85, rot: Math.PI, sit: false, y: 0, busy: null });
+}
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
     if (ROOM_STYLE.budget.model && PROPS_ON) { // 2026 room: the whole interior is one model made from the room painting; walls, arched door and window stay in code
@@ -1235,6 +1290,7 @@ const furniture = {
     room.staffSpot = { x: cx - 1.0 * K, z: cz - 1.4 * K, rot: Math.PI / 4, sit: true, y: 0.02 };
   },
   pharmacy(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.pharmacy && ROOM_STYLE.pharmacy.kit && PROPS_ON) { pharmacyKit(g, cx, cz, room); return; }
     const c = grp(cx, cz - 0.9 * K, 0, g);
     put(rbox(2.4, 1.0, 0.7, '#2BB5A6', 0.08), 0, 0.6, 0, c); put(rbox(2.55, 0.08, 0.85, '#FFFFFF', 0.03), 0, 1.13, 0, c);
     put(rbox(0.5, 0.5, 0.05, '#FFFFFF', 0.02), 0.9, 1.5, 0.3, c); put(rbox(0.12, 0.36, 0.06, '#7ACB4E', 0.01, { e: '#7ACB4E', ei: 0.6 }), 0.9, 1.5, 0.34, c); put(rbox(0.36, 0.12, 0.06, '#7ACB4E', 0.01, { e: '#7ACB4E', ei: 0.6 }), 0.9, 1.5, 0.34, c);
