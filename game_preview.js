@@ -1052,42 +1052,40 @@ function careerDecor(g, cx, cz, room, k) {
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.67), mat('#FFFFFF', { map: CAREER_SIGN(), r: 0.95, mapK: 'csign' })); pl.position.set(0, 1.45, 0.045); fr.add(pl); }
 }
 const CAREER_RUG = () => GC.cRug || (GC.cRug = canvasTex(256, 256, (c, w, h) => { c.fillStyle = '#F1E6CF'; c.fillRect(0, 0, w, h); c.fillStyle = '#24305A'; for (let i = 0; i < 9; i++) c.fillRect(0, 14 + i * 28, w, i % 3 === 1 ? 10 : 4); c.fillStyle = '#C9A54A'; c.fillRect(0, 0, w, 6); c.fillRect(0, h - 6, w, 6); }));
-// kit pieces face different ways in the source: rotations below turn each one to face the right spot (clients face the desk)
-// Career Coach Office from the Tripo furniture kit (one model, named pieces): the room painting is the layout reference
+// Career Coach Office from the Tripo furniture kit. Every piece was straightened and turned in the kit so it faces +z;
+// sizes below are the real footprint at the set height, so wall pieces sit flush against their wall (layout = the room painting)
 function careerKit(g, cx, cz, room) {
-  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, S = D < 5;
-  const KIT = ROOM_STYLE.career.model, lx = cx - w / 2, bz = cz - D / 2, zc = cz - (S ? 0.25 : 0.36);
-  // piece: footprint placeholder (walk grid obstacle until the model swaps in), then the kit piece at a set height
-  // wall pieces hang from an anchor right on the wall (the cutaway hides them with their wall) and sit `inset` into the room
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, S = D < 5, N = w < 5;
+  const dx = first && N ? 0.3 : 0, KIT = ROOM_STYLE.career.model, lx = cx - w / 2, rx = cx + w / 2, bz = cz - D / 2, zc = cz - (S ? 0.3 : 0.45), H = Math.PI / 2;
   const pc = (name, x, z, rot, h, fw, fd, o = {}) => { let p = grp(x, z, rot, g); if (o.hang) { p.userData.hang = o.hang; p.userData.swap = true; p = grp(0, o.inset || 0, 0, p); }
     if (fw) put(rbox(fw, Math.min(h, 1), fd, o.col || '#2A3354', 0.04), 0, Math.min(h, 1) / 2 + 0.1, 0, p);
-    glbSwap(p, KIT + '/' + name, { h, y: (o.y || 0) + 0.11, rot: o.r || 0 }); return p; };
-  // striped rug under the desk and client chairs
-  { const rg = new THREE.Mesh(new THREE.PlaneGeometry(2.7, S ? 2.3 : 2.6), mat('#FFFFFF', { map: CAREER_RUG(), r: 0.95, mapK: 'crug' })); rg.rotation.x = -Math.PI / 2; rg.position.set(cx, 0.135, zc + 0.35); g.add(rg); }
-  pc('k_desk', cx, zc, 0, 1.15, 1.75, 1.0, { col: '#EFE6D6' });
-  pc('k_ochair', cx, zc - 1.05, 0.23, 1.12, 0.55, 0.55);
-  { const s = grp(cx, zc - 0.72, 0, g); put(cyl(0.035, 0.035, 0.18, '#3A2A1E'), 0, 0.42, 0, s); } // chair stem (the kit leaves a gap between seat and wheels)
-  pc('k_chairA', cx - 0.55, zc + 1.1, 1.59, 1.05, 0.7, 0.7, { col: '#E0A53A' });
-  pc('k_chairB', cx + 0.55, zc + 1.1, 2.09, 1.05, 0.7, 0.7, { col: '#E0A53A' });
-  if (first) {
-    pc('k_seat', lx + 0.6, cz, Math.PI / 2, 0.95, 0.9, 1.4, { col: '#F4EEE2' }); // window seat under the window, facing the room
-    if (!S) pc('k_lamp', lx + 0.65, cz - 1.15, 0, 2.15, 0.35, 0.35);
-    if (!S) pc('k_snake', lx + 0.45, bz + 0.45, 0, 1.3, 0.45, 0.45);
-    pc('k_plant', lx + 0.4, cz + 1.15, 0, 0.62, 0.4, 0.4);
-    if (!S) pc('k_ladder', lx + 1.25, bz + 0.06, 0, 2.15, 0.6, 0.3, { hang: [0, -1], inset: 0.2 });
-    pc('k_cork', cx + (S ? 0.25 : 0.2), bz + 0.06, 0, 1.2, 0, 0, { hang: [0, -1], inset: 0.18, y: 0.75 });
-    pc('k_sconce', lx + 0.62, bz + 0.06, -Math.PI / 2, 0.34, 0, 0, { hang: [0, -1], inset: 0.07, y: 1.45 });
-    pc('k_sconce', lx + 0.06, cz + D / 2 - 0.85, 0, 0.34, 0, 0, { hang: [-1, 0], inset: 0, y: 1.45 }).position.x = 0.07;
-    { const fr = grp(lx + 0.03, cz + D / 2 - 1.45, Math.PI / 2, g); fr.userData.hang = [-1, 0]; fr.userData.swap = true; put(rbox(0.6, 0.78, 0.04, '#2B2B2B', 0.01, { r: 0.6 }), 0, 1.45, 0.02, fr);
+    glbSwap(p, KIT + '/' + name, { h, y: (o.y || 0) + 0.11 }); return p; };
+  { const rg = new THREE.Mesh(new THREE.PlaneGeometry(2.9, S ? 2.4 : 2.7), mat('#FFFFFF', { map: CAREER_RUG(), r: 0.95, mapK: 'crug' })); rg.rotation.x = -H; rg.position.set(cx + dx, 0.135, zc + 0.45); g.add(rg); }
+  // desk square to the walls, laptop facing the coach; coach chair behind it, both client chairs side by side facing the desk
+  pc('k_desk', cx + dx, zc, 0, 1.15, 1.9, 0.9, { col: '#EFE6D6' });
+  pc('k_ochair', cx + dx, zc - 0.95, 0, 1.1, 0.6, 0.6);
+  { const s = grp(cx + dx, zc - 0.95, 0, g); put(cyl(0.035, 0.035, 0.2, '#3A2A1E'), 0, 0.42, 0, s); }
+  pc('k_chairA', cx + dx - 0.5, zc + 1.05, Math.PI, 1.05, 0.8, 0.8, { col: '#E0A53A' });
+  pc('k_chairB', cx + dx + 0.5, zc + 1.05, Math.PI, 1.05, 0.8, 0.8, { col: '#E0A53A' });
+  if (first) { // window wall (-x) and the left part of the back wall (-z)
+    pc('k_seat', lx + 0.44, cz, H, 0.95, 1.7, 0.8, { col: '#F4EEE2' });           // flush under the window, facing the room
+    pc('k_plant', lx + 0.32, cz + 1.2, 0, 0.62, 0.4, 0.4);                         // small plant past the seat's front end
+    if (!S) pc('k_lamp', lx + 0.7, cz - 0.75, 0, 2.15, 0.3, 0.3);                  // arc lamp: pole beside the seat, shade over it
+    if (!S) pc('k_snake', lx + 0.38, bz + 0.4, 0, 1.3, 0.5, 0.5);                  // back corner
+    if (!S) pc('k_ladder', lx + 1.35, bz + 0.02, 0, 2.15, 0.65, 0.25, { hang: [0, -1], inset: 0.15 });
+    pc('k_cork', cx + (S ? -0.1 : 0.35), bz + 0.02, 0, 1.2, 0, 0, { hang: [0, -1], inset: 0.11, y: 0.75 });
+    pc('k_sconce', lx + (S ? 0.6 : 0.85), bz + 0.02, -H, 0.34, 0, 0, { hang: [0, -1], inset: 0.15, y: 1.45 });
+    { const sc = grp(lx + 0.02, cz + D / 2 - 0.7, 0, g); sc.userData.hang = [-1, 0]; sc.userData.swap = true; const q = grp(0.15, 0, 0, sc); glbSwap(q, KIT + '/k_sconce', { h: 0.34, y: 1.56 }); }
+    { const fr = grp(lx + 0.03, cz + D / 2 - 1.3, H, g); fr.userData.hang = [-1, 0]; fr.userData.swap = true; put(rbox(0.6, 0.78, 0.04, '#2B2B2B', 0.01, { r: 0.6 }), 0, 1.45, 0.02, fr);
       const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.67), mat('#FFFFFF', { map: CAREER_SIGN(), r: 0.95, mapK: 'csign' })); pl.position.set(0, 1.45, 0.045); fr.add(pl); }
   }
-  if (last) {
-    pc('k_bookcase', cx + w / 2 - 0.55, bz + 0.35, 0, 2.0, 1.0, 0.5, { col: '#7A4A2A' });
-    pc('k_armchair', cx + w / 2 - (w < 5 ? 0.5 : 1.0), zc + (w < 5 ? 1.55 : 1.0), -1.01, 1.1, 0.85, 0.85);
-    if (w >= 5) pc('k_ottoman', cx + w / 2 - 1.75, zc + 1.75, 0, 0.46, 0.55, 0.5);
+  if (last) { // bookcase in the back-right corner, armchair (and footstool) on the right, turned towards the room
+    pc('k_bookcase', rx - 0.65, bz + 0.33, 0, 2.0, 1.15, 0.55, { col: '#7A4A2A' });
+    if (N) { if (!S) pc('k_armchair', rx - 0.6, zc + 2.0, -H / 2, 1.1, 0.85, 0.85); } // small room: no space beside the client chairs
+    else { pc('k_armchair', rx - 0.65, zc + 1.0, -H / 2, 1.1, 0.85, 0.85); pc('k_ottoman', rx - 1.25, zc + 1.65, -H / 2, 0.46, 0.6, 0.5); }
   }
-  room.staffSpot = { x: cx, z: zc - 0.95, rot: 0, sit: true, y: 0.02 };
-  room.spots.push({ x: cx - 0.5, z: zc + 1.0, rot: Math.PI, sit: true, y: 0.02, busy: null });
+  room.staffSpot = { x: cx + dx, z: zc - 0.95, rot: 0, sit: true, y: 0.02 };
+  room.spots.push({ x: cx + dx - 0.5, z: zc + 1.05, rot: Math.PI, sit: true, y: 0.02, busy: null });
 }
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
