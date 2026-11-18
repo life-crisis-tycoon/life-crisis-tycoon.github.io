@@ -1114,13 +1114,15 @@ function kitRoom(g, cx, cz, room, kit, items, dims) {
     else if (it.wall === 'left') { rot = H; x = lx + pd / 2 + gp; z = along(it.u, pw / 2, bz, fz); }
     else if (it.wall === 'right') { rot = -H; x = rx - pd / 2 - gp; z = along(it.u, pw / 2, bz, fz); }
     else { x = cx + it.x; z = cz + it.z; rot = it.rot || 0; }
+    if (it.wall && it.r) rot += it.r; // extra turn for pieces whose model faces another way
     const q = Math.abs(Math.sin(rot)) > 0.7, ex = (q ? pd : pw) / 2, ez = (q ? pw : pd) / 2;
     const box = { p: it.p, x0: x - ex, x1: x + ex, z0: z - ez, z1: z + ez, solid: it.solid !== false && !it.hang };
     if (door && box.solid && door.x > box.x0 - 0.75 && door.x < box.x1 + 0.75 && door.z > box.z0 - 0.75 && door.z < box.z1 + 0.75) { rep.push('skip ' + it.p + ' (door)'); continue; } // keep the doorway clear
     if (box.x0 < lx - 0.01 || box.x1 > rx + 0.01 || box.z0 < bz - 0.01 || box.z1 > fz + 0.01) rep.push('outside ' + it.p);
     for (const o of out) if (o.solid && box.solid && box.x0 < o.x1 - 0.02 && box.x1 > o.x0 + 0.02 && box.z0 < o.z1 - 0.02 && box.z1 > o.z0 + 0.02) rep.push('overlap ' + it.p + ' / ' + o.p);
     out.push(box);
-    let p = grp(x, z, rot, g); if (it.hang) { p.userData.hang = it.wall === 'back' ? [0, -1] : it.wall === 'left' ? [-1, 0] : it.wall === 'right' ? [1, 0] : [0, 1]; p.userData.swap = true; }
+    let p; if (it.hang) { const wn = it.wall === 'back' ? [0, -1] : it.wall === 'left' ? [-1, 0] : it.wall === 'right' ? [1, 0] : [0, 1], o = pd / 2 + gp; // anchor on the wall line (the cutaway judges it there), piece set into the room
+      p = grp(x + wn[0] * o, z + wn[1] * o, rot, g); p.userData.hang = wn; p.userData.swap = true; p = grp(0, o, 0, p); } else p = grp(x, z, rot, g);
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p); box.g = p; box.at = { x, z, rot, pw, pd }; continue; } // the game's own potted plants
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
     glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len } : { h: it.h }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p; box.at = { x, z, rot, pw, pd }; }
@@ -1207,8 +1209,7 @@ function napKit(g, cx, cz, room) {
   const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp });
   if (first) L.push({ p: 'k_moon', h: 0.9, wall: 'back', u: 0, hang: true, y: 1.15, glow: true });
   if (!S) L.push({ p: 'k_rug', len: 2.0, x: 0, z: D / 2 - 1.4, solid: false });
-  if (last && !S) L.push({ p: 'k_dresser', h: 0.85, wall: 'right', u: 0.6 });
-  if (first && !S) L.push({ p: 'k_armchair', h: 0.9, x: -w / 2 + 0.75, z: D / 2 - 0.9, rot: 0.6 }, { p: 'k_lamp', h: 0.9, x: -w / 2 + 0.4, z: D / 2 - 1.85 });
+  if (first && !S) L.push({ p: 'k_lamp', h: 0.9, wall: 'back', u: 'L' }, { p: 'k_dresser', h: 0.85, wall: 'left', u: -0.6 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: 1.0, r: -H }); // armchair model faces +x
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
