@@ -634,7 +634,7 @@ function propModel(name) {
           const merged = geos.length > 1 ? mergeGeometries(geos, false) : geos[0]; if (!merged) { for (const m of list) { const c = m.clone(); c.applyMatrix4(m.matrixWorld); root.add(c); } continue; }
           const mm = new THREE.Mesh(merged, list[0].material); mm.name = list[0].name; root.add(mm); }
         // keep named top-level nodes (the building kit picks modules by name)
-        if (!gl.scene.children.some((c) => /^(bw|gw|ob|sf|chim)/.test(c.name))) gl.scene = root; }
+        if (!gl.scene.children.some((c) => /^(bw|gw|ob|sf|chim|k_)/.test(c.name))) gl.scene = root; }
     }
     gl.scene.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.isMeshStandardMaterial) { mt.metalness = 0; mt.roughness = /glass/.test(mt.name) ? 0.2 : 0.8; mt.envMapIntensity = /glass/.test(mt.name) ? 1.2 : 0.6; if (mt.map) mt.map.anisotropy = 4; } } });
     return gl.scene;
@@ -669,9 +669,10 @@ function buildInst(src, list) {
 let CREASE_FN = null; import('three/addons/utils/BufferGeometryUtils.js').then((u) => { CREASE_FN = u.toCreasedNormals; });
 function glbSwap(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true; // keeps the batcher out of it
-  propModel(name).then((src) => {
-    if (!g.parent) return;
-    const m = src.clone(); m.rotation.y = o.rot || 0;
+  const [kit, piece] = name.split('/');
+  propModel(kit).then((src0) => {
+    if (!g.parent) return; const src = piece ? src0.getObjectByName(piece) : src0; if (!src) throw new Error('no piece ' + piece);
+    let m = src.clone(); if (piece) { const w = new THREE.Group(); w.add(m); m = w; } m.rotation.y = o.rot || 0; // a kit piece keeps its own (quantization) scale inside a wrapper
     const AN = Math.min(8, renderer.capabilities.getMaxAnisotropy()); m.traverse((c) => { const mp = c.isMesh && c.material && c.material.map; if (mp && mp.anisotropy < AN) { mp.anisotropy = AN; mp.needsUpdate = true; } }); // sharp textures at an angle
     if (o.crease && CREASE_FN) m.traverse((c) => { if (c.isMesh) c.geometry = c.geometry.userData.cr || (c.geometry.userData.cr = CREASE_FN(c.geometry, o.crease)); }); // crisp edges on soft Meshy furniture
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
@@ -804,7 +805,7 @@ for (const [k, c] of Object.entries(WALL_TINT)) ROOM_STYLE[k] = { wall: c, cap: 
 ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4C5753', 0.62); ROOM_STYLE.nap.cap = '#F4E9D2';
 // 2026 room design (v2): cream outside shared by every room, the room's own colour drenched inside, arched window, sign plate over the door
 const OUT_WALL = '#F3E8D6', OUT_CAP = '#FBF4E8', OUT_BASE = '#A9C29E';
-ROOM_STYLE.career = { v2: true, model: 'career_in', wallSide: { '-1,0': '#E5705E' }, winSide: '-1,0', winOff: 0, wall: '#22305A', inBase: '#151E3A', floor: '#6E3324', door: '#22305A', panel: '#22305A', pop: '#F0A830', posts: true, h: ROOM_H };
+ROOM_STYLE.career = { v2: true, model: 'career_kit', kit: true, winOuter: true, wood: ['#7A4428', '#8C5232'], winSide: '-1,0', winOff: 0, wall: '#22305A', inBase: '#151E3A', floor: '#6E3324', door: '#22305A', panel: '#22305A', pop: '#F0A830', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_in', wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
@@ -879,7 +880,7 @@ function buildRoom(r) {
   const g = new THREE.Group(); scene.add(g); world.roomGroups[r.id] = g;
   const def = ROOMS[r.type], Z = SIZES[r.size], q = roomRect(r), dp = doorPt(r, 0);
   const RS = ROOM_STYLE[r.type];
-  const fm = RS && RS.floor ? mat(RS.floor, { r: 1 }) : r.type === 'budget' || r.type === 'cafe' ? mat('#FFFFFF', { map: woodTex(def.floor, '#D9AE78', [3, 3]), mapK: 'w' + r.type }) : mat(def.floor, { r: 0.9 });
+  const fm = RS && RS.wood ? mat('#FFFFFF', { map: woodTex(RS.wood[0], RS.wood[1], [5, 5]), mapK: 'wk' + r.type, r: 0.8 }) : RS && RS.floor ? mat(RS.floor, { r: 1 }) : r.type === 'budget' || r.type === 'cafe' ? mat('#FFFFFF', { map: woodTex(def.floor, '#D9AE78', [3, 3]), mapK: 'w' + r.type }) : mat(def.floor, { r: 0.9 });
   floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] && !(RS && RS.model) ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
@@ -890,7 +891,7 @@ function buildRoom(r) {
   { const o = outer(q.x0 - 0.3, mz, 0); if (!o || V2) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, side(-1, 0, o), RS); }
   { const o = outer(q.x1 + 0.3, mz, 0); if (!o || V2) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, side(1, 0, o), RS); }
   if (RS && RS.v2) { const opts = [[0, -1, mx, q.z0, 0, near(dp.z, q.z0)], [-1, 0, q.x0, mz, Math.PI / 2, near(dp.x, q.x0)], [0, 1, mx, q.z1, 0, near(dp.z, q.z1)], [1, 0, q.x1, mz, Math.PI / 2, near(dp.x, q.x1)]];
-    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || sg.userData.outer || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
+    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || (sg.userData.outer && !RS.winOuter) || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
       const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
   const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(Z.st).fill(null), cx: r.x, cz: r.z, door, g };
@@ -1050,6 +1051,43 @@ function careerDecor(g, cx, cz, room, k) {
   { const fr = hang(grp(lx + 0.03, cz + D / 2 - 1.35, Math.PI / 2, g), [-1, 0]); put(rbox(0.6, 0.78, 0.04, '#2B2B2B', 0.01, { r: 0.6 }), 0, 1.45, 0.02, fr);
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.67), mat('#FFFFFF', { map: CAREER_SIGN(), r: 0.95, mapK: 'csign' })); pl.position.set(0, 1.45, 0.045); fr.add(pl); }
 }
+const CAREER_RUG = () => GC.cRug || (GC.cRug = canvasTex(256, 256, (c, w, h) => { c.fillStyle = '#F1E6CF'; c.fillRect(0, 0, w, h); c.fillStyle = '#24305A'; for (let i = 0; i < 9; i++) c.fillRect(0, 14 + i * 28, w, i % 3 === 1 ? 10 : 4); c.fillStyle = '#C9A54A'; c.fillRect(0, 0, w, 6); c.fillRect(0, h - 6, w, 6); }));
+// Career Coach Office from the Tripo furniture kit (one model, named pieces): the room painting is the layout reference
+function careerKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, S = D < 5;
+  const KIT = ROOM_STYLE.career.model, lx = cx - w / 2, bz = cz - D / 2, zc = cz - (S ? 0.25 : 0.36);
+  // piece: footprint placeholder (walk grid obstacle until the model swaps in), then the kit piece at a set height
+  // wall pieces hang from an anchor right on the wall (the cutaway hides them with their wall) and sit `inset` into the room
+  const pc = (name, x, z, rot, h, fw, fd, o = {}) => { let p = grp(x, z, rot, g); if (o.hang) { p.userData.hang = o.hang; p.userData.swap = true; p = grp(0, o.inset || 0, 0, p); }
+    if (fw) put(rbox(fw, Math.min(h, 1), fd, o.col || '#2A3354', 0.04), 0, Math.min(h, 1) / 2 + 0.1, 0, p);
+    glbSwap(p, KIT + '/' + name, { h, y: (o.y || 0) + 0.11, rot: o.r || 0 }); return p; };
+  // striped rug under the desk and client chairs
+  { const rg = new THREE.Mesh(new THREE.PlaneGeometry(2.7, S ? 2.3 : 2.6), mat('#FFFFFF', { map: CAREER_RUG(), r: 0.95, mapK: 'crug' })); rg.rotation.x = -Math.PI / 2; rg.position.set(cx, 0.135, zc + 0.35); g.add(rg); }
+  pc('k_desk', cx, zc, 0, 1.15, 1.75, 1.0, { col: '#EFE6D6' });
+  pc('k_ochair', cx, zc - 1.05, 0, 1.12, 0.55, 0.55);
+  { const s = grp(cx, zc - 0.72, 0, g); put(cyl(0.035, 0.035, 0.18, '#3A2A1E'), 0, 0.42, 0, s); } // chair stem (the kit leaves a gap between seat and wheels)
+  pc('k_chairA', cx - 0.55, zc + 1.1, Math.PI + 0.2, 1.05, 0.7, 0.7, { col: '#E0A53A' });
+  pc('k_chairB', cx + 0.55, zc + 1.1, Math.PI - 0.2, 1.05, 0.7, 0.7, { col: '#E0A53A' });
+  if (first) {
+    pc('k_seat', lx + 0.6, cz, Math.PI / 2, 0.95, 0.9, 1.4, { col: '#F4EEE2' }); // window seat under the window, facing the room
+    if (!S) pc('k_lamp', lx + 0.65, cz - 1.15, 0, 2.15, 0.35, 0.35);
+    if (!S) pc('k_snake', lx + 0.45, bz + 0.45, 0, 1.3, 0.45, 0.45);
+    pc('k_plant', lx + 0.4, cz + 1.15, 0, 0.62, 0.4, 0.4);
+    if (!S) pc('k_ladder', lx + 1.25, bz + 0.06, 0, 2.15, 0.6, 0.3, { hang: [0, -1], inset: 0.2 });
+    pc('k_cork', cx + (S ? 0.25 : 0.2), bz + 0.06, 0, 1.2, 0, 0, { hang: [0, -1], inset: 0.18, y: 0.75 });
+    pc('k_sconce', lx + 0.62, bz + 0.06, -Math.PI / 2, 0.34, 0, 0, { hang: [0, -1], inset: 0.07, y: 1.45 });
+    pc('k_sconce', lx + 0.06, cz + D / 2 - 0.85, 0, 0.34, 0, 0, { hang: [-1, 0], inset: 0, y: 1.45 }).position.x = 0.07;
+    { const fr = grp(lx + 0.03, cz + D / 2 - 1.45, Math.PI / 2, g); fr.userData.hang = [-1, 0]; fr.userData.swap = true; put(rbox(0.6, 0.78, 0.04, '#2B2B2B', 0.01, { r: 0.6 }), 0, 1.45, 0.02, fr);
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.67), mat('#FFFFFF', { map: CAREER_SIGN(), r: 0.95, mapK: 'csign' })); pl.position.set(0, 1.45, 0.045); fr.add(pl); }
+  }
+  if (last) {
+    pc('k_bookcase', cx + w / 2 - 0.55, bz + 0.35, 0, 2.0, 1.0, 0.5, { col: '#7A4A2A' });
+    pc('k_armchair', cx + w / 2 - (w < 5 ? 0.5 : 1.0), zc + (w < 5 ? 1.55 : 1.0), -0.5, 1.1, 0.85, 0.85);
+    if (w >= 5) pc('k_ottoman', cx + w / 2 - 1.75, zc + 1.75, 0, 0.46, 0.55, 0.5);
+  }
+  room.staffSpot = { x: cx, z: zc - 0.95, rot: 0, sit: true, y: 0.02 };
+  room.spots.push({ x: cx - 0.5, z: zc + 1.0, rot: Math.PI, sit: true, y: 0.02, busy: null });
+}
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
     if (ROOM_STYLE.budget.model && PROPS_ON) { // 2026 room: the whole interior is one model made from the room painting; walls, arched door and window stay in code
@@ -1072,6 +1110,7 @@ const furniture = {
     room.spots.push({ x: cx, z: cz + 0.45 * K, rot: Math.PI, sit: true, y: 0.02, busy: null });
   },
   career(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.career.kit && PROPS_ON) { careerKit(g, cx, cz, room); return; }
     if (ROOM_STYLE.career.model && PROPS_ON) { // 2026 room: interior model (desk, coach chair, mustard client chairs, striped rug, armchair, bookcase, window seat, lamp) + a code corkboard
       const L = Math.min(room.w || 6, SIZES[room.sz || 'm'].D) - 0.24, k = L / 1.66, m = grp(cx, cz, 0, g);
       put(rbox(L * 0.9, 0.04, L * 0.9, '#6E3324', 0.01), 0, 0.12, 0, m); glbSwap(m, ROOM_STYLE.career.model, { len: L, y: 0.115, crease: 0.6 });
