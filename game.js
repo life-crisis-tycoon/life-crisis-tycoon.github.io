@@ -1195,7 +1195,7 @@ function glowupKit(g, cx, cz, room) {
   if (!S) L.push({ p: 'k_rug', len: 1.7, x: px, z: D / 2 - 1.25, solid: false }, { p: 'k_pouf', h: 0.45, x: px, z: D / 2 - 1.25 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.glowup.model, L, GLOWUP_DIMS);
   room.spots.push({ x: cx + vx, z: cz + chz, rot: Math.PI, sit: true, y: 0.12, busy: null });
-  room.staffSpot = { x: cx + vx - 0.75, z: cz + chz + 0.1, rot: H, sit: false, y: 0 };
+  room.staffSpot = { x: cx + vx - 1.0, z: cz + chz + 0.15, rot: H, sit: false, y: 0 }; // beside the chair, clear of its armrest
 }
 // Matcha café (room painting): counter + pastry case along the left wall with the jar cabinet behind (barista between), banquette under
 // the window on the back wall, two bistro tables with bentwood chairs, an olive tree in the corner
