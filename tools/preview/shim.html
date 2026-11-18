@@ -1,0 +1,4 @@
+<script>/* PREVIEW: nothing is ever written to this phone's real storage, so the player's saves can't be touched */
+window.LCT_PREVIEW=true;(function(){const mem={ahq_tut_done:'1'},P=Storage.prototype,g=P.getItem;
+P.setItem=function(k,v){mem[k]=String(v)};P.removeItem=function(k){delete mem[k]};P.clear=function(){};
+P.getItem=function(k){return k in mem?mem[k]:(/^ahq_(save|profile|mgr)/.test(k)?null:g.call(this,k))};})();</script>

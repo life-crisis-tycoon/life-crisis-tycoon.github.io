@@ -1,0 +1,21 @@
+<style>#pv{position:fixed;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));z-index:99999;background:#fff;border-radius:16px;box-shadow:0 3px 0 rgba(0,0,0,.15);padding:8px;font:800 12px 'Open Sans',sans-serif;display:flex;flex-wrap:wrap;gap:4px;align-items:center;flex-wrap:nowrap}
+#pv select,#pv button{font:inherit;border-radius:10px;border:2px solid #E3E6EC;background:#F4F6F9;padding:5px 7px}#pv select{max-width:120px}#pv button.on{background:#22305A;color:#fff;border-color:#22305A}
+#pv .tag{background:#F0A830;color:#fff;border-radius:8px;padding:3px 7px;font-size:11px}#pv .hide{margin-left:auto}#pv.min>*:not(.hide){display:none}</style>
+<div id="pv"><span class="tag">APERÇU</span><select id="pvRoom"></select><button data-s="s">S</button><button data-s="m" class="on">M</button><button data-s="l">L</button><button id="pvGo">↻</button><button class="hide" id="pvHide">–</button></div>
+<script type="module">
+const $=(i)=>document.getElementById(i);const q=new URLSearchParams(location.search);let size=q.get('size')||'m';
+const wait=()=>new Promise(r=>{const t=setInterval(()=>{if(window.__dbg&&window.__dbg.ROOMS){clearInterval(t);r(window.__dbg)}},200)});
+const d=await wait();const sel=$('pvRoom');
+for(const k of Object.keys(d.ROOMS)){const o=document.createElement('option');o.value=k;o.textContent=d.ROOMS[k].e+' '+k;sel.append(o)}
+sel.value=q.get('room')&&d.ROOMS[q.get('room')]?q.get('room'):'career';
+document.querySelectorAll('#pv [data-s]').forEach(b=>{b.classList.toggle('on',b.dataset.s===size);b.onclick=()=>{size=b.dataset.s;document.querySelectorAll('#pv [data-s]').forEach(x=>x.classList.toggle('on',x===b));show()}});
+sel.onchange=show;$('pvGo').onclick=show;$('pvHide').onclick=()=>$('pv').classList.toggle('min');
+function show(){const type=sel.value;history.replaceState(null,'','?room='+type+'&size='+size);
+ try{d.closeModal()}catch(e){}try{d.closeSheet()}catch(e){}
+ d.startNew('london');try{d.closeModal()}catch(e){}d.S.tut=-1;d.S.cash=1e6;try{d.updateTut()}catch(e){}
+ d.startPlace({type,size});const pr=d.placingR;let ok=false;
+ if(pr){outer:for(const a of [0,1])for(let z=-4;z>=-22;z--)for(let x=-6;x<=16;x++){pr.x=x;pr.z=z;pr.a=a;if(d.placeValid(pr)){ok=true;break outer}}}
+ if(ok){d.placeShow();d.endPlace(true)}else{d.endPlace(false)}try{d.closeSheet()}catch(e){}
+ const r=d.S.rooms[d.S.rooms.length-1];if(r){const v=d.view;v.tx=r.x;v.tz=r.z;v.half=7;d.placeCam()}}
+setTimeout(show,800);
+</script>

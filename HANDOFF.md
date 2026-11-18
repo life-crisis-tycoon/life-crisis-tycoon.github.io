@@ -69,3 +69,6 @@ Read this first. The user (French or English; answer in the language she writes 
 - Each room builds walls only on its own side of the wall line (`wbox`, `wallSegS`, `wallSegV2`): old-style rooms 0.15 m inside, v2 rooms (nap/budget/career) a 0.09 m coloured lining plus a 0.06 m cream skin outside. Shared walls therefore never overlap or z-fight and every room shows its own colour inside.
 - v2 rooms also line the sides against the building's outer wall (`side(..., outer)`, lining at 0.135 m, no posts/skin); the arch window still skips those sides.
 - Ivy on wall tops is gone (no `ivy` flag in `ROOM_STYLE`).
+
+## Preview page
+`preview.html` is a hidden test page (not linked, noindex). Build it with `tools/mkpreview.sh` (copies game.js) or `tools/mkpreview.sh keep` (keeps a game_preview.js with rooms under test). It never writes to real localStorage, has no cloud sync and no service worker, so it cannot touch saves. Open `/preview.html?room=nap&size=m`.
