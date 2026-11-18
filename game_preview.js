@@ -1216,15 +1216,15 @@ function cafeKit(g, cx, cz, room) {
     for (let i = 0, n = S ? 2 : 3; i < n; i++) { const c = P(ccx - (n - 1) * 0.3 + i * 0.6, ccz + 1.05); room.spots.push({ x: c.x, z: c.z, rot: F.rho + Math.PI, sit: false, y: 0, cafe: true, busy: null }); }
     return;
   }
-  // L (two stations): counter on the first half's side wall, seating in the second half
+  // L (two stations, door in the middle of the front wall): the counter faces the door from the back wall of the first half; seating in the second half
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, L = [], xo = first ? 0 : -w; // the second station's barista and queue use the first station's counter
-  const ccx = -w / 2 + 0.5 + 0.9 + 0.53, ccz = 0.45;
-  if (first) L.push({ p: 'k_cabinet', h: 1.0, wall: 'left', u: -0.6 }, { p: 'k_counter', h: 1.15, x: ccx, z: ccz, rot: H }, { p: 'k_case', h: 1.25, x: ccx + 0.07, z: ccz - 1.48, rot: H });
-  else { const tbl = (tx, tz) => L.push({ p: 'k_table', h: 0.78, x: tx, z: tz }, { p: 'k_chair', h: 0.95, x: tx - 0.68, z: tz, rot: H }, { p: 'k_chair', h: 0.95, x: tx + 0.68, z: tz, rot: -H });
-    L.push({ p: 'k_bench', h: 0.95, wall: 'back', u: 0 }, { p: '@plant', s: 1.8, wall: 'right', u: 'B' }); tbl(0.1, -1.0); tbl(0.1, 1.4); }
+  const ccx = -0.35, ccz = -D / 2 + 0.5 + 0.9 + 0.53;
+  if (first) L.push({ p: 'k_cabinet', h: 1.0, wall: 'back', u: ccx - 0.2 }, { p: 'k_counter', h: 1.15, x: ccx, z: ccz, rot: 0 }, { p: 'k_case', h: 1.25, x: ccx + 1.47, z: ccz - 0.07, rot: 0 });
+  else L.push({ p: 'k_bench', h: 0.95, wall: 'right', u: 0.9 }, { p: 'k_table', h: 0.78, x: w / 2 - 1.28, z: 0.9 }, { p: 'k_chair', h: 0.95, x: w / 2 - 1.98, z: 0.9, rot: H },
+    { p: 'k_table', h: 0.78, x: -0.3, z: -1.6 }, { p: 'k_chair', h: 0.95, x: -0.98, z: -1.6, rot: H }, { p: 'k_chair', h: 0.95, x: 0.38, z: -1.6, rot: -H }, { p: '@plant', s: 1.8, wall: 'right', u: 'B' });
   kitRoom(g, cx, cz, room, ROOM_STYLE.cafe.model, L, CAFE_DIMS);
-  room.staffSpot = { x: cx + xo + ccx - 1.0, z: cz + ccz + (first ? -0.35 : 0.35), rot: H, sit: false, y: 0 };
-  for (let i = 0; i < 3; i++) room.spots.push({ x: cx + xo + ccx + 1.05 + (xo ? 0.55 : 0), z: cz + ccz - 0.6 + i * 0.6, rot: -H, sit: false, y: 0, cafe: true, busy: null });
+  room.staffSpot = { x: cx + xo + ccx + (first ? -0.35 : 0.35), z: cz + ccz - 1.0, rot: 0, sit: false, y: 0 };
+  for (let i = 0; i < 2; i++) room.spots.push({ x: cx + xo + ccx + (first ? -0.3 + i * 0.6 : (i ? 0.9 : -0.9)), z: cz + ccz + 1.05, rot: Math.PI, sit: false, y: 0, cafe: true, busy: null });
 }
 const NAP_DIMS = {"k_bed": [0.5835, 0.5566, 0.9946], "k_armchair": [0.9434, 0.8223, 0.998], "k_rug": [0.973, 0.1426, 0.974], "k_lamp": [0.6465, 0.998, 0.6465], "k_dresser": [0.998, 0.5879, 0.3457], "k_moon": [0.709, 0.998, 0.416]};
 // Nap room from the Tripo pieces: canopy beds side by side, heads to the back wall (one client each), glowing moon on the wall above,
