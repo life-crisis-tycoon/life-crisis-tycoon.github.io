@@ -188,7 +188,8 @@ scene.add(sun); sun.target.position.set(-1, 0, 2); scene.add(sun.target);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
 const view = { tx: -0.6, tz: -1.6, half: 15.5, yaw: Math.PI / 4, pitch: 0.72, yawT: null };
 const CLOSE_HALF = 10; // zoomed in closer than this = dollhouse view: everything between the camera and what you look at drops to hip height
-const camPitch = () => Math.max(view.pitch, 0.74 * Math.min(1, Math.max(0, (CLOSE_HALF + 3 - view.half) / 4))); // close up, the camera looks down a little more
+const PITCH_MIN = 0.26; // ~15° above the ground: the lowest, most cinematic side view
+const camPitch = () => Math.max(view.pitch, 0.74 * Math.min(1, Math.max(0, (CLOSE_HALF + 3 - view.half) / 4)) * Math.min(1, Math.max(0, (view.pitch - 0.3) / 0.25))); // close up, the camera looks down a little more, unless the player deliberately tilted it low
 let PR_BASE = null; // pixel ratio chosen by the graphics level / speed watcher; close up we draw at the screen's full sharpness
 function closePR() { if (PR_BASE == null) PR_BASE = renderer.getPixelRatio(); const dpr = window.devicePixelRatio || 1;
   const want = view.half < CLOSE_HALF - 0.4 ? Math.max(PR_BASE, Math.min(dpr, GFX.low ? 2 : 3)) : view.half > CLOSE_HALF + 0.4 ? PR_BASE : null;
@@ -228,11 +229,16 @@ function updateCutaway() {
   for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1;
   for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
   for (const d of world.doors || []) { d.g.scale.y = 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
-  const tan = Math.tan(camPitch());
+  const ep = camPitch(), tan = Math.tan(ep);
+  // how far toward the camera the HQ (and its plaza) reaches from the point you look at, capped by the bottom of the screen:
+  // a city building whose roof would hide any of that is squashed. Low tilts need this, as roofs then hide a lot more.
+  let reach = 9; try { const bx = plotBox(); for (const x of [bx[0], bx[1]]) for (const z of [bx[2], bx[3] + 6]) reach = Math.max(reach, (x - view.tx) * cx + (z - view.tz) * cz); } catch (e) {}
+  reach = Math.max(9, Math.min(reach, view.half / Math.sin(ep) + 2));
+  const side = Math.max(18, view.half * innerWidth / innerHeight + 4);
   for (const b of world.cityB || []) {
     const dx = b.x - view.tx, dz = b.z - view.tz, along = dx * cx + dz * cz;
     const perp = Math.abs(dx * cz - dz * cx);
-    const occl = along > -b.r && perp < 18 + b.r && b.h / tan > along - b.r - 9;
+    const occl = along > -b.r && perp < side + b.r && b.h / tan > along - b.r - reach;
     if (b.lm) b.o.visible = !occl; else { const ky = occl ? Math.max(0.06, Math.min(1, 1.6 / b.h)) : 1; b.o.scale.y = ky; if (b.onSquash && b._ky !== ky) { b._ky = ky; b.onSquash(ky); } }
   }
 }
@@ -2876,7 +2882,7 @@ canvas.addEventListener('pointermove', (e) => {
   if (placingR && placingR.drag) { placeDrag(e); return; }
   if (moving && moving.drag) { moveDrag(e); return; }
   if (!ptrs.has(e.pointerId)) return; const p = ptrs.get(e.pointerId); const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); view.half = clamp(half0 * pinch0 / d, 5, 22); let da = Math.atan2(b.y - a.y, b.x - a.x) - ang0; da = Math.atan2(Math.sin(da), Math.cos(da)); view.yaw = yaw0 - da; view.pitch = clamp(pitch0 + ((a.y + b.y) / 2 - mid0) * 0.004, 0.42, 1.15); dragDist = 99; placeCam(); return; }
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); view.half = clamp(half0 * pinch0 / d, 5, 22); let da = Math.atan2(b.y - a.y, b.x - a.x) - ang0; da = Math.atan2(Math.sin(da), Math.cos(da)); view.yaw = yaw0 - da; view.pitch = clamp(pitch0 + ((a.y + b.y) / 2 - mid0) * 0.004, PITCH_MIN, 1.15); dragDist = 99; placeCam(); return; }
   dragDist += Math.abs(dx) + Math.abs(dy);
   const k = view.half * 2 / innerHeight, rx = dx * k, ry = dy * k * 1.6;
   const cy = Math.cos(view.yaw), sy = Math.sin(view.yaw), ky = 1 / Math.max(0.35, Math.sin(view.pitch)) * 0.62;
@@ -2910,7 +2916,7 @@ canvas.addEventListener('pointerup', (e) => {
 });
 canvas.addEventListener('wheel', (e) => { view.half = clamp(view.half * (e.deltaY > 0 ? 1.08 : 0.93), 5, 22); placeCam(); }, { passive: true });
 function camRot(dir) { view.yawT = (view.yawT ?? view.yaw) + dir * Math.PI / 2; }
-function camTilt() { const L = [0.53, 0.72, 0.9, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
+function camTilt() { const L = [0.3, 0.53, 0.72, 0.9, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
 function camAnim(rdt) {
   let ch = false;
   if (view.yawT != null) { const d = view.yawT - view.yaw; if (Math.abs(d) < 0.01) { view.yaw = view.yawT; view.yawT = null; } else view.yaw += d * Math.min(1, rdt * 7); ch = true; }

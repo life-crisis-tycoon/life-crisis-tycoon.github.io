@@ -72,3 +72,8 @@ Read this first. The user (French or English; answer in the language she writes 
 
 ## Preview page
 `preview.html` is a hidden test page (not linked, noindex). Build it with `tools/mkpreview.sh` (copies game.js) or `tools/mkpreview.sh keep` (keeps a game_preview.js with rooms under test). It never writes to real localStorage, has no cloud sync and no service worker, so it cannot touch saves. Open `/preview.html?room=nap&size=m`.
+
+## Camera tilt (2026-11-18)
+- Lowest tilt is now `PITCH_MIN` = 0.26 rad (~15°), was 0.42. The tilt button cycles 0.3 → 0.53 → 0.72 → 0.9 → 1.1.
+- Close up, the automatic look-down (`camPitch`) fades out when the player deliberately tilts below ~0.5, so low tilts work zoomed in too.
+- City buildings: `updateCutaway` squashes any building whose roof would hide the HQ or its plaza (`reach` = how far the HQ extends toward the camera, capped by the screen bottom) instead of a fixed 9 m margin, and the side band follows the screen width. Needed because roofs hide much more at low tilts. Same change applied to game_preview.js.
