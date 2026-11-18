@@ -1210,7 +1210,7 @@ function napKit(g, cx, cz, room) {
   if (first) L.push({ p: 'k_moon', h: 0.9, wall: 'back', u: 0, hang: true, y: 1.15, glow: true });
   if (!S) L.push({ p: 'k_rug', len: 2.0, x: 0, z: D / 2 - 1.4, solid: false });
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
-  if (first && !S) L.push(two ? null : { p: 'k_lamp', h: 0.9, wall: 'back', u: 'L' }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? 0 : -0.6 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: 1.0, r: -H }); // armchair model faces +x
+  if (first && !S) L.push(two ? null : { p: 'k_lamp', h: 0.9, wall: 'back', u: 'L' }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.6 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.0, r: -H }); // armchair model faces +x
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
