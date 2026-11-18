@@ -1177,7 +1177,7 @@ function therapyKit(g, cx, cz, room) {
   const L = [{ p: 'k_rug', len: S ? 2.0 : 2.5, x: 0.1, z: 0.2, solid: false }, { p: 'k_coffee', h: 0.45, x: 0.1, z: 0.2 },
     { p: 'k_chaise', h: 0.85, wall: 'left', u: 0 }, { p: 'k_armchair', h: 1.0, x: w / 2 - (S ? 0.75 : 1.05), z: 0.2, rot: -H }];
   if (first) L.push({ p: 'k_sideboard', h: 1.2, wall: 'back', u: S ? -0.3 : -0.5 });
-  if (!S) L.push({ p: 'k_sidetable', h: 0.6, wall: 'right', u: -0.75 }, { p: 'k_lamp', h: 1.85, wall: 'back', u: 'R' }, { p: 'k_pouf', h: 0.42, x: 0.25, z: 1.45 });
+  if (!S) L.push({ p: 'k_sidetable', h: 0.6, wall: 'right', u: -0.75 }, { p: 'k_lamp', h: 1.85, wall: 'back', u: 'R' }, { p: 'k_pouf', h: 0.42, x: -0.9, z: 1.25 } /* off the line from the door */);
   if (first && !S) L.push({ p: '@plant', s: 1.7, wall: 'left', u: 'F' });
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.therapy.model, L, THERAPY_DIMS), ch = at.k_chaise, ac = at.k_armchair;
   room.spots.push({ x: ch ? ch.x : lx + 0.45, z: cz, rot: H, sit: true, y: 0.05, busy: null });
@@ -1205,10 +1205,10 @@ function cafeKit(g, cx, cz, room) {
     const F = kitFrame(room, true), w = F.w, D = F.D, S = D < 5 || w < 5, sx = F.door && F.door.x > 0 ? -1 : 1; // sx: the side away from the door
     const ccz = -D / 2 + 0.5 + 0.9 + 0.53, ccx = S ? -0.35 : -0.6, L = [];
     L.push({ p: 'k_cabinet', h: 1.0, wall: 'back', u: ccx - 0.2 }, { p: 'k_counter', h: 1.15, x: ccx, z: ccz, rot: 0 }, { p: 'k_case', h: 1.25, x: ccx + 0.83 + 0.64, z: ccz - 0.07, rot: 0 });
-    if (S) L.push({ p: 'k_table', h: 0.78, x: sx * (w / 2 - 0.45), z: D / 2 - 0.8 }, { p: 'k_chair', h: 0.95, x: sx * (w / 2 - 1.13), z: D / 2 - 0.8, rot: sx * H }); // small café: one table against the side wall, one chair
+    if (S) L.push({ p: 'k_table', h: 0.78, x: sx * (w / 2 - 0.45), z: D / 2 - 1.05 }, { p: 'k_chair', h: 0.95, x: sx * (w / 2 - 1.13), z: D / 2 - 1.05, rot: sx * H }); // small café: one table against the side wall, one chair
     else { const bx = sx * (w / 2 - 0.33); // banquette on the side wall away from the door, its table and one chair facing it; a second table on the door side
       L.push({ p: 'k_bench', h: 0.95, wall: sx > 0 ? 'right' : 'left', u: 0.9 }, { p: 'k_table', h: 0.78, x: bx - sx * 0.95, z: 0.9 }, { p: 'k_chair', h: 0.95, x: bx - sx * 1.65, z: 0.9, rot: sx * H },
-        { p: 'k_table', h: 0.78, x: -sx * 1.3, z: 1.4 }, { p: 'k_chair', h: 0.95, x: -sx * 1.3 - 0.68, z: 1.4, rot: H }, { p: 'k_chair', h: 0.95, x: -sx * 1.3 + 0.68, z: 1.4, rot: -H },
+        { p: 'k_table', h: 0.78, x: -sx * 1.6, z: 1.4 }, { p: 'k_chair', h: 0.95, x: -sx * 1.6 - 0.68, z: 1.4, rot: H }, { p: 'k_chair', h: 0.95, x: -sx * 1.6 + 0.68, z: 1.4, rot: -H },
         { p: '@plant', s: 1.8, wall: sx > 0 ? 'right' : 'left', u: 'B' }); }
     kitRoom(g, cx, cz, room, ROOM_STYLE.cafe.model, L, CAFE_DIMS, F);
     const P = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; }, b = P(ccx, ccz - 1.0);
