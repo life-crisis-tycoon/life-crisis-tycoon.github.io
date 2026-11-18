@@ -1076,10 +1076,10 @@ function careerKit(g, cx, cz, room) {
   pc('k_desk', cx + dx, zc, 0, 1.15, 1.9, 0.9, { col: '#EFE6D6' });
   pc('k_ochair', cx + dx, zc - 0.95, 0, 1.1, 0.6, 0.6);
   { const s = grp(cx + dx, zc - 0.95, 0, g); put(cyl(0.035, 0.035, 0.2, '#3A2A1E'), 0, 0.42, 0, s); }
-  pc('k_chairA', cx + dx - 0.5, zc + 1.05, Math.PI, 1.05, 0.8, 0.8, { col: '#E0A53A' });
+  pc('k_chairB', cx + dx - 0.5, zc + 1.05, Math.PI, 1.05, 0.8, 0.8, { col: '#E0A53A' }); // both client chairs use the same model (the other one had a throw on it)
   pc('k_chairB', cx + dx + 0.5, zc + 1.05, Math.PI, 1.05, 0.8, 0.8, { col: '#E0A53A' });
   if (first) { // window wall (-x) and the left part of the back wall (-z)
-    pc('k_seat', lx + 0.44, cz, H, 0.95, 1.7, 0.8, { col: '#F4EEE2' });           // flush under the window, facing the room
+    if (!S) pc('k_seat', lx + 0.44, cz, H, 0.95, 1.7, 0.8, { col: '#F4EEE2' }); // window seat in medium and large rooms only           // flush under the window, facing the room
     pc('k_plant', lx + 0.32, cz + 1.2, 0, 0.62, 0.4, 0.4);                         // small plant past the seat's front end
     if (!S) pc('k_lamp', lx + 0.7, cz - 0.75, 0, 2.15, 0.3, 0.3);                  // arc lamp: pole beside the seat, shade over it
     if (!S) pc('k_snake', lx + 0.38, bz + 0.4, 0, 1.3, 0.5, 0.5);                  // back corner
