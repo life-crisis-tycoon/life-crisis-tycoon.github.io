@@ -217,6 +217,7 @@ function updateCutaway() {
   const up = WALLS_UP, cut = (n, p) => { if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
   for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = !up && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
   for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1;
+  for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
   for (const d of world.doors || []) { d.g.scale.y = 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
   const tan = Math.tan(view.pitch);
   for (const b of world.cityB || []) {
@@ -656,17 +657,21 @@ function buildInst(src, list) {
   }
 }
 // o: { h: height } and/or { len: longest horizontal size } (both → non-uniform), rot: extra yaw, y: base height, keep: fn(child) → keep it
+let CREASE_FN = null; import('three/addons/utils/BufferGeometryUtils.js').then((u) => { CREASE_FN = u.toCreasedNormals; });
 function glbSwap(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true; // keeps the batcher out of it
   propModel(name).then((src) => {
     if (!g.parent) return;
     const m = src.clone(); m.rotation.y = o.rot || 0;
+    if (o.crease && CREASE_FN) m.traverse((c) => { if (c.isMesh) c.geometry = c.geometry.userData.cr || (c.geometry.userData.cr = CREASE_FN(c.geometry, o.crease)); }); // crisp edges on soft Meshy furniture
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
     const sl = o.len ? o.len / Math.max(sz.x, sz.z) : null, sh = o.h ? o.h / sz.y : null;
     const k = sl || sh || 1; m.scale.set(k, sh && sl ? sh : k, k);
     if (o.fit) { const fx = o.fit[0] / sz.x, fz = o.fit[1] / sz.z; m.scale.set(fx, o.h ? sh : Math.min(fx, fz) * (o.hk || 1), fz); } // fit a footprint [w, d] (group axes); height follows the narrower side unless h is given
     let rid; g.traverse((c) => { if (c.userData.roomId != null && rid == null) rid = c.userData.roomId; });
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
+    if (o.tint) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.color.multiply(new THREE.Color(o.tint)); } });
+    if (o.glow) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.emissive = new THREE.Color(o.glow); c.material.emissiveIntensity = o.gi || 0.8; if (c.material.map) c.material.emissiveMap = c.material.map; } }); // recolour a shared model for one room's palette
     m.position.y = o.y || 0; g.add(m); g.userData.glb = name;
     if (rid != null) m.traverse((c) => { if (c.isMesh) c.userData.roomId = rid; });
   }).catch((e) => console.warn('[props]', name, e.message));
@@ -720,7 +725,6 @@ function buildShell(c) {
     if (s.hz) { wallSeg(s.a, s.line, s.b, s.line, W_H, col, wg); wallSeg(s.a, s.line, s.b, s.line, 0.35, col, g); } else { wallSeg(s.line, s.a, s.line, s.b, W_H, col, wg); wallSeg(s.line, s.a, s.line, s.b, 0.35, col, g); }
     const L = s.b - s.a, inn = -(T / 2 + 0.03);
     for (let u = s.a + 3.2; u < s.b - 1.5; u += 6.5) { const wx = s.hz ? u : s.line + nx * inn, wz = s.hz ? s.line + nz * inn : u; kitWindow(wg, wx - nx * 0.03, wz - nz * 0.03, s.hz ? 0 : Math.PI / 2); }
-    for (let u = s.a + 0.5, i = 0; u < s.b - 0.3; u += 1.05, i++) for (let k = 0; k < 2 + (i * 7) % 3; k++) put(sph(0.11 - k * 0.012, k % 2 ? '#5DAE5E' : '#3F8A4D', { r: 0.85 }), s.hz ? u : s.line - nx * 0.1, W_H + 0.05 - k * 0.16, s.hz ? s.line - nz * 0.1 : u, wg);
     if (s.hz && s.n === -1 && (!best || L > best.L)) best = { s, wg, L };
   }
   if (GFX.batch) { for (const w of world.cutWalls) batchNode(w); const st = new Set(world.cutWalls); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st); }
@@ -733,7 +737,7 @@ const CITY_LIGHT = {
   newyork: { hemi: ['#E3E9F5', '#8A8578', 0.64], sun: ['#FFE6C4', 2.9], fill: ['#D7E2FF', 0.38], fog: [80, 170] },
   mexico: { hemi: ['#FFE9D8', '#9C8A74', 0.68], sun: ['#FFE2B8', 3.3], fill: ['#E8F0FF', 0.32], fog: [90, 180] },
   cairo: { hemi: ['#FFE4C2', '#B08A5E', 0.66], sun: ['#FFC98A', 3.2], fill: ['#FFE9CF', 0.3], fog: [80, 170] },
-  london: { hemi: ['#E2D3F2', '#8C7B6C', 0.66], sun: ['#FFB781', 2.6], fill: ['#C9C2FF', 0.42], wet: true, fog: [70, 150] },
+  london: { hemi: ['#FFE6C4', '#A8865E', 0.72], sun: ['#FFC27A', 3.0], fill: ['#FFE2C2', 0.3], wet: true, fog: [70, 150] }, // warm golden late-afternoon light
 };
 function buildCityDecor(kind) {
   if (cityScene === kind) { buildShell(kind); buildAnnexLot(kind); return; } cityScene = kind;
@@ -788,8 +792,39 @@ const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b)
 const WALL_TINT = { yoga: '#D3ECEE', lucha: '#F6D3E2', ahwa: '#F0DCC0', budget: '#F3D9B8', detox: '#D3E6F4', career: '#F2D6DE', cafe: '#D6EBDD', lab: '#DCE2EC', social: '#F8D7E2', parent: '#FBE2C0', moving: '#EADCC8', pharmacy: '#D2EDE6', glowup: '#F8DCE8', wedding: '#F8DCE6', jjim: '#F0D9C4', roda: '#D7EDD5', garage: '#F2E3BD', shop: '#F9DCCF', staffroom: '#EDE2CF', toilet: '#D9ECF8', therapy: '#D5E6D9' };
 for (const [k, c] of Object.entries(WALL_TINT)) ROOM_STYLE[k] = { wall: c, cap: '#F4E9D2', base: _mix(c, '#4C5753', 0.62), ivy: ['cafe', 'therapy', 'social', 'staffroom'].includes(k), lights: ['cafe', 'social', 'glowup'].includes(k), h: ROOM_H, posts: true };
 ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4C5753', 0.62); ROOM_STYLE.nap.cap = '#F4E9D2';
+// 2026 room design (v2): cream outside shared by every room, the room's own colour drenched inside, arched window, sign plate over the door
+const OUT_WALL = '#F3E8D6', OUT_CAP = '#FBF4E8', OUT_BASE = '#A9C29E';
+ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
+ROOM_STYLE.nap = { v2: true, model: 'nap_in', wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
+function wallSegV2(x0, z0, x1, z1, S, parent) {
+  const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), th = 0.18, h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  if (len < 0.05) return;
+  const n = (parent.userData && parent.userData.n) || [0, -1], nx = n[0], nz = n[1], q = th / 4; // n points outside
+  const slab = (c, off, w, hh, y, r = 0.05) => put(rbox(alongX ? w : th / 2 + (off ? 0 : 0), hh, alongX ? th / 2 : w, c, r, { r: 0.95 }), cx + nx * off, y, cz + nz * off, parent);
+  slab(OUT_WALL, q, len, h, h / 2 + 0.1); slab(S.wall, -q, len, h, h / 2 + 0.1);
+  put(rbox(alongX ? len + 0.04 : th + 0.08, 0.1, alongX ? th + 0.08 : len + 0.04, OUT_CAP, 0.045, { r: 0.85 }), cx, h + 0.15, cz, parent); // soft rounded rim
+  put(rbox(alongX ? len + 0.01 : 0.05, 0.22, alongX ? 0.05 : len + 0.01, OUT_BASE, 0.02, { r: 0.9 }), cx + nx * (th / 2 + 0.02), 0.21, cz + nz * (th / 2 + 0.02), parent); // sage skirting outside
+  put(rbox(alongX ? len + 0.01 : 0.04, 0.14, alongX ? 0.04 : len + 0.01, S.inBase, 0.02, { r: 0.9 }), cx - nx * (th / 2 + 0.015), 0.17, cz - nz * (th / 2 + 0.015), parent);
+  if (S.posts) for (const [px, pz] of [[x0, z0], [x1, z1]]) { put(rbox(0.22, h, 0.22, OUT_WALL, 0.05, { r: 0.95 }), px, h / 2 + 0.1, pz, parent); put(rbox(0.28, 0.1, 0.28, OUT_CAP, 0.04, { r: 0.85 }), px, h + 0.16, pz, parent); }
+  if (S.stars && len > 1) { let sd = Math.round((x0 * 7 + z0 * 13) * 10); const rr = () => ((sd = (sd * 16807 + 11) % 2147483647) / 2147483647);
+    for (let u = 0.3; u < len - 0.2; u += 0.32) { const px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u, y = h - 0.15 - rr() * 0.55;
+      put(leaf(0.04 + rr() * 0.035, '#FFF1B8', { e: '#FFE38A', ei: 2.2 }), px - nx * (th / 2 + 0.01), y, pz - nz * (th / 2 + 0.01), parent); } }
+  if (len > 0.6) put(rbox(alongX ? len - 0.1 : 0.03, 0.05, alongX ? 0.03 : len - 0.1, '#FFE6B0', 0.01, { e: '#FFD58A', ei: 1.6 }), cx - nx * (th / 2 + 0.02), h - 0.02, cz - nz * (th / 2 + 0.02), parent); // warm cove light under the rim
+}
+function archWindow(parent, x, z, rot, th) { // tall window with a round top, slim cream frame, sky glass through the whole wall, a sill on both faces
+  const g = grp(x, z, rot, parent), fm = '#FBF4E8', W = 1.05, Hr = 1.0, y0 = 0.85, R = W / 2, d = th + 0.04;
+  const glass = mat('#9CCBEE', { r: 0.15, e: '#A9D3F2', ei: 0.45 });
+  put(new THREE.Mesh(new THREE.BoxGeometry(W, Hr, d), glass), 0, y0 + Hr / 2, 0, g);
+  for (const s of [-1, 1]) { const cap = new THREE.Mesh(GC.archCap || (GC.archCap = new THREE.CircleGeometry(R, 24, 0, Math.PI)), glass); cap.position.set(0, y0 + Hr, s * (d / 2 + 0.002)); if (s < 0) cap.rotation.y = Math.PI; g.add(cap); }
+  for (const s of [-1, 1]) { put(rbox(0.08, Hr, d + 0.04, fm, 0.02, { r: 0.85 }), s * (R + 0.04), y0 + Hr / 2, 0, g);
+    const ar = new THREE.Mesh(new THREE.TorusGeometry(R + 0.04, 0.045, 8, 24, Math.PI), mat(fm, { r: 0.85 })); ar.position.set(0, y0 + Hr, s * (d / 2 + 0.01)); g.add(ar);
+    put(rbox(W + 0.3, 0.07, 0.16, fm, 0.03, { r: 0.85 }), 0, y0 - 0.03, s * (d / 2 + 0.06), g); }
+  put(rbox(0.05, Hr + R * 0.95, d + 0.02, fm, 0.01, { r: 0.85 }), 0, y0 + (Hr + R * 0.95) / 2, 0, g); put(rbox(W, 0.05, d + 0.02, fm, 0.01, { r: 0.85 }), 0, y0 + Hr * 0.55, 0, g);
+  return g;
+}
 function wallSegS(x0, z0, x1, z1, S, parent) {
+  if (S.v2) return wallSegV2(x0, z0, x1, z1, S, parent);
   const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), th = 0.3, h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (len < 0.05) return;
   put(rbox(alongX ? len : th, h, alongX ? th : len, S.wall, 0.1, { r: 0.95 }), cx, h / 2 + 0.1, cz, parent);
@@ -824,7 +859,7 @@ function buildRoom(r) {
   const def = ROOMS[r.type], Z = SIZES[r.size], q = roomRect(r), dp = doorPt(r, 0);
   const RS = ROOM_STYLE[r.type];
   const fm = RS && RS.floor ? mat(RS.floor, { r: 1 }) : r.type === 'budget' || r.type === 'cafe' ? mat('#FFFFFF', { map: woodTex(def.floor, '#D9AE78', [3, 3]), mapK: 'w' + r.type }) : mat(def.floor, { r: 0.9 });
-  floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
+  floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] && !(RS && RS.model) ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
   const wallG = []; const side = (nx, nz) => { const sg = new THREE.Group(); g.add(sg); sg.userData.n = [nx, nz]; sg.userData.p = [nx ? (nx < 0 ? q.x0 : q.x1) : mx, nz ? (nz < 0 ? q.z0 : q.z1) : mz]; wallG.push(sg); return sg; };
@@ -832,35 +867,59 @@ function buildRoom(r) {
   if (!outer(mx, q.z1 + 0.3, 1)) wallWithGap(q.x0, q.z1, q.x1, q.z1, near(dp.z, q.z1) ? dp.x : 0, side(0, 1), RS);
   if (!outer(q.x0 - 0.3, mz, 0)) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, side(-1, 0), RS);
   if (!outer(q.x1 + 0.3, mz, 0)) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, side(1, 0), RS);
+  if (RS && RS.v2) { const opts = [[0, -1, mx, q.z0, 0, near(dp.z, q.z0)], [-1, 0, q.x0, mz, Math.PI / 2, near(dp.x, q.x0)], [0, 1, mx, q.z1, 0, near(dp.z, q.z1)], [1, 0, q.x1, mz, Math.PI / 2, near(dp.x, q.x1)]];
+    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || hasDoor) continue;
+      const off = (nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0; const wg = archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
   const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(Z.st).fill(null), cx: r.x, cz: r.z, door, g };
   if (r.dirt) setTimeout(() => { room.dirtLv = -1; applyDirt(room); }, 1800); // after the modelled furniture has been swapped in
   const K = clamp(Math.min(Z.W / Z.st, Z.D) / 6.2, 0.6, 1);
   for (let i = 0; i < Z.st; i++) {
     const lx = Z.st === 2 ? (i ? Z.W / 4 : -Z.W / 4) : 0, c = toW(r, lx, 0);
-    const sg = grp(c.x, c.z, r.a, g); const tmp = { spots: [], staffSpot: null, sz: r.size, w: Z.W / Z.st };
+    const sg = grp(c.x, c.z, r.a, g); const tmp = { spots: [], staffSpot: null, sz: r.size, w: Z.W / Z.st, st: i, nst: Z.st };
     furniture[r.type](sg, 0, 0, tmp, K);
     fitFurniture(sg, tmp, Z.W / Z.st, Z.D, RS ? 0.2 : 0.16);
     const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a }; };
     for (const sp of tmp.spots) room.spots.push({ ...conv(sp), st: i, busy: null });
     room.staffSpots[i] = tmp.staffSpot ? conv(tmp.staffSpot) : null;
   }
-  const pc = toW(r, Z.W / 2 - 0.6, -Z.D / 2 + 0.7); plant(pc.x, pc.z, 0.9, '#FFFFFF', g);
+  if (!(RS && RS.model)) { const pc = toW(r, Z.W / 2 - 0.6, -Z.D / 2 + 0.7); plant(pc.x, pc.z, 0.9, '#FFFFFF', g); }
   // furniture footprints become obstacles for the walk grid (people go around sofas, desks, poufs, machines…)
   { g.updateMatrixWorld(true); const skip = new Set([...wallG, door.g]), bx = new THREE.Box3(), obs = [];
     const walk = (o) => { for (const c of o.children) { if (skip.has(c)) continue; if (c.isMesh) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) obs.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); } walk(c); } };
     walk(g); room.obs = obs; }
   if (GFX.batch) { for (const w of wallG) batchNode(w, new Set(), { userData: { roomId: r.id } }); batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
+  { const ca = Math.cos(r.a), sa = Math.sin(r.a), hs = []; g.traverse((o) => { if (o.userData.whang) hs.push({ o, n: o.userData.whang }); else if (o.userData.hang) { const [lx, lz] = o.userData.hang; hs.push({ o, n: [Math.round(lx * ca + lz * sa), Math.round(-lx * sa + lz * ca)] }); } });
+    world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
   world.roomCut = (world.roomCut || []).filter((w) => w.parent && w.parent.parent).concat(wallG); updateCutaway();
   g.traverse((m) => { if (m.isMesh) m.userData.roomId = r.id; });
   R.rooms[r.id] = room; if (S && S.rooms) rebuildGrid(); for (const rr of Object.values(R.rooms)) rr.linePts = null;
+}
+// 2026 rooms: round-topped doorway (arched cream frame, flush leaf with a rounded top, brass knob, icon plate)
+function buildArchDoor(r, g, RS, H, th, dp) {
+  const R = DOOR_W / 2, yS = DOOR_H - R, fm = '#FBF4E8', fw = 0.11, ow = DOOR_W + 2 * fw;
+  for (const sx of [-1, 1]) put(rbox(fw, yS, th + 0.06, fm, 0.03, { r: 0.85 }), sx * (R + fw / 2), yS / 2 + 0.1, 0, g);
+  const arc = new THREE.Mesh(GC.dArc || (GC.dArc = new THREE.TorusGeometry(R + fw / 2, fw / 2, 10, 28, Math.PI)), mat(fm, { r: 0.85 })); arc.scale.z = (th + 0.06) / fw; arc.position.y = yS + 0.1; g.add(arc);
+  const sh = new THREE.Shape(); const top = H - yS + 0.02; sh.moveTo(-ow / 2, 0); sh.lineTo(-R - fw, 0); sh.absarc(0, 0, R + fw, Math.PI, 0, true); sh.lineTo(ow / 2, 0); sh.lineTo(ow / 2, top); sh.lineTo(-ow / 2, top); sh.closePath();
+  const fill = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: th, bevelEnabled: false }), mat(OUT_WALL, { r: 0.95 })); fill.position.set(0, yS + 0.1, -th / 2); g.add(fill);
+  const piv = grp(-R, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.04, lm = mat(RS.door, { r: 0.7 });
+  put(rbox(lw, yS, 0.06, RS.door, 0.012, { r: 0.7 }), lw / 2, yS / 2, 0, piv);
+  const hs = new THREE.Shape(); hs.absarc(0, 0, lw / 2, 0, Math.PI, false); hs.closePath();
+  const hd = new THREE.Mesh(GC.dHead || (GC.dHead = new THREE.ExtrudeGeometry(hs, { depth: 0.06, bevelEnabled: false })), lm); hd.position.set(lw / 2, yS - 0.01, -0.03); piv.add(hd);
+  for (const fz of [-1, 1]) put(sph(0.045, '#D8B45A', { m: 0.6, r: 0.35 }), lw - 0.14, 1.0, fz * 0.06, piv);
+  for (const fz of [-1, 1]) { put(rbox(0.36, 0.26, 0.04, fm, 0.1, { r: 0.8 }), lw / 2, yS + 0.08, fz * 0.05, piv);
+    if (RS.icon === 'moon') { const m = new THREE.Mesh(GC.signMoon || (GC.signMoon = new THREE.TorusGeometry(0.08, 0.028, 8, 20, Math.PI * 1.25)), mat(RS.pop, { e: RS.pop, ei: 0.6 })); m.rotation.z = 0.9; m.position.set(lw / 2, yS + 0.08, fz * 0.075); piv.add(m); } }
+  const d = { g, leaves: [piv], top: fill, head: arc, x: dp.x, z: dp.z, open: 0 };
+  (world.doors = (world.doors || []).filter((o) => o.g.parent && o.g.parent.parent)).push(d);
+  return d;
 }
 // swinging double door in the 2 m wall gap: opens inward when someone comes close, closes behind them
 const doorMats = {};
 function buildDoor(r, parent, RS, def) {
   const dp = doorPt(r, 0), H = RS ? RS.h : ROOM_H, g = grp(dp.x, dp.z, r.a, parent); g.userData.n = [Math.sin(r.a), Math.cos(r.a)];
-  const wallC = RS ? RS.wall : '#FFFFFF', frame = '#F4E9D2', leafC = '#7E9CC0', panelC = '#6F8FB6', th = RS ? 0.3 : T, fw = 0.12, ow = DOOR_W + 2 * fw;
+  const wallC = RS ? (RS.v2 ? OUT_WALL : RS.wall) : '#FFFFFF', frame = '#F4E9D2', leafC = RS && RS.door || '#7E9CC0', panelC = RS && RS.panel || '#6F8FB6', th = RS ? (RS.v2 ? 0.18 : 0.3) : T, fw = 0.12, ow = DOOR_W + 2 * fw;
   // cream architrave (two jambs + head), proud of the wall on both faces, and the wall piece above
+  if (RS && RS.v2) return buildArchDoor(r, g, RS, H, th, dp);
   for (const sx of [-1, 1]) put(rbox(fw, DOOR_H + fw, th + 0.08, frame, 0.03, { r: 0.85 }), sx * (DOOR_W / 2 + fw / 2), (DOOR_H + fw) / 2 + 0.1, 0, g);
   const head = put(rbox(ow, fw, th + 0.08, frame, 0.03, { r: 0.85 }), 0, DOOR_H + fw / 2 + 0.1, 0, g);
   const top = H > DOOR_H + fw + 0.05 ? put(rbox(ow, H - DOOR_H - fw, th, wallC, 0.03, { r: 0.95 }), 0, (H + DOOR_H + fw) / 2 + 0.1, 0, g) : null;
@@ -870,6 +929,8 @@ function buildDoor(r, parent, RS, def) {
   for (const [py, ph] of [[0.62, 0.95], [1.62, 0.8]]) for (const fz of [-1, 1]) put(rbox(lw - 0.3, ph, 0.02, panelC, 0.008, { r: 0.7 }), lw / 2, py, fz * 0.038, piv);
   for (const fz of [-1, 1]) { put(rbox(0.16, 0.035, 0.035, '#C9CDD2', 0.012, { m: 0.6, r: 0.35 }), lw - 0.16, 1.0, fz * 0.065, piv); put(rbox(0.05, 0.09, 0.02, '#C9CDD2', 0.008, { m: 0.6, r: 0.35 }), lw - 0.1, 1.0, fz * 0.045, piv); }
   for (const hz of [0.25, DOOR_H - 0.3]) put(rbox(0.03, 0.12, 0.08, '#C9CDD2', 0.008, { m: 0.6, r: 0.35 }), 0.01, hz, 0, piv);
+  if (RS && RS.v2) for (const fz of [-1, 1]) { const pl = put(rbox(0.5, 0.36, 0.05, '#FBF4E8', 0.12, { r: 0.8 }), 0, H - 0.12, fz * (th / 2 + 0.05), g); // rounded sign plate with the room's icon, both faces
+    if (RS.icon === 'moon') { const m = new THREE.Mesh(GC.signMoon || (GC.signMoon = new THREE.TorusGeometry(0.1, 0.035, 8, 20, Math.PI * 1.25)), mat(RS.pop, { e: RS.pop, ei: 0.6 })); m.rotation.z = 0.9; m.position.set(0, H - 0.12, fz * (th / 2 + 0.085)); g.add(m); } }
   const d = { g, leaves: [piv], top, head, x: dp.x, z: dp.z, open: 0 };
   (world.doors = (world.doors || []).filter((o) => o.g.parent && o.g.parent.parent)).push(d);
   return d;
@@ -924,6 +985,15 @@ const CAPC = {};
 function capOf(type, size) { const k = type + size; if (CAPC[k] != null) return CAPC[k]; const Z = SIZES[size], K = clamp(Math.min(Z.W / Z.st, Z.D) / 6.2, 0.6, 1); let n = 0; for (let i = 0; i < Z.st; i++) { const tmp = { spots: [], staffSpot: null, sz: size, w: Z.W / Z.st }; try { furniture[type](new THREE.Group(), 0, 0, tmp, K); } catch (e) {} n += tmp.spots.length; } return (CAPC[k] = n); }
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.budget.model && PROPS_ON) { // 2026 room: the whole interior is one model made from the room painting; walls, arched door and window stay in code
+      const L = Math.min(room.w || 6, SIZES[room.sz || 'm'].D) - 0.24, k = L / 1.64, m = grp(cx, cz, 0, g);
+      put(rbox(L * 0.9, 0.04, L * 0.9, '#167A42', 0.01), 0, 0.12, 0, m); glbSwap(m, ROOM_STYLE.budget.model, { len: L, y: 0.115, crease: 0.6 });
+      const ob = grp(cx, cz, 0, g); ob.userData.swap = true; // invisible footprints so people walk around the desk, plant, bookcase and easel
+      for (const [x0, x1, z0, z1] of [[-0.37, 0.37, -0.39, -0.06], [-0.75, -0.45, -0.75, -0.45], [0.64, 0.8, -0.45, 0], [0.45, 0.72, -0.8, -0.5]]) { const b = put(rbox((x1 - x0) * k, 0.8, (z1 - z0) * k, '#000000', 0.01), (x0 + x1) / 2 * k, 0.5, (z0 + z1) / 2 * k, ob); b.visible = false; }
+      room.staffSpot = { x: cx, z: cz - 0.575 * k, rot: 0, sit: true, y: 0.02 };
+      room.spots.push({ x: cx + 0.05 * k, z: cz + 0.25 * k, rot: Math.PI, sit: true, y: 0.02, busy: null });
+      return;
+    }
     const d = grp(cx, cz - 0.6 * K, 0, g);
     put(rbox(2.2, 0.12, 1.0, '#C98F5A', 0.05), 0, 0.86, 0, d); put(rbox(0.45, 0.78, 0.85, '#B07B49', 0.05), -0.8, 0.46, 0, d); put(rbox(0.45, 0.78, 0.85, '#B07B49', 0.05), 0.8, 0.46, 0, d);
     put(rbox(0.9, 0.58, 0.06, '#2F3640', 0.03), 0, 1.32, -0.25, d); put(rbox(0.8, 0.48, 0.02, '#9FE8D8', 0.01, { e: '#7FD8C6', ei: 0.5 }), 0, 1.32, -0.21, d);
@@ -945,27 +1015,52 @@ const furniture = {
     room.spots.push({ x: cx, z: cz + 0.45 * K, rot: Math.PI, sit: true, y: 0.02, busy: null });
   },
   nap(g, cx, cz, room, K = 1) {
-    const BL = ['#B9A6E8', '#9FDCC4', '#F6B8C8', '#FFD9A0'];
-    bedXs(room, 1.15).forEach((ox, i) => {
-      const p = grp(cx + ox, cz - 1.2 * K, 0, g);
-      put(rbox(1.2, 0.36, 2.05, '#FFFFFF', 0.17, { r: 0.85 }), 0, 0.28, 0, p);
-      put(rbox(1.04, 0.15, 1.85, '#FFF8F0', 0.07, { r: 1 }), 0, 0.52, 0.03, p);
-      put(rbox(1.07, 0.12, 1.15, BL[i % 4], 0.06, { r: 1 }), 0, 0.6, 0.38, p);
-      put(rbox(1.09, 0.1, 0.2, '#FFFFFF', 0.05, { r: 1 }), 0, 0.64, -0.17, p);
-      put(rbox(0.62, 0.15, 0.34, '#FFFFFF', 0.075, { r: 1 }), 0, 0.66, -0.62, p);
-      put(rbox(1.3, 1.25, 0.32, '#FFFFFF', 0.16, { r: 0.85 }), 0, 0.72, -0.98, p);
-      put(rbox(1.3, 0.16, 0.78, '#FFFFFF', 0.08, { r: 0.85 }), 0, 1.32, -0.68, p);
-      put(rbox(1.0, 0.04, 0.5, BL[i % 4], 0.02, { e: BL[i % 4], ei: 0.35 }), 0, 1.23, -0.68, p);
-      room.spots.push({ x: cx + ox, z: cz - 0.7 * K, rot: 0, sit: true, lie: true, y: 0.12, busy: null });
+    if (ROOM_STYLE.nap.model && PROPS_ON) { // 2026 room: interior model from the painting (rug, lamps, chair, plant, shelf) + the clean Meshy pod beds; turned a quarter so the door opens onto free floor
+      const L = Math.min(room.w || 6, SIZES[room.sz || 'm'].D) - 0.24, k = L / 1.66, R = Math.PI / 2, m = grp(cx, cz, R, g);
+      put(rbox(L * 0.9, 0.04, L * 0.9, '#E2AEC0', 0.01), 0, 0.12, 0, m); glbSwap(m, ROOM_STYLE.nap.model, { len: L, y: 0.115, crease: 0.6 });
+      const P = (x, z) => ({ x: cx + (x * Math.cos(R) + z * Math.sin(R)) * k, z: cz + (-x * Math.sin(R) + z * Math.cos(R)) * k });
+      for (const bx of [-0.58, -0.005, 0.525]) { const c = P(bx, -0.52), p = grp(c.x, c.z, R, g);
+        put(rbox(0.36 * k, 0.3, 0.56 * k, '#9C7BD6', 0.12, { r: 0.85 }), 0, 0.26, 0, p); glbSwap(p, 'nap_pod2', { len: 0.57 * k, y: 0.11 });
+        const s2 = P(bx, -0.52 + 0.5 / k); room.spots.push({ x: s2.x, z: s2.z, rot: R, sit: true, lie: true, y: 0.12, busy: null }); }
+      const ob = grp(cx, cz, R, g); ob.userData.swap = true; // invisible footprints: armchair, plant, shelf
+      for (const [x0, x1, z0, z1] of [[0.33, 0.77, 0.08, 0.55], [-0.82, -0.45, 0.42, 0.8], [-0.27, 0.4, 0.62, 0.8]]) { const b = put(rbox((x1 - x0) * k, 0.8, (z1 - z0) * k, '#000000', 0.01), (x0 + x1) / 2 * k, 0.5, (z0 + z1) / 2 * k, ob); b.visible = false; }
+      if (!room.st) { const D = SIZES[room.sz || 'm'].D, mo = grp(cx - 0.9 * K, cz - D / 2 + 0.14, 0, g); mo.userData.hang = [0, -1]; mo.userData.swap = true; put(rbox(0.8, 0.8, 0.06, '#FFE7A8', 0.2, { e: '#FFD27A', ei: 1 }), 0, 1.75, 0, mo); glbSwap(mo, 'nap_moon', { len: 0.8, y: 1.3, tint: '#FFE9A0', glow: '#FFD866', gi: 1.1 }); }
+      const st = P(0.2, 0.45); room.staffSpot = { x: st.x, z: st.z, rot: R + Math.PI, sit: false, y: 0 };
+      return;
+    }
+    const V = '#CDB6F6', W0 = room.w || 6, n = room.sz === 's' ? 2 : 3, sp = Math.min(1.9, (W0 - 0.4) / n), xs = Array.from({ length: n }, (_, i) => (i - (n - 1) / 2) * sp);
+    xs.forEach((ox, i) => { // pods side by side with a gap and a small bedside table between: you get in from the side, like a bed
+      const p = grp(cx + ox, cz - 1.25 * K, 0, g);
+      put(rbox(1.05, 0.36, 2.0, '#B79DE6', 0.17, { r: 0.85 }), 0, 0.28, 0, p); put(rbox(1.15, 1.2, 0.3, '#B79DE6', 0.15, { r: 0.85 }), 0, 0.7, -0.95, p);
+      glbSwap(p, 'nap_pod', { len: 1.95, rot: 0, y: 0.1, tint: V });
+      room.spots.push({ x: cx + ox, z: cz - 0.75 * K, rot: 0, sit: true, lie: true, y: 0.12, busy: null });
+      if (i < n - 1) { const bx = cx + ox + sp / 2, t = grp(bx, cz - 2.0 * K, 0, g);
+        put(cyl(0.2, 0.2, 0.45, '#FFD866', { r: 0.8 }), 0, 0.33, 0, t); put(sph(0.12, '#FFF1C2', { e: '#FFD27A', ei: 1.2 }), 0, 0.68, 0, t); put(cyl(0.02, 0.02, 0.12, '#C9A54A'), 0, 0.58, 0, t);
+        const sc = grp(bx, cz - D0() / 2 + 0.12, 0, g); sc.userData.hang = [0, -1]; sc.userData.swap = true; put(rbox(0.16, 0.22, 0.08, '#C9A54A', 0.03, { m: 0.4, r: 0.4 }), 0, 1.5, 0, sc); put(sph(0.09, '#FFF1C2', { e: '#FFD27A', ei: 1.6 }), 0, 1.66, 0.06, sc); }
     });
-    const moon = new THREE.Mesh(GC.moon || (GC.moon = new THREE.TorusGeometry(0.42, 0.09, 10, 30, Math.PI * 1.3)), mat('#FFD36E', { e: '#FFC94A', ei: 1.3 }));
-    moon.rotation.z = 0.6; put(moon, cx - 0.2 * K, 2.05, cz - 3.0 * K + 0.2, g);
-    for (const [sx, sy] of [[0.7, 2.3], [1.0, 1.85], [-0.9, 2.25]]) put(sph(0.06, '#FFE2A8', { e: '#FFD27A', ei: 1.5 }), cx + sx * K, sy, cz - 3.0 * K + 0.22, g);
-    const rug = new THREE.Mesh(GC.rugN || (GC.rugN = new THREE.CylinderGeometry(1.15, 1.15, 0.03, 40)), mat('#C2A8F0', { r: 1 })); rug.position.set(cx, 0.14, cz + 1.35 * K); rug.receiveShadow = true; g.add(rug);
-    const rim = new THREE.Mesh(GC.rugR || (GC.rugR = new THREE.TorusGeometry(1.15, 0.05, 6, 40)), mat('#A88BE0', { r: 1 })); rim.rotation.x = Math.PI / 2; rim.position.set(cx, 0.15, cz + 1.35 * K); g.add(rim);
-    const pouf = sph(0.34, '#FFD25E', { r: 0.95 }); pouf.scale.set(1, 0.62, 1); put(pouf, cx - 0.75 * K, 0.33, cz + 1.75 * K, g);
-    plant(cx + room.w / 2 - 0.55, cz + 2.2 * K, 0.85, '#F4EFE6', g);
-    if (room.sz !== 's') { const st = grp(cx - room.w / 2 + 0.45, cz + 0.5 * K, 0, g); put(cyl(0.22, 0.22, 0.5, '#E9D3B5', { r: 0.9 }), 0, 0.35, 0, st); put(cyl(0.03, 0.03, 0.4, '#8B6A45'), 0, 0.78, 0, st); put(new THREE.Mesh(GC.shade || (GC.shade = new THREE.CylinderGeometry(0.1, 0.18, 0.2, 16)), mat('#FFF1D6', { e: '#FFE2A8', ei: 0.8 })), 0, 1.02, 0, st); }
+    function D0() { return SIZES[room.sz || 'm'].D; }
+    const hang = (o, nx, nz) => { o.userData.hang = [nx, nz]; o.userData.swap = true; return o; };
+    const W = room.w || 6, D = SIZES[room.sz || 'm'].D, bz = cz - D / 2 + 0.2, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1;
+    if (first && room.sz !== 's') { const m = grp(cx - 1.1 * K, bz - 0.06, 0, g); m.userData.hang = [0, -1]; m.userData.swap = true; put(rbox(0.8, 0.8, 0.06, '#FFE7A8', 0.2, { e: '#FFD27A', ei: 1 }), 0, 1.75, 0, m); glbSwap(m, 'nap_moon', { len: 0.85, y: 1.35, tint: '#FFE9A0', glow: '#FFD866', gi: 1.1 }); }
+    const frame = (x, z, ry, w, h, art) => { const f = hang(grp(x, z, ry, g), Math.round(-Math.sin(ry)), Math.round(-Math.cos(ry))); put(rbox(w, h, 0.05, '#FBF4E8', 0.02, { r: 0.8 }), 0, 1.75, 0, f); put(rbox(w - 0.12, h - 0.12, 0.02, art[0], 0.01, { r: 0.9 }), 0, 1.75, 0.03, f);
+      put(sph(Math.min(w, h) * 0.18, art[1], { r: 0.9 }), -w * 0.12, 1.72, 0.045, f).scale.z = 0.2; put(sph(Math.min(w, h) * 0.13, art[2], { r: 0.9 }), w * 0.15, 1.8, 0.045, f).scale.z = 0.2; };
+    if (first) frame(cx - W / 2 + 0.11, cz - 0.4 * K, Math.PI / 2, 0.7, 0.9, ['#F6E7C8', '#E9A7B8', '#8FC1A0']);
+
+    if (room.sz !== 's' && first) { const lo = grp(cx - 0.9 * K, cz + 2.35 * K, 0, g), oak = '#E8CFA6'; // low curved pale-oak shelf with books and candles (reference)
+      put(rbox(1.4, 0.07, 0.42, oak, 0.03, { r: 0.8 }), 0, 0.5, 0, lo); put(rbox(1.4, 0.07, 0.42, oak, 0.03, { r: 0.8 }), 0, 0.14, 0, lo);
+      for (const s of [-1, 1]) { const e = new THREE.Mesh(GC.shEnd || (GC.shEnd = new THREE.CylinderGeometry(0.21, 0.21, 0.07, 18, 1, false, 0, Math.PI)), mat(oak, { r: 0.8 })); e.rotation.z = Math.PI / 2; e.rotation.y = s > 0 ? 0 : Math.PI; e.scale.set(1, 1, 1); e.position.set(s * 0.7, 0.32, 0); lo.add(e); put(rbox(0.07, 0.43, 0.42, oak, 0.03, { r: 0.8 }), s * 0.7, 0.32, 0, lo); }
+      for (const [x, c] of [[-0.45, '#B79DE6'], [-0.33, '#F2C6D4'], [-0.21, '#9E80DE']]) put(rbox(0.09, 0.26, 0.3, c, 0.02), x, 0.31, 0, lo);
+      for (const [x, h] of [[0.3, 0.16], [0.45, 0.11]]) { put(cyl(0.05, 0.05, h, '#FFF6E2'), x, 0.54 + h / 2, 0.05, lo); put(sph(0.03, '#FFE38A', { e: '#FFC94A', ei: 2 }), x, 0.6 + h, 0.05, lo); }
+      put(sph(0.08, '#C3AEEE'), 0.1, 0.62, -0.05, lo); }
+    if (room.sz !== 's' && first) { const bs = grp(cx - W / 2 + 0.45, cz + 0.35 * K, 0, g); put(cyl(0.25, 0.25, 0.5, '#FFD866'), 0, 0.35, 0, bs); glbSwap(bs, 'nap_bedside', { h: 0.95, rot: Math.PI, y: 0.1, tint: '#FFE27A' }); }
+    { const pl = grp(cx + W / 2 - 0.55, cz + 2.25 * K, 0, g); put(cyl(0.25, 0.2, 0.45, '#FFFFFF'), 0, 0.33, 0, pl); put(sph(0.4, '#5DAE5E'), 0, 0.9, 0, pl); glbSwap(pl, 'nap_plant', { h: 1.3, y: 0.1 }); }
+    // cloud rug: overlapping soft discs
+    for (const [ox, oz, r] of [[0, 0, 0.75], [-0.6, 0.15, 0.55], [0.62, 0.1, 0.58], [-0.25, -0.35, 0.5], [0.3, 0.38, 0.5]]) { const c = new THREE.Mesh(GC['cl' + r] || (GC['cl' + r] = new THREE.CylinderGeometry(r * K, r * K, 0.05, 28)), mat('#EADFFC', { r: 1 })); c.position.set(cx + ox * K, 0.14, cz + 1.35 * K + oz * K); c.receiveShadow = true; g.add(c); }
+    // violet boucle lounge chair + butter-yellow pouf (the pop colour)
+    { const ch = grp(cx + 1.15 * K, cz + 1.75 * K, Math.atan2(-1.15, -1.5), g); const bou = '#6E4BBE';
+      put(rbox(0.9, 0.38, 0.8, bou, 0.18, { r: 1 }), 0, 0.3, 0, ch); put(rbox(0.95, 0.62, 0.26, bou, 0.13, { r: 1 }), 0, 0.68, -0.3, ch);
+      for (const s of [-1, 1]) put(rbox(0.22, 0.5, 0.78, bou, 0.11, { r: 1 }), s * 0.42, 0.45, 0, ch); put(rbox(0.6, 0.12, 0.55, '#8A68D4', 0.06, { r: 1 }), 0, 0.53, 0.05, ch); }
+    const pouf = sph(0.32, '#FFD866', { r: 0.95 }); pouf.scale.set(1, 0.6, 1); put(pouf, cx - 0.9 * K, 0.31, cz + 1.9 * K, g);
     room.staffSpot = { x: cx + 0.2 * K, z: cz + 1.4 * K, rot: Math.PI / 4, sit: false, y: 0 };
   },
 
