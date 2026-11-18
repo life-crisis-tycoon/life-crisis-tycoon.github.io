@@ -154,6 +154,11 @@ function steadyIdle(gltf) {
   for (const c of gltf.animations) { if (!/^(M_)?(Idle|Phone|StandWork|Clean)$/.test(c.name)) continue;
     for (const tr of c.tracks) { if (!/Hips\.quaternion$/.test(tr.name)) continue; const v = tr.values;
       for (let i = 0; i < v.length; i += 4) { q.set(v[i], v[i + 1], v[i + 2], v[i + 3]); e.setFromQuaternion(q); e.y = 0; q.setFromEuler(e); v[i] = q.x; v[i + 1] = q.y; v[i + 2] = q.z; v[i + 3] = q.w; } } }
+  // standing still (Idle, Phone): the clips shift weight from foot to foot, which reads as shuffling on the spot.
+  // Pin the pelvis and both legs to their first frame; the upper body keeps breathing and moving.
+  for (const c of gltf.animations) { if (!/^(M_)?(Idle|Phone)$/.test(c.name)) continue;
+    for (const tr of c.tracks) { if (!/(^|[.:])(Hips\.(position|quaternion)|(Left|Right)(UpLeg|Leg|Foot|ToeBase)\.quaternion)$/.test(tr.name)) continue; const v = tr.values, n = tr.getValueSize();
+      for (let i = n; i < v.length; i++) v[i] = v[i % n]; } }
 }
 // Meshy's sit/lie clips slide the pelvis 30-60 cm backwards (they expect a chair behind the character).
 // The game puts the character's origin on the seat itself, so keep the pelvis over the origin.
