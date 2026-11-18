@@ -794,6 +794,7 @@ for (const [k, c] of Object.entries(WALL_TINT)) ROOM_STYLE[k] = { wall: c, cap: 
 ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4C5753', 0.62); ROOM_STYLE.nap.cap = '#F4E9D2';
 // 2026 room design (v2): cream outside shared by every room, the room's own colour drenched inside, arched window, sign plate over the door
 const OUT_WALL = '#F3E8D6', OUT_CAP = '#FBF4E8', OUT_BASE = '#A9C29E';
+ROOM_STYLE.career = { v2: true, model: 'career_in', wallSide: { '-1,0': '#E5705E' }, winSide: '-1,0', winOff: 0, wall: '#22305A', inBase: '#151E3A', floor: '#6E3324', door: '#22305A', panel: '#22305A', pop: '#F0A830', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_in', wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
@@ -802,7 +803,7 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
   if (len < 0.05) return;
   const n = (parent.userData && parent.userData.n) || [0, -1], nx = n[0], nz = n[1], q = th / 4; // n points outside
   const slab = (c, off, w, hh, y, r = 0.05) => put(rbox(alongX ? w : th / 2 + (off ? 0 : 0), hh, alongX ? th / 2 : w, c, r, { r: 0.95 }), cx + nx * off, y, cz + nz * off, parent);
-  slab(OUT_WALL, q, len, h, h / 2 + 0.1); slab(S.wall, -q, len, h, h / 2 + 0.1);
+  slab(OUT_WALL, q, len, h, h / 2 + 0.1); slab(parent.userData.wall || S.wall, -q, len, h, h / 2 + 0.1);
   put(rbox(alongX ? len + 0.04 : th + 0.08, 0.1, alongX ? th + 0.08 : len + 0.04, OUT_CAP, 0.045, { r: 0.85 }), cx, h + 0.15, cz, parent); // soft rounded rim
   put(rbox(alongX ? len + 0.01 : 0.05, 0.22, alongX ? 0.05 : len + 0.01, OUT_BASE, 0.02, { r: 0.9 }), cx + nx * (th / 2 + 0.02), 0.21, cz + nz * (th / 2 + 0.02), parent); // sage skirting outside
   put(rbox(alongX ? len + 0.01 : 0.04, 0.14, alongX ? 0.04 : len + 0.01, S.inBase, 0.02, { r: 0.9 }), cx - nx * (th / 2 + 0.015), 0.17, cz - nz * (th / 2 + 0.015), parent);
@@ -862,14 +863,15 @@ function buildRoom(r) {
   floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] && !(RS && RS.model) ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
-  const wallG = []; const side = (nx, nz) => { const sg = new THREE.Group(); g.add(sg); sg.userData.n = [nx, nz]; sg.userData.p = [nx ? (nx < 0 ? q.x0 : q.x1) : mx, nz ? (nz < 0 ? q.z0 : q.z1) : mz]; wallG.push(sg); return sg; };
+  const ca0 = Math.cos(r.a), sa0 = Math.sin(r.a), loc = (nx, nz) => Math.round(nx * ca0 - nz * sa0) + ',' + Math.round(nx * sa0 + nz * ca0); // world side -> room-local side
+  const wallG = []; const side = (nx, nz) => { const sg = new THREE.Group(); g.add(sg); sg.userData.n = [nx, nz]; if (RS && RS.wallSide) sg.userData.wall = RS.wallSide[loc(nx, nz)]; sg.userData.p = [nx ? (nx < 0 ? q.x0 : q.x1) : mx, nz ? (nz < 0 ? q.z0 : q.z1) : mz]; wallG.push(sg); return sg; };
   if (!outer(mx, q.z0 - 0.3, -1)) wallWithGap(q.x0, q.z0, q.x1, q.z0, near(dp.z, q.z0) ? dp.x : 0, side(0, -1), RS);
   if (!outer(mx, q.z1 + 0.3, 1)) wallWithGap(q.x0, q.z1, q.x1, q.z1, near(dp.z, q.z1) ? dp.x : 0, side(0, 1), RS);
   if (!outer(q.x0 - 0.3, mz, 0)) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, side(-1, 0), RS);
   if (!outer(q.x1 + 0.3, mz, 0)) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, side(1, 0), RS);
   if (RS && RS.v2) { const opts = [[0, -1, mx, q.z0, 0, near(dp.z, q.z0)], [-1, 0, q.x0, mz, Math.PI / 2, near(dp.x, q.x0)], [0, 1, mx, q.z1, 0, near(dp.z, q.z1)], [1, 0, q.x1, mz, Math.PI / 2, near(dp.x, q.x1)]];
-    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || hasDoor) continue;
-      const off = (nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0; const wg = archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
+    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
+      const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
   const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(Z.st).fill(null), cx: r.x, cz: r.z, door, g };
   if (r.dirt) setTimeout(() => { room.dirtLv = -1; applyDirt(room); }, 1800); // after the modelled furniture has been swapped in
@@ -983,6 +985,51 @@ const seatsN = (room) => ({ s: 2, m: 4, l: 3 }[room.sz] || 2);
 function bedXs(room, bw) { const n = room.sz ? { s: 2, m: 4, l: 3 }[room.sz] : 2, W = (room.w || 6) - 0.5, sp = Math.min(1.5, W / n); return Array.from({ length: n }, (_, i) => (i - (n - 1) / 2) * sp); }
 const CAPC = {};
 function capOf(type, size) { const k = type + size; if (CAPC[k] != null) return CAPC[k]; const Z = SIZES[size], K = clamp(Math.min(Z.W / Z.st, Z.D) / 6.2, 0.6, 1); let n = 0; for (let i = 0; i < Z.st; i++) { const tmp = { spots: [], staffSpot: null, sz: size, w: Z.W / Z.st }; try { furniture[type](new THREE.Group(), 0, 0, tmp, K); } catch (e) {} n += tmp.spots.length; } return (CAPC[k] = n); }
+
+// career office decor from the reference painting: window seat, arc lamp, ladder shelf + gold star, sconces, framed sign, corkboard with notes
+const CAREER_CORK = () => GC.corkTex || (GC.corkTex = canvasTex(640, 440, (c, w, h) => {
+  c.fillStyle = '#C8955E'; c.fillRect(0, 0, w, h); for (let i = 0; i < 2600; i++) { c.fillStyle = Math.random() < 0.5 ? 'rgba(120,70,30,0.22)' : 'rgba(255,230,190,0.18)'; c.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  const card = (x, y, cw, chh, bg, rot, lines, fg, fs) => { c.save(); c.translate(x + cw / 2, y + chh / 2); c.rotate(rot); c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(-cw / 2 + 4, -chh / 2 + 5, cw, chh); c.fillStyle = bg; c.fillRect(-cw / 2, -chh / 2, cw, chh);
+    if (lines) { c.fillStyle = fg; c.font = '700 ' + fs + 'px "Open Sans", sans-serif'; c.textAlign = 'center'; lines.forEach((t, k) => c.fillText(t, 0, -chh / 2 + fs * 1.25 * (k + 1) + 4)); }
+    c.fillStyle = '#D93A3F'; c.beginPath(); c.arc(0, -chh / 2 + 9, 7, 0, 7); c.fill(); c.restore(); return { x, y, cw, chh }; };
+  card(40, 40, 150, 150, '#1F2A4A', -0.04, ['Plan', 'Prepare', 'Progress'], '#FFFFFF', 30);
+  const m = card(250, 40, 200, 130, '#F4EEDC', 0.03); c.save(); c.translate(250, 40); c.fillStyle = '#7FB38A'; for (const [ex, ey, rx, ry] of [[50, 50, 30, 22], [62, 92, 14, 22], [105, 48, 20, 16], [112, 85, 16, 24], [150, 55, 28, 20], [168, 98, 14, 10]]) { c.beginPath(); c.ellipse(ex, ey, rx, ry, 0, 0, 7); c.fill(); } c.restore();
+  card(40, 230, 140, 150, '#F2A7B5', 0.05, ['Dream', 'Plan', 'Do'], '#1F2A4A', 30);
+  card(210, 250, 130, 110, '#7CC6BE', -0.06, ['Next', 'Step'], '#1F2A4A', 30);
+  card(370, 210, 150, 150, '#FFFFFF', 0.04); c.fillStyle = '#F6C5A6'; c.fillRect(382, 222, 126, 110); c.fillStyle = '#C8546A'; c.beginPath(); c.moveTo(382, 332); c.lineTo(430, 262); c.lineTo(465, 300); c.lineTo(490, 275); c.lineTo(508, 332); c.fill(); c.fillStyle = '#F7E07A'; c.beginPath(); c.arc(480, 248, 12, 0, 7); c.fill();
+  card(520, 70, 90, 90, '#F7D35C', -0.08); card(540, 330, 80, 80, '#F7D35C', 0.07);
+}));
+const CAREER_SIGN = () => GC.signTex || (GC.signTex = canvasTex(300, 400, (c, w, h) => { c.fillStyle = '#F6F0E2'; c.fillRect(0, 0, w, h); c.fillStyle = '#2B2B2B'; c.textAlign = 'center'; c.font = '700 44px "Open Sans", sans-serif'; ['CLARITY', 'CONFIDENCE', 'CAREER', 'YOU'].forEach((t, i) => { c.font = '700 ' + (t.length > 8 ? 36 : 46) + 'px "Open Sans", sans-serif'; c.fillText(t, w / 2, 95 + i * 80); }); }));
+function careerDecor(g, cx, cz, room, k) {
+  const W = room.w || 6, D = SIZES[room.sz || 'm'].D, lx = cx - W / 2 + 0.1, bz = cz - D / 2 + 0.1, wood = '#8A4E2E', brass = '#C9A54A';
+  const hang = (o, n) => { o.userData.hang = n; o.userData.swap = true; return o; };
+  // window seat under the window: white drawer base, mustard cushion, two pillows
+  { const s = grp(lx + 0.3, cz, 0, g), L = Math.min(1.9, D - 1.6);
+    put(rbox(0.56, 0.42, L, '#F4EEE2', 0.04, { r: 0.8 }), 0, 0.33, 0, s); for (let i = 0; i < 3; i++) { const dz = (i - 1) * L / 3; put(rbox(0.02, 0.26, L / 3 - 0.08, '#E6DCCB', 0.01), 0.285, 0.32, dz, s); put(sph(0.025, brass, { m: 0.5, r: 0.4 }), 0.3, 0.33, dz, s); }
+    put(rbox(0.6, 0.13, L + 0.04, '#E7A93B', 0.06, { r: 1 }), 0, 0.6, 0, s);
+    put(rbox(0.14, 0.36, 0.44, '#24305A', 0.07, { r: 1 }), -0.15, 0.82, -L / 2 + 0.45, s).rotation.y = 0.2; put(rbox(0.14, 0.38, 0.48, '#F3EBDD', 0.07, { r: 1 }), -0.17, 0.83, -L / 2 + 0.9, s).rotation.y = -0.15;
+    for (let i = 0; i < 4; i++) put(rbox(0.005, 0.32, 0.012, '#24305A', 0.002), -0.095, 0.83, -L / 2 + 0.72 + i * 0.1, s); }
+  // arc floor lamp in the back corner, its black dome hanging over the seat
+  { const f = grp(lx + 0.55, bz + 0.75, 0, g), blk = '#1C1C22';
+    put(cyl(0.2, 0.22, 0.05, blk, { m: 0.3, r: 0.5 }), 0, 0.14, 0, f); put(cyl(0.025, 0.025, 1.75, blk, { m: 0.3, r: 0.5 }), 0, 1.0, 0, f);
+    const arc = new THREE.Mesh(GC.lampArc || (GC.lampArc = new THREE.TorusGeometry(0.42, 0.022, 8, 24, Math.PI / 2)), mat(blk, { m: 0.3, r: 0.5 })); arc.rotation.y = Math.PI / 2; arc.position.set(0, 1.87, 0.42); arc.rotation.z = 0; f.add(arc);
+    const sh = new THREE.Mesh(GC.lampDome || (GC.lampDome = new THREE.SphereGeometry(0.2, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2)), mat(blk, { m: 0.3, r: 0.45, side: THREE.DoubleSide })); sh.position.set(0, 1.86, 0.84); f.add(sh);
+    put(sph(0.08, '#FFF1C2', { e: '#FFD27A', ei: 2 }), 0, 1.8, 0.84, f); }
+  // leaning ladder shelf with a gold star on top
+  { const ld = hang(grp(cx - 1.75 * (k / 3.47), bz + 0.2, 0, g), [0, -1]); ld.rotation.x = -0.08;
+    for (const sx of [-0.21, 0.21]) put(rbox(0.04, 2.0, 0.04, wood, 0.01, { r: 0.7 }), sx, 1.1, 0, ld); for (let i = 0; i < 8; i++) put(rbox(0.46, 0.04, 0.2, wood, 0.01, { r: 0.7 }), 0, 0.3 + i * 0.24, 0.06, ld);
+    const st = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r2 = i % 2 ? 0.07 : 0.16, an = Math.PI / 2 + i * Math.PI / 5; i ? st.lineTo(Math.cos(an) * r2, Math.sin(an) * r2) : st.moveTo(Math.cos(an) * r2, Math.sin(an) * r2); }
+    const star = new THREE.Mesh(new THREE.ExtrudeGeometry(st, { depth: 0.05, bevelEnabled: true, bevelSize: 0.012, bevelThickness: 0.012, bevelSegments: 2 }), mat('#F2B830', { m: 0.35, r: 0.4, e: '#B07A10', ei: 0.25 })); star.position.set(0, 2.32, -0.02); ld.add(star); }
+  // corkboard with the notes
+  { const cb = hang(grp(cx - 0.35 * (k / 3.47), bz + 0.04, 0, g), [0, -1]); put(rbox(1.42, 1.0, 0.06, wood, 0.03, { r: 0.7 }), 0, 1.55, 0, cb);
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.89), mat('#FFFFFF', { map: CAREER_CORK(), r: 0.95, mapK: 'cork' })); pl.position.set(0, 1.55, 0.035); cb.add(pl); }
+  // brass sconces with warm glow: one on the navy wall, one on the coral wall near the door end
+  for (const [x, z, ry, n] of [[cx - 2.25 * (k / 3.47), bz + 0.02, 0, [0, -1]], [lx + 0.02, cz + D / 2 - 0.95, Math.PI / 2, [-1, 0]]]) { const sc = hang(grp(x, z, ry, g), n);
+    put(rbox(0.12, 0.2, 0.06, brass, 0.02, { m: 0.5, r: 0.4 }), 0, 1.75, 0.03, sc); put(cyl(0.07, 0.08, 0.18, '#FFF4DA', { e: '#FFD58A', ei: 1.8 }), 0, 1.86, 0.12, sc); }
+  // framed sign on the coral wall
+  { const fr = hang(grp(lx + 0.03, cz + D / 2 - 1.35, Math.PI / 2, g), [-1, 0]); put(rbox(0.6, 0.78, 0.04, '#2B2B2B', 0.01, { r: 0.6 }), 0, 1.45, 0.02, fr);
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.67), mat('#FFFFFF', { map: CAREER_SIGN(), r: 0.95, mapK: 'csign' })); pl.position.set(0, 1.45, 0.045); fr.add(pl); }
+}
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
     if (ROOM_STYLE.budget.model && PROPS_ON) { // 2026 room: the whole interior is one model made from the room painting; walls, arched door and window stay in code
@@ -1005,6 +1052,16 @@ const furniture = {
     room.spots.push({ x: cx, z: cz + 0.45 * K, rot: Math.PI, sit: true, y: 0.02, busy: null });
   },
   career(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.career.model && PROPS_ON) { // 2026 room: interior model (desk, coach chair, mustard client chairs, striped rug, armchair, bookcase, window seat, lamp) + a code corkboard
+      const L = Math.min(room.w || 6, SIZES[room.sz || 'm'].D) - 0.24, k = L / 1.66, m = grp(cx, cz, 0, g);
+      put(rbox(L * 0.9, 0.04, L * 0.9, '#6E3324', 0.01), 0, 0.12, 0, m); glbSwap(m, ROOM_STYLE.career.model, { len: L, y: 0.115, crease: 0.6 });
+      const ob = grp(cx, cz, 0, g); ob.userData.swap = true;
+      for (const [x0, x1, z0, z1] of [[-0.45, 0.3, -0.11, 0.21], [0.5, 0.78, -0.25, 0.42], [0.3, 0.62, -0.8, -0.66], [-0.83, -0.7, -0.6, 0]]) { const b = put(rbox((x1 - x0) * k, 0.8, (z1 - z0) * k, '#000000', 0.01), (x0 + x1) / 2 * k, 0.5, (z0 + z1) / 2 * k, ob); b.visible = false; }
+      if (!room.st) careerDecor(g, cx, cz, room, k);
+      room.staffSpot = { x: cx - 0.064 * k, z: cz - 0.32 * k, rot: 0, sit: true, y: 0.02 };
+      room.spots.push({ x: cx - 0.26 * k, z: cz + 0.375 * k, rot: Math.PI, sit: true, y: 0.02, busy: null });
+      return;
+    }
     const d = grp(cx, cz - 0.6 * K, 0, g);
     put(rbox(2.2, 0.12, 1.0, '#F4EFE6', 0.05), 0, 0.86, 0, d); put(rbox(2.0, 0.76, 0.1, '#C2577A', 0.03), 0, 0.46, 0.4, d);
     put(rbox(0.9, 0.58, 0.06, '#2F3640', 0.03), 0, 1.32, -0.25, d); put(rbox(0.8, 0.48, 0.02, '#FFD6E0', 0.01, { e: '#FFC2D1', ei: 0.4 }), 0, 1.32, -0.21, d);
