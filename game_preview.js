@@ -1100,8 +1100,8 @@ const KIT_DIMS = {};
 function kitRoom(g, cx, cz, room, kit, items, dims) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, lx = cx - w / 2, rx = cx + w / 2, bz = cz - D / 2, fz = cz + D / 2, H = Math.PI / 2, out = [], rep = [];
   const door = room.door ? { x: room.door.x + cx, z: room.door.z + cz } : null;
-  for (const it of items) { if (!it) continue; const dm = it.p === '@plant' ? [0.55, 1, 0.55] : dims[it.p]; if (!dm) { rep.push('no piece ' + it.p); continue; }
-    const k = it.len ? it.len / Math.max(dm[0], dm[2]) : it.h / dm[1], pw = dm[0] * k, pd = dm[2] * k, gp = it.gap ?? 0.04; let x, z, rot;
+  for (const it of items) { if (!it) continue; const dm = it.p === '@plant' ? [0.45, 1, 0.45] : dims[it.p]; if (!dm) { rep.push('no piece ' + it.p); continue; }
+    const k = it.p === '@plant' ? (it.s || 1.5) : it.len ? it.len / Math.max(dm[0], dm[2]) : it.h / dm[1], pw = dm[0] * k, pd = dm[2] * k, gp = it.gap ?? 0.04; let x, z, rot;
     const along = (u, half, lo, hi) => u === 'L' || u === 'B' ? lo + half + gp : u === 'R' || u === 'F' ? hi - half - gp : (lo + hi) / 2 + (u || 0);
     if (it.wall === 'back') { rot = 0; z = bz + pd / 2 + gp; x = along(it.u, pw / 2, lx, rx); }
     else if (it.wall === 'front') { rot = Math.PI; z = fz - pd / 2 - gp; x = along(it.u, pw / 2, lx, rx); }
@@ -1169,7 +1169,7 @@ function therapyKit(g, cx, cz, room) {
 function glowupKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, H = Math.PI / 2;
   const vx = S ? 0.25 : 0.35, chz = 0.9 + 0.04 + 0.95 - D / 2; // chair 0.95 m in front of the vanity
-  const L = [{ p: 'k_vanity', h: 1.9, wall: 'back', u: vx }, { p: 'k_chair', h: 1.15, x: vx, z: chz, rot: Math.PI }, { p: 'k_ring', h: 1.6, x: vx + 1.0, z: chz + 0.15, rot: -H - 0.5 }];
+  const L = [{ p: 'k_vanity', h: 1.9, wall: 'back', u: vx }, { p: 'k_chair', h: 1.15, x: vx, z: chz, rot: Math.PI }, { p: 'k_ring', h: 1.6, x: vx + 1.0, z: chz + 0.15, rot: -1.41 } /* ring turned to the chair (checked on the model) */];
   if (last && !S) L.push({ p: 'k_shelf', h: 1.0, wall: 'back', u: 'R', hang: true, y: 0.75 });
   if (first) { L.push({ p: 'k_rack', h: 1.7, wall: 'left', u: S ? -0.3 : -0.55 }); if (!S) L.push({ p: '@plant', s: 1.6, wall: 'back', u: 'L' }); }
   if (!S) L.push({ p: 'k_rug', len: 1.7, x: -0.3, z: D / 2 - 1.5, solid: false }, { p: 'k_pouf', h: 0.45, x: -0.3, z: D / 2 - 1.5 });
@@ -1184,7 +1184,7 @@ function cafeKit(g, cx, cz, room) {
   const L = [], xo = two && !first ? -w : 0; // a second café station uses the first station's counter (its barista and queue stand there)
   const ccx = -w / 2 + 0.5 + 0.9 + 0.53, ccz = S ? 0.35 : 0.45; // counter: 0.5 m cabinet, 0.9 m barista aisle, then the counter (1.06 deep)
   if (first) L.push({ p: 'k_cabinet', h: 1.0, wall: 'left', u: S ? -0.4 : -0.6 }, { p: 'k_counter', h: 1.15, x: ccx, z: ccz, rot: H }, { p: 'k_case', h: 1.25, x: ccx + 0.07, z: ccz - 1.48, rot: H });
-  const tbl = (tx, tz) => L.push({ p: 'k_table', h: 0.78, x: tx, z: tz }, { p: 'k_chair', h: 0.95, x: tx - 0.62, z: tz, rot: H }, { p: 'k_chair', h: 0.95, x: tx + 0.62, z: tz, rot: -H });
+  const tbl = (tx, tz) => L.push({ p: 'k_table', h: 0.78, x: tx, z: tz }, { p: 'k_chair', h: 0.95, x: tx - 0.68, z: tz, rot: H }, { p: 'k_chair', h: 0.95, x: tx + 0.68, z: tz, rot: -H });
   if (!two) { if (!S) { L.push({ p: 'k_bench', h: 0.95, wall: 'back', u: 1.0 }, { p: '@plant', s: 1.8, wall: 'right', u: 'B' }); tbl(1.3, -0.9); tbl(0.85, 1.75); } else tbl(1.2, -0.95); }
   else if (!first) { L.push({ p: 'k_bench', h: 0.95, wall: 'back', u: 0 }, { p: '@plant', s: 1.8, wall: 'right', u: 'B' }); tbl(0.1, -1.0); tbl(0.1, 1.4); }
   else tbl(ccx + 2.0, 1.9);
