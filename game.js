@@ -784,13 +784,13 @@ function lotOwned(i) {
 
 // ---------------- rooms ----------------
 const R = { rooms: {}, staff: [], visitors: [], deskQ: [], deskQs: [], litter: [], rats: [], inspector: null, later: [] }; R.deskQs[0] = R.deskQ;
-// Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional ivy + fairy lights.
+// Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional fairy lights (no ivy).
 const WALL_HIP = 1.0, WALL_CUT = 0.3, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
-const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', ivy: true, lights: true, h: ROOM_H } };
+const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', lights: true, h: ROOM_H } };
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };
 const WALL_TINT = { yoga: '#D3ECEE', lucha: '#F6D3E2', ahwa: '#F0DCC0', budget: '#F3D9B8', detox: '#D3E6F4', career: '#F2D6DE', cafe: '#D6EBDD', lab: '#DCE2EC', social: '#F8D7E2', parent: '#FBE2C0', moving: '#EADCC8', pharmacy: '#D2EDE6', glowup: '#F8DCE8', wedding: '#F8DCE6', jjim: '#F0D9C4', roda: '#D7EDD5', garage: '#F2E3BD', shop: '#F9DCCF', staffroom: '#EDE2CF', toilet: '#D9ECF8', therapy: '#D5E6D9' };
-for (const [k, c] of Object.entries(WALL_TINT)) ROOM_STYLE[k] = { wall: c, cap: '#F4E9D2', base: _mix(c, '#4C5753', 0.62), ivy: ['cafe', 'therapy', 'social', 'staffroom'].includes(k), lights: ['cafe', 'social', 'glowup'].includes(k), h: ROOM_H, posts: true };
+for (const [k, c] of Object.entries(WALL_TINT)) ROOM_STYLE[k] = { wall: c, cap: '#F4E9D2', base: _mix(c, '#4C5753', 0.62), lights: ['cafe', 'social', 'glowup'].includes(k), h: ROOM_H, posts: true };
 ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4C5753', 0.62); ROOM_STYLE.nap.cap = '#F4E9D2';
 // 2026 room design (v2): cream outside shared by every room, the room's own colour drenched inside, arched window, sign plate over the door
 const OUT_WALL = '#F3E8D6', OUT_CAP = '#FBF4E8', OUT_BASE = '#A9C29E';
@@ -798,20 +798,30 @@ ROOM_STYLE.career = { v2: true, model: 'career_in', wallSide: { '-1,0': '#E5705E
 ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_in', wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
+// one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
+function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
+  const am = ds * (a0 + a1) / 2, bm = (b0 + b1) / 2, la = a1 - a0, lb = b1 - b0;
+  return put(rbox(alongX ? la : lb, hh, alongX ? lb : la, c, r, o), px + (alongX ? am : 0) + n[0] * bm, y, pz + (alongX ? 0 : am) + n[1] * bm, parent);
+}
+// Every room builds only on its own side of the wall line (plus a thin cream skin outside, thinner than any neighbour's own
+// lining), so two rooms sharing a wall never overlap or flicker and each shows its own colour inside. Against the building's
+// outer wall (userData.outer) the lining sits just proud of that wall instead of being skipped.
 function wallSegV2(x0, z0, x1, z1, S, parent) {
-  const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), th = 0.18, h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (len < 0.05) return;
-  const n = (parent.userData && parent.userData.n) || [0, -1], nx = n[0], nz = n[1], q = th / 4; // n points outside
-  const slab = (c, off, w, hh, y, r = 0.05) => put(rbox(alongX ? w : th / 2 + (off ? 0 : 0), hh, alongX ? th / 2 : w, c, r, { r: 0.95 }), cx + nx * off, y, cz + nz * off, parent);
-  slab(OUT_WALL, q, len, h, h / 2 + 0.1); slab(parent.userData.wall || S.wall, -q, len, h, h / 2 + 0.1);
-  put(rbox(alongX ? len + 0.04 : th + 0.08, 0.1, alongX ? th + 0.08 : len + 0.04, OUT_CAP, 0.045, { r: 0.85 }), cx, h + 0.15, cz, parent); // soft rounded rim
-  put(rbox(alongX ? len + 0.01 : 0.05, 0.22, alongX ? 0.05 : len + 0.01, OUT_BASE, 0.02, { r: 0.9 }), cx + nx * (th / 2 + 0.02), 0.21, cz + nz * (th / 2 + 0.02), parent); // sage skirting outside
-  put(rbox(alongX ? len + 0.01 : 0.04, 0.14, alongX ? 0.04 : len + 0.01, S.inBase, 0.02, { r: 0.9 }), cx - nx * (th / 2 + 0.015), 0.17, cz - nz * (th / 2 + 0.015), parent);
-  if (S.posts) for (const [px, pz] of [[x0, z0], [x1, z1]]) { put(rbox(0.22, h, 0.22, OUT_WALL, 0.05, { r: 0.95 }), px, h / 2 + 0.1, pz, parent); put(rbox(0.28, 0.1, 0.28, OUT_CAP, 0.04, { r: 0.85 }), px, h + 0.16, pz, parent); }
+  const n = (parent.userData && parent.userData.n) || [0, -1], ow = !!parent.userData.outer, IN = ow ? 0.135 : 0.09, OUT = ow ? 0 : 0.06; // n points outside
+  const run = (a, b, hh, y, c, r, o, ex = 0) => wbox(parent, alongX, cx, cz, 1, n, -len / 2 - ex, len / 2 + ex, a, b, hh, y, c, r, o);
+  run(-IN, 0, h, h / 2 + 0.1, parent.userData.wall || S.wall, 0.05, { r: 0.95 });
+  if (OUT) run(0, OUT, h, h / 2 + 0.1, OUT_WALL, 0.03, { r: 0.95 });
+  run(-IN - 0.04, OUT + (ow ? 0 : 0.04), 0.1, h + 0.15, OUT_CAP, 0.045, { r: 0.85 }, 0.02); // soft rounded rim
+  if (OUT) run(OUT - 0.005, OUT + 0.045, 0.22, 0.21, OUT_BASE, 0.02, { r: 0.9 }, 0.005); // sage skirting outside
+  run(-IN - 0.035, -IN + 0.005, 0.14, 0.17, S.inBase, 0.02, { r: 0.9 }, 0.005);
+  if (S.posts && !ow) { const ds = Math.sign(alongX ? x1 - x0 : z1 - z0) || 1;
+    for (const [px, pz, d] of [[x0, z0, ds], [x1, z1, -ds]]) { wbox(parent, alongX, px, pz, d, n, -0.02, 0.2, -IN - 0.02, OUT + 0.02, h, h / 2 + 0.1, OUT_WALL, 0.05, { r: 0.95 }); wbox(parent, alongX, px, pz, d, n, -0.04, 0.23, -IN - 0.05, OUT + 0.03, 0.1, h + 0.16, OUT_CAP, 0.04, { r: 0.85 }); } }
   if (S.stars && len > 1) { let sd = Math.round((x0 * 7 + z0 * 13) * 10); const rr = () => ((sd = (sd * 16807 + 11) % 2147483647) / 2147483647);
     for (let u = 0.3; u < len - 0.2; u += 0.32) { const px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u, y = h - 0.15 - rr() * 0.55;
-      put(leaf(0.04 + rr() * 0.035, '#FFF1B8', { e: '#FFE38A', ei: 2.2 }), px - nx * (th / 2 + 0.01), y, pz - nz * (th / 2 + 0.01), parent); } }
-  if (len > 0.6) put(rbox(alongX ? len - 0.1 : 0.03, 0.05, alongX ? 0.03 : len - 0.1, '#FFE6B0', 0.01, { e: '#FFD58A', ei: 1.6 }), cx - nx * (th / 2 + 0.02), h - 0.02, cz - nz * (th / 2 + 0.02), parent); // warm cove light under the rim
+      put(leaf(0.04 + rr() * 0.035, '#FFF1B8', { e: '#FFE38A', ei: 2.2 }), px - n[0] * (IN + 0.01), y, pz - n[1] * (IN + 0.01), parent); } }
+  if (len > 0.6) put(rbox(alongX ? len - 0.1 : 0.03, 0.05, alongX ? 0.03 : len - 0.1, '#FFE6B0', 0.01, { e: '#FFD58A', ei: 1.6 }), cx - n[0] * (IN + 0.02), h - 0.02, cz - n[1] * (IN + 0.02), parent); // warm cove light under the rim
 }
 function archWindow(parent, x, z, rot, th) { // tall window with a round top, slim cream frame, sky glass through the whole wall, a sill on both faces
   const g = grp(x, z, rot, parent), fm = '#FBF4E8', W = 1.05, Hr = 1.0, y0 = 0.85, R = W / 2, d = th + 0.04;
@@ -826,16 +836,16 @@ function archWindow(parent, x, z, rot, th) { // tall window with a round top, sl
 }
 function wallSegS(x0, z0, x1, z1, S, parent) {
   if (S.v2) return wallSegV2(x0, z0, x1, z1, S, parent);
-  const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), th = 0.3, h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), th = 0.15, h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (len < 0.05) return;
-  put(rbox(alongX ? len : th, h, alongX ? th : len, S.wall, 0.1, { r: 0.95 }), cx, h / 2 + 0.1, cz, parent);
-  put(rbox(alongX ? len + 0.06 : th + 0.12, 0.12, alongX ? th + 0.12 : len + 0.06, S.cap, 0.06, { r: 0.9 }), cx, h + 0.15, cz, parent);
-  put(rbox(alongX ? len + 0.02 : th + 0.06, 0.16, alongX ? th + 0.06 : len + 0.02, S.base, 0.05, { r: 0.95 }), cx, 0.2, cz, parent);
-  if (S.posts) for (const [px, pz] of [[x0, z0], [x1, z1]]) { put(rbox(0.38, h, 0.38, S.wall, 0.06, { r: 0.95 }), px, h / 2 + 0.1, pz, parent); put(rbox(0.48, 0.14, 0.48, S.cap, 0.06, { r: 0.9 }), px, h + 0.17, pz, parent); put(rbox(0.42, 0.2, 0.42, S.base, 0.05, { r: 0.95 }), px, 0.2, pz, parent); } // square pillar: cap + plinth
-  if (S.ivy && len > 1.2) for (let u = 0.35; u < len - 0.2; u += 0.42) { const k = Math.floor(u * 7) % 3, px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u;
-    put(leaf(0.12, ['#5E9E5A', '#4E8F4F', '#79B266'][k], { r: 0.95 }), px, h + 0.22, pz, parent);
-    if (k !== 1) for (let d = 1; d <= 1 + (k === 2 ? 1 : 0); d++) put(leaf(0.075, '#5E9E5A', { r: 0.95 }), px + (alongX ? 0 : 0.17), h + 0.18 - d * 0.2, pz + (alongX ? 0.17 : 0), parent); }
-  if (S.lights && len > 1.5) for (let u = 0.6; u < len - 0.3; u += 0.75) put(leaf(0.045, '#FFE2A8', { e: '#FFD27A', ei: 1.6 }), alongX ? Math.min(x0, x1) + u : cx, h + 0.02 - Math.abs(Math.sin(u * 2.1)) * 0.12, alongX ? cz : Math.min(z0, z1) + u, parent);
+  const n = (parent.userData && parent.userData.n) || [0, -1]; // own side only (−n): a neighbour's wall on the same line never overlaps this one
+  const run = (a, b, hh, y, c, r, o, ex = 0) => wbox(parent, alongX, cx, cz, 1, n, -len / 2 - ex, len / 2 + ex, a, b, hh, y, c, r, o);
+  run(-th, 0, h, h / 2 + 0.1, S.wall, 0.1, { r: 0.95 });
+  run(-th - 0.06, 0.06, 0.12, h + 0.15, S.cap, 0.06, { r: 0.9 }, 0.03);
+  run(-th - 0.03, 0.03, 0.16, 0.2, S.base, 0.05, { r: 0.95 }, 0.01);
+  if (S.posts) { const ds = Math.sign(alongX ? x1 - x0 : z1 - z0) || 1;
+    for (const [px, pz, d] of [[x0, z0, ds], [x1, z1, -ds]]) { wbox(parent, alongX, px, pz, d, n, -0.04, 0.34, -th - 0.04, 0.04, h, h / 2 + 0.1, S.wall, 0.06, { r: 0.95 }); wbox(parent, alongX, px, pz, d, n, -0.05, 0.39, -th - 0.09, 0.05, 0.14, h + 0.17, S.cap, 0.06, { r: 0.9 }); wbox(parent, alongX, px, pz, d, n, -0.04, 0.37, -th - 0.06, 0.04, 0.2, 0.2, S.base, 0.05, { r: 0.95 }); } } // square pillar: cap + plinth
+  if (S.lights && len > 1.5) for (let u = 0.6; u < len - 0.3; u += 0.75) put(leaf(0.045, '#FFE2A8', { e: '#FFD27A', ei: 1.6 }), (alongX ? Math.min(x0, x1) + u : cx) - n[0] * th / 2, h + 0.02 - Math.abs(Math.sin(u * 2.1)) * 0.12, (alongX ? cz : Math.min(z0, z1) + u) - n[1] * th / 2, parent);
 }
 // sheet C #4: cream frame, four panes split by a cross mullion, a deep sill
 function kitWindow(parent, x, z, rot) {
@@ -864,13 +874,13 @@ function buildRoom(r) {
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
   const ca0 = Math.cos(r.a), sa0 = Math.sin(r.a), loc = (nx, nz) => Math.round(nx * ca0 - nz * sa0) + ',' + Math.round(nx * sa0 + nz * ca0); // world side -> room-local side
-  const wallG = []; const side = (nx, nz) => { const sg = new THREE.Group(); g.add(sg); sg.userData.n = [nx, nz]; if (RS && RS.wallSide) sg.userData.wall = RS.wallSide[loc(nx, nz)]; sg.userData.p = [nx ? (nx < 0 ? q.x0 : q.x1) : mx, nz ? (nz < 0 ? q.z0 : q.z1) : mz]; wallG.push(sg); return sg; };
-  if (!outer(mx, q.z0 - 0.3, -1)) wallWithGap(q.x0, q.z0, q.x1, q.z0, near(dp.z, q.z0) ? dp.x : 0, side(0, -1), RS);
-  if (!outer(mx, q.z1 + 0.3, 1)) wallWithGap(q.x0, q.z1, q.x1, q.z1, near(dp.z, q.z1) ? dp.x : 0, side(0, 1), RS);
-  if (!outer(q.x0 - 0.3, mz, 0)) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, side(-1, 0), RS);
-  if (!outer(q.x1 + 0.3, mz, 0)) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, side(1, 0), RS);
+  const wallG = [], V2 = !!(RS && RS.v2); const side = (nx, nz, ow) => { const sg = new THREE.Group(); g.add(sg); sg.userData.n = [nx, nz]; sg.userData.outer = !!ow; if (RS && RS.wallSide) sg.userData.wall = RS.wallSide[loc(nx, nz)]; sg.userData.p = [nx ? (nx < 0 ? q.x0 : q.x1) : mx, nz ? (nz < 0 ? q.z0 : q.z1) : mz]; wallG.push(sg); return sg; };
+  { const o = outer(mx, q.z0 - 0.3, -1); if (!o || V2) wallWithGap(q.x0, q.z0, q.x1, q.z0, near(dp.z, q.z0) ? dp.x : 0, side(0, -1, o), RS); }
+  { const o = outer(mx, q.z1 + 0.3, 1); if (!o || V2) wallWithGap(q.x0, q.z1, q.x1, q.z1, near(dp.z, q.z1) ? dp.x : 0, side(0, 1, o), RS); }
+  { const o = outer(q.x0 - 0.3, mz, 0); if (!o || V2) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, side(-1, 0, o), RS); }
+  { const o = outer(q.x1 + 0.3, mz, 0); if (!o || V2) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, side(1, 0, o), RS); }
   if (RS && RS.v2) { const opts = [[0, -1, mx, q.z0, 0, near(dp.z, q.z0)], [-1, 0, q.x0, mz, Math.PI / 2, near(dp.x, q.x0)], [0, 1, mx, q.z1, 0, near(dp.z, q.z1)], [1, 0, q.x1, mz, Math.PI / 2, near(dp.x, q.x1)]];
-    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
+    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || sg.userData.outer || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
       const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
   const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(Z.st).fill(null), cx: r.x, cz: r.z, door, g };

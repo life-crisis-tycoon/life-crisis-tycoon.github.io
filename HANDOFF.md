@@ -64,3 +64,8 @@ Read this first. The user (French or English; answer in the language she writes 
 - `tools/blender/`: `make3.py` (reception desk, plane tree, toilet cubicle), `simple.py` (plants s/m/l, side table, planter, bus stop, kitchenette, radiator, air-con). Run with `pip install bpy` (Blender 5.2 headless): `python3 simple.py -- out all`.
 - In game: `glbSwap(group, name, {h|len, rot, y, keep})` replaces a primitive-built group with `models/props/<name>.js` once loaded (`?props=0` disables). Groups marked `userData.swap` are excluded from mesh batching.
 - Remaining art pilot step: sheet C building kit (walls, doors, windows, facades, floor materials), then rendering upgrades (soft shadows, AO, grading) within a mobile budget. Meshy balance ~589 credits; reference sheets are in `tools/art_src/`. The raw 20-58 MB Meshy GLBs are not included (too big); re-download from Meshy if a re-bake is needed.
+
+## Walls (2026-11-18)
+- Each room builds walls only on its own side of the wall line (`wbox`, `wallSegS`, `wallSegV2`): old-style rooms 0.15 m inside, v2 rooms (nap/budget/career) a 0.09 m coloured lining plus a 0.06 m cream skin outside. Shared walls therefore never overlap or z-fight and every room shows its own colour inside.
+- v2 rooms also line the sides against the building's outer wall (`side(..., outer)`, lining at 0.135 m, no posts/skin); the arch window still skips those sides.
+- Ivy on wall tops is gone (no `ivy` flag in `ROOM_STYLE`).
