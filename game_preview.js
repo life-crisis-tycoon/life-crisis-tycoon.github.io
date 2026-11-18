@@ -1114,7 +1114,7 @@ function kitFrame(room, frontDoor) {
 function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
   const w = F.w, D = F.D, lx = -w / 2, rx = w / 2, bz = -D / 2, fz = D / 2, H = Math.PI / 2, out = [], rep = [], door = F.door;
   const W = (x, z) => { const p = F.T(x, z); return { x: cx + p.x, z: cz + p.z }; }; // layout frame -> station coords
-  const lane = door ? (Math.abs(door.z) / (D / 2) >= Math.abs(door.x) / (w / 2) ? { x0: door.x - 0.55, x1: door.x + 0.55, z0: door.z > 0 ? door.z - 2.2 : door.z, z1: door.z > 0 ? door.z : door.z + 2.2 } : { z0: door.z - 0.55, z1: door.z + 0.55, x0: door.x > 0 ? door.x - 2.2 : door.x, x1: door.x > 0 ? door.x : door.x + 2.2 }) : null; // 1.1 m wide, 2.2 m in from the door
+  const lane = door ? (Math.abs(door.z) / (D / 2) >= Math.abs(door.x) / (w / 2) ? { x0: door.x - 0.55, x1: door.x + 0.55, z0: door.z > 0 ? door.z - 1.4 : door.z, z1: door.z > 0 ? door.z : door.z + 1.4 } : { z0: door.z - 0.55, z1: door.z + 0.55, x0: door.x > 0 ? door.x - 1.4 : door.x, x1: door.x > 0 ? door.x : door.x + 1.4 }) : null; // 1.1 m wide, 1.4 m in from the door
   for (const it of items) { if (!it) continue; const dm = it.p === '@plant' ? [0.45, 1, 0.45] : dims[it.p]; if (!dm) { rep.push('no piece ' + it.p); continue; }
     const k = it.p === '@plant' ? (it.s || 1.5) : it.len ? it.len / Math.max(dm[0], dm[2]) : it.h / dm[1], pw = dm[0] * k, pd = dm[2] * k, gp = it.gap ?? 0.04; let x, z, rot;
     const along = (u, half, lo, hi) => u === 'L' || u === 'B' ? lo + half + gp : u === 'R' || u === 'F' ? hi - half - gp : (lo + hi) / 2 + (u || 0);
@@ -1205,7 +1205,7 @@ function cafeKit(g, cx, cz, room) {
     const F = kitFrame(room, true), w = F.w, D = F.D, S = D < 5 || w < 5, sx = F.door && F.door.x > 0 ? -1 : 1; // sx: the side away from the door
     const ccz = -D / 2 + 0.5 + 0.9 + 0.53, ccx = S ? -0.35 : -0.6, L = [];
     L.push({ p: 'k_cabinet', h: 1.0, wall: 'back', u: ccx - 0.2 }, { p: 'k_counter', h: 1.15, x: ccx, z: ccz, rot: 0 }, { p: 'k_case', h: 1.25, x: ccx + 0.83 + 0.64, z: ccz - 0.07, rot: 0 });
-    if (S) L.push({ p: 'k_table', h: 0.78, x: sx * (w / 2 - 0.6), z: D / 2 - 1.0 }, { p: 'k_chair', h: 0.95, x: sx * (w / 2 - 0.6), z: D / 2 - 1.68, rot: 0 }, { p: 'k_chair', h: 0.95, x: sx * (w / 2 - 0.6), z: D / 2 - 0.32, rot: Math.PI });
+    if (S) L.push({ p: 'k_table', h: 0.78, x: sx * (w / 2 - 0.45), z: D / 2 - 0.8 }, { p: 'k_chair', h: 0.95, x: sx * (w / 2 - 1.13), z: D / 2 - 0.8, rot: sx * H }); // small café: one table against the side wall, one chair
     else { const bx = sx * (w / 2 - 0.33); // banquette on the side wall away from the door, its table and one chair facing it; a second table on the door side
       L.push({ p: 'k_bench', h: 0.95, wall: sx > 0 ? 'right' : 'left', u: 0.9 }, { p: 'k_table', h: 0.78, x: bx - sx * 0.95, z: 0.9 }, { p: 'k_chair', h: 0.95, x: bx - sx * 1.65, z: 0.9, rot: sx * H },
         { p: 'k_table', h: 0.78, x: -sx * 1.3, z: 1.4 }, { p: 'k_chair', h: 0.95, x: -sx * 1.3 - 0.68, z: 1.4, rot: H }, { p: 'k_chair', h: 0.95, x: -sx * 1.3 + 0.68, z: 1.4, rot: -H },
