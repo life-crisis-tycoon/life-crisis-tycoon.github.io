@@ -187,11 +187,18 @@ sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
 scene.add(sun); sun.target.position.set(-1, 0, 2); scene.add(sun.target);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
 const view = { tx: -0.6, tz: -1.6, half: 15.5, yaw: Math.PI / 4, pitch: 0.72, yawT: null };
+const CLOSE_HALF = 10; // zoomed in closer than this = dollhouse view: everything between the camera and what you look at drops to hip height
+const camPitch = () => Math.max(view.pitch, 0.74 * Math.min(1, Math.max(0, (CLOSE_HALF + 3 - view.half) / 4))); // close up, the camera looks down a little more
+let PR_BASE = null; // pixel ratio chosen by the graphics level / speed watcher; close up we draw at the screen's full sharpness
+function closePR() { if (PR_BASE == null) PR_BASE = renderer.getPixelRatio(); const dpr = window.devicePixelRatio || 1;
+  const want = view.half < CLOSE_HALF - 0.4 ? Math.max(PR_BASE, Math.min(dpr, GFX.low ? 2 : 3)) : view.half > CLOSE_HALF + 0.4 ? PR_BASE : null;
+  if (want != null && Math.abs(renderer.getPixelRatio() - want) > 0.01) { renderer.setPixelRatio(want); renderer.setSize(innerWidth, innerHeight, false); } }
 function placeCam() {
+  closePR();
   const a = innerWidth / innerHeight;
   cam.left = -view.half * a; cam.right = view.half * a; cam.top = view.half; cam.bottom = -view.half; cam.updateProjectionMatrix();
-  const D = 65, cp = Math.cos(view.pitch);
-  cam.position.set(view.tx + Math.sin(view.yaw) * cp * D, Math.sin(view.pitch) * D, view.tz + Math.cos(view.yaw) * cp * D); cam.lookAt(view.tx, 0, view.tz); cam.updateMatrixWorld();
+  const D = 65, ep = camPitch(), cp = Math.cos(ep);
+  cam.position.set(view.tx + Math.sin(view.yaw) * cp * D, Math.sin(ep) * D, view.tz + Math.cos(view.yaw) * cp * D); cam.lookAt(view.tx, 0, view.tz); cam.updateMatrixWorld();
   updateCutaway();
 }
 const GHOST = new Map();
@@ -214,12 +221,14 @@ function updateCutaway() {
   const cx = Math.sin(view.yaw), cz = Math.cos(view.yaw);
   // Two Point Hospital cutaway: back walls full height (taller than people); walls on the camera side cut to hip height
   // (solid, never see-through); doors always keep their full frame and leaf. The 🧱 button raises every wall when wanted.
-  const up = WALLS_UP, cut = (n, p) => { if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
-  for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = !up && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
+  const close = view.half < CLOSE_HALF, fr = (p) => !!p && (p[0] - view.tx) * cx + (p[1] - view.tz) * cz > 0.6; // fr: nearer the camera than the point you look at
+  const up = WALLS_UP, cut = (n, p) => { if (close && fr(p)) return true; if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
+  const tv = new THREE.Vector3(), wp2 = (o) => { o.getWorldPosition(tv); return [tv.x, tv.z]; };
+  for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = (!up || close) && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
   for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1;
   for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
   for (const d of world.doors || []) { d.g.scale.y = 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
-  const tan = Math.tan(view.pitch);
+  const tan = Math.tan(camPitch());
   for (const b of world.cityB || []) {
     const dx = b.x - view.tx, dz = b.z - view.tz, along = dx * cx + dz * cz;
     const perp = Math.abs(dx * cz - dz * cx);
@@ -663,6 +672,7 @@ function glbSwap(g, name, o = {}) {
   propModel(name).then((src) => {
     if (!g.parent) return;
     const m = src.clone(); m.rotation.y = o.rot || 0;
+    const AN = Math.min(8, renderer.capabilities.getMaxAnisotropy()); m.traverse((c) => { const mp = c.isMesh && c.material && c.material.map; if (mp && mp.anisotropy < AN) { mp.anisotropy = AN; mp.needsUpdate = true; } }); // sharp textures at an angle
     if (o.crease && CREASE_FN) m.traverse((c) => { if (c.isMesh) c.geometry = c.geometry.userData.cr || (c.geometry.userData.cr = CREASE_FN(c.geometry, o.crease)); }); // crisp edges on soft Meshy furniture
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
     const sl = o.len ? o.len / Math.max(sz.x, sz.z) : null, sh = o.h ? o.h / sz.y : null;
@@ -2938,10 +2948,10 @@ function step(dt, now = performance.now(), rdt = dt) {
 }
 const fpsW = { t: 0, n: 0, sum: 0, done: false };
 function fpsWatch(rdt) {
-  if (fpsW.done || GFX.pref !== 'auto' || !inGame || document.hidden) return;
+  if (fpsW.done || GFX.pref !== 'auto' || !inGame || document.hidden || (PR_BASE != null && renderer.getPixelRatio() > PR_BASE + 0.01)) return; // don't judge speed while zoomed in at full sharpness
   fpsW.t += rdt; fpsW.n++; fpsW.sum += rdt; if (fpsW.t < 8) return;
   const avg = fpsW.sum / fpsW.n; fpsW.t = fpsW.n = fpsW.sum = 0;
-  if (avg > 0.05) { fpsW.done = true; renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); try { localStorage.setItem('ahq_gfx_hint2', 'low'); } catch (e) {} if (!GFX.low) toast('🖥️ ' + t('gfx.slow'), 3500); }
+  if (avg > 0.05) { fpsW.done = true; PR_BASE = Math.min(window.devicePixelRatio || 1, 1.5); renderer.setPixelRatio(PR_BASE); try { localStorage.setItem('ahq_gfx_hint2', 'low'); } catch (e) {} if (!GFX.low) toast('🖥️ ' + t('gfx.slow'), 3500); }
 }
 function loop(now) {
   const rdt = Math.min(0.1, (now - last) / 1000); last = now; fpsWatch(Math.min(0.5, rdt));
