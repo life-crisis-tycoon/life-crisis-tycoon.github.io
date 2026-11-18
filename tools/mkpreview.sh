@@ -9,7 +9,8 @@ python3 - <<'PY'
 import re
 h=open('index.html').read()
 h=h.replace('<script type="module" src="./account.js"></script>','')
-h=h.replace('src="./game.js"','src="./game_preview.js"')
+import time
+h=h.replace('src="./game.js"','src="./game_preview.js?v=%d"' % int(time.time()))  # cache-buster: each rebuild loads the new preview code
 h=re.sub(r"<script>if \('serviceWorker'.*?</script>","",h,flags=re.S)
 h=h.replace('<head>','<head>'+open('tools/preview/shim.html').read(),1)
 h=h.replace('<title>','<meta name="robots" content="noindex"><title>',1)
