@@ -832,7 +832,7 @@ ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4
 const OUT_WALL = '#F3E8D6', OUT_CAP = '#FBF4E8', OUT_BASE = '#A9C29E';
 ROOM_STYLE.career = { v2: true, model: 'career_kit', kit: true, winOuter: true, wood: ['#7A4428', '#8C5232'], winSide: '-1,0', winOff: 0, wall: '#22305A', inBase: '#151E3A', floor: '#6E3324', door: '#22305A', panel: '#22305A', pop: '#F0A830', posts: true, h: ROOM_H };
 ROOM_STYLE.pharmacy = { v2: true, model: 'pharmacy_kit', kit: true, floorMap: () => PHARMA_FLOOR(), wall: '#CFE6D4', inBase: '#A9D3B6', floor: '#F6F3EC', door: '#8FC7A0', panel: '#8FC7A0', pop: '#5BB37A', posts: true, h: ROOM_H };
-ROOM_STYLE.social = { v2: true, model: 'social_kit', kit: true, wall: '#E9A9A4', inBase: '#D98C8A', floor: '#B5646E', door: '#F1E2CC', panel: '#C97E86', pop: '#D4A64A', posts: true, h: ROOM_H };
+ROOM_STYLE.social = { v2: true, model: 'social_kit', kit: true, wall: '#E9A9A4', inBase: '#D98C8A', floor: '#A45A6C', door: '#F1E2CC', panel: '#C97E86', pop: '#D4A64A', posts: true, h: ROOM_H };
 ROOM_STYLE.wedding = { v2: true, model: 'wedding_kit', kit: true, wall: '#F0A12C', inBase: '#D9861A', floor: '#EBDCC6', door: '#8E1F28', panel: '#8E1F28', pop: '#E3B341', posts: true, h: ROOM_H };
 ROOM_STYLE.therapy = { v2: true, model: 'therapy_kit', kit: true, winSide: '-1,0', winOuter: true, wood: ['#F4F0E9', '#EAE4DA'], wall: '#5C3A26', inBase: '#3F2719', floor: '#F4F0E9', door: '#C8644E', panel: '#C8644E', pop: '#E3A23B', posts: true, h: ROOM_H };
 ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0', winOuter: true, floorMap: () => TERRAZZO(), wall: '#EFA7AE', inBase: '#D9858F', floor: '#F2C2C4', door: '#E98C98', panel: '#E98C98', pop: '#E7B04A', posts: true, h: ROOM_H };
