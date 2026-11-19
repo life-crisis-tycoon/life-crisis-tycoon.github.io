@@ -832,6 +832,8 @@ ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4
 const OUT_WALL = '#F3E8D6', OUT_CAP = '#FBF4E8', OUT_BASE = '#A9C29E';
 ROOM_STYLE.career = { v2: true, model: 'career_kit', kit: true, winOuter: true, wood: ['#7A4428', '#8C5232'], winSide: '-1,0', winOff: 0, wall: '#22305A', inBase: '#151E3A', floor: '#6E3324', door: '#22305A', panel: '#22305A', pop: '#F0A830', posts: true, h: ROOM_H };
 ROOM_STYLE.pharmacy = { v2: true, model: 'pharmacy_kit', kit: true, floorMap: () => PHARMA_FLOOR(), wall: '#CFE6D4', inBase: '#A9D3B6', floor: '#F6F3EC', door: '#8FC7A0', panel: '#8FC7A0', pop: '#5BB37A', posts: true, h: ROOM_H };
+ROOM_STYLE.social = { v2: true, model: 'social_kit', kit: true, wall: '#E9A9A4', inBase: '#D98C8A', floor: '#A45A6C', door: '#F1E2CC', panel: '#C97E86', pop: '#D4A64A', posts: true, h: ROOM_H };
+ROOM_STYLE.wedding = { v2: true, model: 'wedding_kit', kit: true, wall: '#F0A12C', inBase: '#D9861A', floor: '#EBDCC6', door: '#8E1F28', panel: '#8E1F28', pop: '#E3B341', posts: true, h: ROOM_H };
 ROOM_STYLE.therapy = { v2: true, model: 'therapy_kit', kit: true, winSide: '-1,0', winOuter: true, wood: ['#F4F0E9', '#EAE4DA'], wall: '#5C3A26', inBase: '#3F2719', floor: '#F4F0E9', door: '#C8644E', panel: '#C8644E', pop: '#E3A23B', posts: true, h: ROOM_H };
 ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0', winOuter: true, floorMap: () => TERRAZZO(), wall: '#EFA7AE', inBase: '#D9858F', floor: '#F2C2C4', door: '#E98C98', panel: '#E98C98', pop: '#E7B04A', posts: true, h: ROOM_H };
 ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', floorM: () => mat('#FFFFFF', { map: CHECKER_M(), mapK: 'cafeM', r: 0.6 }), model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER_SOFT(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
@@ -1365,6 +1367,46 @@ function trainingKit(g, cx, cz, room) {
   const tx = sz === 's' ? 0.85 : 1.05, tz = bz + 0.95; // beside the board, facing the class; rot2 = turned to the board
   room.staffSpot = { x: cx + tx, z: cz + tz, rot: -0.35, rot2: Math.atan2(-0.25 - tx, bz + 0.45 - tz), sit: false, y: 0 };
 }
+const SOCIAL_DIMS = {"k_sofa":[0.998,0.459,0.5488],"k_pouf":[0.998,0.9941,0.9941],"k_cart":[0.998,0.998,0.5723],"k_vase":[0.6777,0.998,0.6777]};
+const WEDDING_DIMS = {"k_desk":[0.998,0.709,0.5176],"k_arch":[0.9238,0.998,0.6934],"k_armchair":[0.9512,0.998,0.7871],"k_dress":[0.5566,0.998,0.4785]};
+// a group hung on a station wall (nx, nz = wall normal pointing out of the room), anchored on the wall line so the cutaway judges it there
+function wallHung(g, cx, cz, room, nx, nz, u, y) { const w = room.w || 6, D = SIZES[room.sz || 'm'].D, ax = nx ? cx + nx * w / 2 : cx + u, az = nz ? cz + nz * D / 2 : cz + u;
+  const a = grp(ax, az, nx ? -nx * Math.PI / 2 : nz > 0 ? Math.PI : 0, g); a.userData.hang = [nx, nz]; a.userData.swap = true; const p = grp(0, 0.06, 0, a); p.position.y = y; return p; }
+// Social Club (Tripo pieces, layout = the social club painting): curved lilac sofa on the back wall under string lights, marble table with poufs around it, gold bar cart on the right, a plant in the corner
+function socialKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, bz = -D / 2, n = seatsN(room);
+  const tz = S ? 0.05 : -0.2, R0 = S ? 0.82 : 0.85;
+  const L = [{ p: 'k_sofa', len: Math.min(1.9, w - 2.0), wall: 'back', u: S ? 0 : 0.2 }];
+  const ang = n === 2 ? [Math.PI, 0] : n === 3 ? [Math.PI, 0, Math.PI / 2] : [Math.PI * 0.75, Math.PI * 0.25, -Math.PI * 0.75, -Math.PI * 0.25];
+  const seats = ang.slice(0, n).map((a) => ({ x: Math.cos(a) * R0, z: tz + Math.sin(a) * R0 }));
+  for (const s of seats) L.push({ p: 'k_pouf', h: 0.44, x: s.x, z: s.z, solid: false });
+  L.push({ p: 'k_vase', h: 0.2, x: 0.05, z: tz - 0.05, y: 0.72, solid: false });
+  if (last && !S) L.push({ p: 'k_cart', len: 0.95, wall: 'right', u: 0.6 });
+  if (first) L.push({ p: '@plant', s: 1.6, wall: 'left', u: 'B' });
+  kitRoom(g, cx, cz, room, ROOM_STYLE.social.model, L, SOCIAL_DIMS);
+  const tb = grp(cx, cz + tz, 0, g); put(cyl(0.45, 0.45, 0.05, '#F4F1EC', { r: 0.25 }), 0, 0.76, 0, tb); put(cyl(0.05, 0.05, 0.62, '#C9A24A', { m: 0.6, r: 0.3 }), 0, 0.43, 0, tb); put(cyl(0.26, 0.3, 0.05, '#C9A24A', { m: 0.6, r: 0.3 }), 0, 0.14, 0, tb); // marble table on a brass foot
+  for (const [gx, gz, c] of [[-0.24, 0.1, '#F2A3A8'], [0.26, 0.14, '#8E1F38']]) { const gl = grp(gx, gz, 0, tb); put(cyl(0.006, 0.006, 0.1, '#FFFFFF', { op: 0.7 }), 0, 0.84, 0, gl); put(cyl(0.045, 0.02, 0.07, c, { op: 0.75 }), 0, 0.92, 0, gl); }
+  for (const s of seats) room.spots.push({ x: cx + s.x, z: cz + s.z, rot: Math.atan2(-s.x, tz - s.z), sit: true, y: 0, busy: null });
+  { const lg = wallHung(g, cx, cz, room, 0, -1, 0, 2.15), nb = Math.max(6, Math.round(w * 2)); // string lights along the back wall
+    for (let i = 0; i < nb; i++) { const t = i / (nb - 1), x = (t - 0.5) * (w - 0.6), y = -0.18 * Math.sin(t * Math.PI * 2) ** 2; put(sph(0.045, '#FFE7A8', { e: '#FFD27A', ei: 1.4 }), x, y - 0.05, 0.08, lg); put(cyl(0.004, 0.004, (w - 0.6) / (nb - 1), '#5A4A3A'), x, y + 0.02, 0.06, lg).rotation.z = Math.PI / 2; } }
+  room.staffSpot = { x: cx + (S ? -1.15 : -1.55), z: cz + tz + (S ? 0.9 : 1.2), rot: Math.atan2(1.4, -1.0), sit: false, y: 0 };
+}
+// Wedding Calm Bureau (Mumbai; layout = the wedding bureau painting): carved desk with the planner behind it, two red armchairs on a red rug, the lehenga on its mannequin, marigolds, the flower arch in the corner
+function weddingKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, bz = -D / 2;
+  const dz = bz + (S ? 1.05 : 1.75), dx = S ? 0 : w < 5 ? -0.25 : -0.35, az = dz + (S ? 1.05 : 1.4);
+  const L = [{ p: 'k_desk', len: 1.25, x: dx, z: dz }, { p: 'k_armchair', h: 0.85, x: dx - 0.48, z: az, rot: Math.PI, solid: false }, { p: 'k_armchair', h: 0.85, x: dx + 0.48, z: az, rot: Math.PI }];
+  if (first) L.push({ p: 'k_dress', h: 1.7, wall: 'left', u: 'B', gap: 0.15 });
+  if (last && !S) L.push({ p: 'k_arch', h: 2.0, wall: 'back', u: 'R' });
+  kitRoom(g, cx, cz, room, ROOM_STYLE.wedding.model, L, WEDDING_DIMS);
+  { const rw = w * 0.7, rd = D * 0.62, rz = (dz - 0.55 + az + 0.6) / 2; put(rbox(rw, 0.02, rd, '#B3863A', 0.01), cx + dx, 0.12, cz + rz, g); put(rbox(rw - 0.14, 0.024, rd - 0.14, '#9E1B24', 0.01), cx + dx, 0.125, cz + rz, g); } // red rug with a gold border
+  if (first) { const mx = cx - w / 2 + (S ? 0.38 : 1.05), mz = cz + (S ? 0.1 : bz + 0.32), pg = grp(mx, mz, 0, g); put(cyl(0.2, 0.15, 0.32, '#B5623A'), 0, 0.27, 0, pg); put(cyl(0.21, 0.21, 0.04, '#8E4A2A'), 0, 0.43, 0, pg); // marigolds in a terracotta pot
+    for (let i = 0; i < 9; i++) { const a = i * 2.4, r = i ? 0.13 : 0; put(sph(0.075, i % 3 ? '#F28C1E' : '#F6B41A'), Math.cos(a) * r, 0.55 + (i ? 0 : 0.06), Math.sin(a) * r, pg); } for (let i = 0; i < 5; i++) put(sph(0.05, '#3E7A3A'), Math.cos(i * 1.3) * 0.2, 0.47, Math.sin(i * 1.3) * 0.2, pg); }
+  { const fr = wallHung(g, cx, cz, room, 0, -1, dx, 1.55); put(rbox(0.62, 0.78, 0.04, '#5A2E1E', 0.02), 0, 0, 0.02, fr); // framed sign above the desk
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.68), new THREE.MeshStandardMaterial({ map: canvasTex(128, 168, (c, W, H) => { c.fillStyle = '#F6EAD3'; c.fillRect(0, 0, W, H); c.strokeStyle = '#B3863A'; c.lineWidth = 4; c.strokeRect(8, 8, W - 16, H - 16); c.font = '64px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('💍', W / 2, H / 2 - 8); c.fillStyle = '#9E1B24'; c.fillRect(W / 2 - 26, H - 40, 52, 4); }), roughness: 0.9 })); sg.position.set(0, 0, 0.045); fr.add(sg); }
+  room.staffSpot = { x: cx + dx, z: cz + dz - 0.75, rot: 0, sit: false, y: 0 };
+  room.spots.push({ x: cx + dx - 0.48, z: cz + az + 0.05, rot: Math.PI, sit: true, y: 0.02, busy: null });
+}
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
     if (ROOM_STYLE.budget.model && PROPS_ON) { // 2026 room: the whole interior is one model made from the room painting; walls, arched door and window stay in code
@@ -1481,6 +1523,7 @@ const furniture = {
     for (let i = 0, n = Math.max(2, Math.floor(cw / 0.9)); i < n; i++) room.spots.push({ x: ccx - cw / 2 + cw * (i + 0.5) / n, z: ccz + 0.85, rot: Math.PI, sit: false, y: 0, cafe: true, busy: null });
   },
   social(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.social.kit && PROPS_ON) { socialKit(g, cx, cz, room); return; }
     const tb = grp(cx, cz - 0.3 * K, 0, g); put(cyl(0.7, 0.7, 0.08, '#FFFFFF'), 0, 0.82, 0, tb); put(cyl(0.08, 0.1, 0.75, '#7A8088'), 0, 0.42, 0, tb);
     put(cyl(0.05, 0.04, 0.22, '#E0567F', { op: 0.85 }), -0.2, 0.97, 0.1, tb); put(cyl(0.05, 0.04, 0.22, '#FFD25E', { op: 0.85 }), 0.22, 0.97, -0.05, tb); put(sph(0.12, '#FF8FAB'), 0, 0.95, -0.25, tb);
     { const n = seatsN(room), tz = cz - 0.3 * K, R0 = 1.05 * Math.max(K, 0.8); for (let i = 0; i < n; i++) { const a = Math.PI + (i * 2 * Math.PI) / n + (n === 3 ? 0.4 : 0), x = cx + Math.cos(a) * R0, z = tz + Math.sin(a) * R0, rot = Math.atan2(cx - x, tz - z); const st = grp(x, z, rot, g); put(cyl(0.25, 0.22, 0.5, '#E0567F'), 0, 0.3, 0, st); room.spots.push({ x, z, rot, sit: true, y: 0.05, busy: null }); } }
@@ -1537,6 +1580,7 @@ const furniture = {
     room.staffSpot = { x: cx - 0.8 * K, z: cz - 1.5 * K, rot: Math.PI * 0.75, sit: false, y: 0 };
   },
   wedding(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.wedding.kit && PROPS_ON) { weddingKit(g, cx, cz, room); return; }
     const ar = grp(cx, cz - 2.5 * K, 0, g); for (const sx of [-0.9, 0.9]) put(cyl(0.08, 0.08, 2.0, '#F2C14E', { m: 0.5, r: 0.3 }), sx, 1.0, 0, ar); const top = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.08, 8, 24, Math.PI), mat('#F2C14E', { m: 0.5, r: 0.3 })); put(top, 0, 2.0, 0, ar);
     for (let i = 0; i < 9; i++) { const a = i / 8 * Math.PI; put(sph(0.12, ['#FF8FAB', '#FFFFFF', '#FFD25E'][i % 3]), Math.cos(a) * 0.9, 2.0 + Math.sin(a) * 0.9, 0.05, ar); }
     const d = grp(cx, cz - 0.7 * K, 0, g); put(rbox(2.0, 0.12, 0.9, '#FFFFFF', 0.05), 0, 0.86, 0, d); put(rbox(1.8, 0.76, 0.1, '#D4537E', 0.03), 0, 0.46, 0.38, d);
