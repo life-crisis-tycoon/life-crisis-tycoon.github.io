@@ -1,7 +1,8 @@
 // Training room (🎓 sanitary course) + epidemics — career mode from Mumbai
 export const EPI = {
 en: {
-  'r.training': 'Training Room', 'r.training.d': 'A trainer teaches your team. The 🎓 sanitary course (2 days) makes a staff member immune to epidemics in this city.',
+  'trn.lvlBtn': 'Level ⭐{n} course · {m}', 'trn.lvlProg': 'Level ⭐{n} course {p}%', 'trn.lvlMax': 'Top level ⭐5', 'trn.lvlInfo': 'Level course: 1 day, +1 ⭐ (faster work), wage +{w} per rent day', 'trn.lvlStart': 'Off to the level course: aiming for ⭐{n}!', 'trn.lvlStartT': '{name} starts the ⭐{n} course', 'trn.lvlDone': 'Course done: I am now ⭐{n}! 💪', 'trn.lvlDoneT': '{name} is now ⭐{n} · wage +{m}',
+  'r.training': 'Training Room', 'r.training.d': 'A trainer teaches your team. The 🎓 sanitary course (2 days) makes a staff member immune to epidemics in this city; the ⭐ level course (1 day) adds a star.',
   'role.trainer': 'Trainer', 'job.trainer': 'Runs courses in the Training Room',
   'p.flu': 'Office Flu', 'pd.flu': 'Fever, aches, a cough that clears the open space. Needs the pharmacy.', 'p.flurest': 'Flu Knockout', 'pd.flurest': 'Too wiped out to stand: needs a proper rest in the nap room.',
   'obj.epiclean': 'Epidemics without a penalty', 'gp.epiclean': 'Get through {n} epidemics without a penalty',
@@ -29,7 +30,8 @@ en: {
   'epi.pharmBtn': 'Pharmacy', 'epi.homeBtn': 'Home 1–2 days', 'epi.atHome': 'Sick, resting at home', 'epi.atPharm': 'At the pharmacy',
 },
 fr: {
-  'r.training': 'Salle de formation', 'r.training.d': 'Un formateur forme votre équipe. La formation sanitaire 🎓 (2 jours) rend un employé immunisé contre les épidémies dans cette ville.',
+  'trn.lvlBtn': 'Cours niveau ⭐{n} · {m}', 'trn.lvlProg': 'Cours niveau ⭐{n} {p} %', 'trn.lvlMax': 'Niveau max ⭐5', 'trn.lvlInfo': 'Cours de niveau : 1 jour, +1 ⭐ (travaille plus vite), salaire +{w} par jour de loyer', 'trn.lvlStart': 'Je pars au cours de niveau : objectif ⭐{n} !', 'trn.lvlStartT': '{name} commence le cours ⭐{n}', 'trn.lvlDone': 'Cours terminé : je suis maintenant ⭐{n} ! 💪', 'trn.lvlDoneT': '{name} passe ⭐{n} · salaire +{m}',
+  'r.training': 'Salle de formation', 'r.training.d': 'Un formateur forme votre équipe. La formation sanitaire 🎓 (2 jours) immunise un employé contre les épidémies dans cette ville ; le cours de niveau ⭐ (1 jour) lui ajoute une étoile.',
   'role.trainer': 'Formateur', 'job.trainer': 'Donne les cours dans la salle de formation',
   'p.flu': 'Grippe de bureau', 'pd.flu': 'Fièvre, courbatures, une toux qui vide l’open space. Il faut la pharmacie.', 'p.flurest': 'Grippe K.-O.', 'pd.flurest': 'Trop épuisé pour tenir debout : il faut un vrai repos en salle de sieste.',
   'obj.epiclean': 'Épidémies sans pénalité', 'gp.epiclean': 'Traverser {n} épidémies sans pénalité',
@@ -57,7 +59,8 @@ fr: {
   'epi.pharmBtn': 'Pharmacie', 'epi.homeBtn': 'Maison 1–2 jours', 'epi.atHome': 'Malade, au repos chez lui', 'epi.atPharm': 'À la pharmacie',
 },
 es: {
-  'r.training': 'Sala de formación', 'r.training.d': 'Un formador capacita a tu equipo. El curso sanitario 🎓 (2 días) hace a un empleado inmune a las epidemias en esta ciudad.',
+  'trn.lvlBtn': 'Curso nivel ⭐{n} · {m}', 'trn.lvlProg': 'Curso nivel ⭐{n} {p}%', 'trn.lvlMax': 'Nivel máximo ⭐5', 'trn.lvlInfo': 'Curso de nivel: 1 día, +1 ⭐ (trabaja más rápido), sueldo +{w} por día de alquiler', 'trn.lvlStart': '¡Me voy al curso de nivel: a por ⭐{n}!', 'trn.lvlStartT': '{name} empieza el curso ⭐{n}', 'trn.lvlDone': '¡Curso terminado: ahora soy ⭐{n}! 💪', 'trn.lvlDoneT': '{name} sube a ⭐{n} · sueldo +{m}',
+  'r.training': 'Sala de formación', 'r.training.d': 'Un formador capacita a tu equipo. El curso sanitario 🎓 (2 días) hace a un empleado inmune a las epidemias en esta ciudad; el curso de nivel ⭐ (1 día) le suma una estrella.',
   'role.trainer': 'Formador', 'job.trainer': 'Da los cursos en la sala de formación',
   'p.flu': 'Gripe de oficina', 'pd.flu': 'Fiebre, dolores y una tos que vacía la oficina. Necesita la farmacia.', 'p.flurest': 'Gripe K.O.', 'pd.flurest': 'Demasiado agotado para estar de pie: necesita descanso en la sala de siesta.',
   'obj.epiclean': 'Epidemias sin penalización', 'gp.epiclean': 'Superar {n} epidemias sin penalización',
@@ -85,7 +88,8 @@ es: {
   'epi.pharmBtn': 'Farmacia', 'epi.homeBtn': 'Casa 1–2 días', 'epi.atHome': 'Enfermo, descansando en casa', 'epi.atPharm': 'En la farmacia',
 },
 pt: {
-  'r.training': 'Sala de treinamento', 'r.training.d': 'Um instrutor treina sua equipe. O curso sanitário 🎓 (2 dias) deixa o funcionário imune às epidemias nesta cidade.',
+  'trn.lvlBtn': 'Curso nível ⭐{n} · {m}', 'trn.lvlProg': 'Curso nível ⭐{n} {p}%', 'trn.lvlMax': 'Nível máximo ⭐5', 'trn.lvlInfo': 'Curso de nível: 1 dia, +1 ⭐ (trabalha mais rápido), salário +{w} por dia de aluguel', 'trn.lvlStart': 'Vou para o curso de nível: rumo a ⭐{n}!', 'trn.lvlStartT': '{name} começa o curso ⭐{n}', 'trn.lvlDone': 'Curso concluído: agora sou ⭐{n}! 💪', 'trn.lvlDoneT': '{name} sobe para ⭐{n} · salário +{m}',
+  'r.training': 'Sala de treinamento', 'r.training.d': 'Um instrutor treina sua equipe. O curso sanitário 🎓 (2 dias) deixa o funcionário imune às epidemias nesta cidade; o curso de nível ⭐ (1 dia) dá mais uma estrela.',
   'role.trainer': 'Instrutor', 'job.trainer': 'Dá os cursos na sala de treinamento',
   'p.flu': 'Gripe de escritório', 'pd.flu': 'Febre, dor no corpo e uma tosse que esvazia o escritório. Precisa da farmácia.', 'p.flurest': 'Gripe nocaute', 'pd.flurest': 'Exausto demais para ficar de pé: precisa descansar na sala de cochilo.',
   'obj.epiclean': 'Epidemias sem penalidade', 'gp.epiclean': 'Passar por {n} epidemias sem penalidade',
@@ -113,7 +117,8 @@ pt: {
   'epi.pharmBtn': 'Farmácia', 'epi.homeBtn': 'Casa 1–2 dias', 'epi.atHome': 'Doente, descansando em casa', 'epi.atPharm': 'Na farmácia',
 },
 de: {
-  'r.training': 'Schulungsraum', 'r.training.d': 'Ein Trainer schult dein Team. Der Hygienekurs 🎓 (2 Tage) macht Mitarbeitende in dieser Stadt immun gegen Epidemien.',
+  'trn.lvlBtn': 'Stufenkurs ⭐{n} · {m}', 'trn.lvlProg': 'Stufenkurs ⭐{n} {p} %', 'trn.lvlMax': 'Höchststufe ⭐5', 'trn.lvlInfo': 'Stufenkurs: 1 Tag, +1 ⭐ (arbeitet schneller), Lohn +{w} pro Miettag', 'trn.lvlStart': 'Ab zum Stufenkurs: Ziel ⭐{n}!', 'trn.lvlStartT': '{name} beginnt den ⭐{n}-Kurs', 'trn.lvlDone': 'Kurs geschafft: Ich bin jetzt ⭐{n}! 💪', 'trn.lvlDoneT': '{name} ist jetzt ⭐{n} · Lohn +{m}',
+  'r.training': 'Schulungsraum', 'r.training.d': 'Ein Trainer schult dein Team. Der Hygienekurs 🎓 (2 Tage) macht Mitarbeitende in dieser Stadt immun gegen Epidemien; der Stufenkurs ⭐ (1 Tag) bringt einen Stern mehr.',
   'role.trainer': 'Trainer', 'job.trainer': 'Hält die Kurse im Schulungsraum',
   'p.flu': 'Büro-Grippe', 'pd.flu': 'Fieber, Gliederschmerzen und ein Husten, der das Großraumbüro leert. Braucht die Apotheke.', 'p.flurest': 'Grippe-K.o.', 'pd.flurest': 'Zu erschöpft zum Stehen: braucht echte Ruhe im Ruheraum.',
   'obj.epiclean': 'Epidemien ohne Strafe', 'gp.epiclean': '{n} Epidemien ohne Strafe überstehen',
@@ -141,7 +146,8 @@ de: {
   'epi.pharmBtn': 'Apotheke', 'epi.homeBtn': 'Nach Hause 1–2 Tage', 'epi.atHome': 'Krank, ruht sich zu Hause aus', 'epi.atPharm': 'In der Apotheke',
 },
 ja: {
-  'r.training': '研修室', 'r.training.d': 'トレーナーがチームを研修します。衛生研修 🎓（2日間）を終えたスタッフは、この街で感染症に免疫がつきます。',
+  'trn.lvlBtn': 'レベル研修 ⭐{n}・{m}', 'trn.lvlProg': 'レベル研修 ⭐{n} {p}%', 'trn.lvlMax': '最高レベル ⭐5', 'trn.lvlInfo': 'レベル研修：1日、⭐+1（作業が速くなる）、給料 家賃日ごとに +{w}', 'trn.lvlStart': 'レベル研修に行ってきます：目指せ⭐{n}！', 'trn.lvlStartT': '{name}が⭐{n}研修を開始', 'trn.lvlDone': '研修修了：⭐{n}になりました！💪', 'trn.lvlDoneT': '{name}が⭐{n}に・給料 +{m}',
+  'r.training': '研修室', 'r.training.d': 'トレーナーがチームを研修します。衛生研修 🎓（2日間）でこの街の感染症に免疫がつき、レベル研修 ⭐（1日）で星が1つ増えます。',
   'role.trainer': 'トレーナー', 'job.trainer': '研修室で研修を行う',
   'p.flu': 'オフィス風邪', 'pd.flu': '熱、だるさ、オフィスが静まり返る咳。薬局が必要。', 'p.flurest': 'インフル・ダウン', 'pd.flurest': '立っていられないほどぐったり：仮眠室でしっかり休む必要あり。',
   'obj.epiclean': 'ペナルティなしの感染症', 'gp.epiclean': '感染症を{n}回ペナルティなしで乗り切る',
@@ -169,7 +175,8 @@ ja: {
   'epi.pharmBtn': '薬局', 'epi.homeBtn': '自宅 1〜2日', 'epi.atHome': '発症、自宅で休養中', 'epi.atPharm': '薬局にいます',
 },
 ko: {
-  'r.training': '교육실', 'r.training.d': '트레이너가 팀을 교육합니다. 위생 교육 🎓(2일)을 마친 직원은 이 도시에서 전염병에 면역이 됩니다.',
+  'trn.lvlBtn': '레벨 교육 ⭐{n} · {m}', 'trn.lvlProg': '레벨 교육 ⭐{n} {p}%', 'trn.lvlMax': '최고 레벨 ⭐5', 'trn.lvlInfo': '레벨 교육: 1일, ⭐+1(더 빨리 일함), 임대료 일마다 급여 +{w}', 'trn.lvlStart': '레벨 교육 다녀올게요: 목표 ⭐{n}!', 'trn.lvlStartT': '{name} 님이 ⭐{n} 교육 시작', 'trn.lvlDone': '교육 수료: 이제 ⭐{n}이에요! 💪', 'trn.lvlDoneT': '{name} 님 ⭐{n} 달성 · 급여 +{m}',
+  'r.training': '교육실', 'r.training.d': '트레이너가 팀을 교육합니다. 위생 교육 🎓(2일)은 이 도시의 전염병 면역을, 레벨 교육 ⭐(1일)은 별 하나를 더해 줘요.',
   'role.trainer': '트레이너', 'job.trainer': '교육실에서 교육을 진행',
   'p.flu': '사무실 독감', 'pd.flu': '열, 몸살, 사무실을 텅 비게 만드는 기침. 약국이 필요해요.', 'p.flurest': '독감 KO', 'pd.flurest': '서 있을 힘도 없음: 낮잠실에서 제대로 쉬어야 해요.',
   'obj.epiclean': '페널티 없는 전염병', 'gp.epiclean': '전염병 {n}번을 페널티 없이 넘기기',

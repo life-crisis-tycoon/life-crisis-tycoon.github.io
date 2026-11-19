@@ -2002,18 +2002,21 @@ const done = (k) => S.research.done.includes(k);
 // The 🎓 sanitary course (2 full days, paid): after day 1 the risk is halved, after day 2 the person is immune for good (in this city's save).
 // Epidemics: announced a day ahead, a wave of sick visitors, untrained staff who treat them can catch it and pass it on at work.
 const epiCity = () => !!(S && S.mode === 'career' && (cityOf().lvl || 0) >= 2);
-const COURSE_COST = () => Math.round(RENT * 0.45 / 50) * 50, BRIG_COST = () => Math.round(RENT * 2.2 / 50) * 50;
+const COURSE_COST = () => Math.round(RENT * 0.45 / 50) * 50, LVL_COST = (st) => Math.round(RENT * 0.15 * st.skill / 50) * 50, LVL_WAGE = (st) => Math.round((ROLES[st.role].wage[1] - ROLES[st.role].wage[0]) / 4 / 10) * 10, BRIG_COST = () => Math.round(RENT * 2.2 / 50) * 50;
 const EPI_QUIET = DAY_LEN / 2; // "no new case for half a day" closes the epidemic
 const sickAtWork = () => R.staff.filter((rs) => rs.data.sick && !(rs.data.awayT > 0) && rs.at !== 'heal');
 const sickN = () => S.staff.filter((s) => s.sick || (s.sickHome && s.awayT > 0)).length;
 const sickHomeN = () => S.staff.filter((s) => s.sickHome && s.awayT > 0).length;
 const epiDirt = () => 1 + Math.min(1, R.litter.length * 0.05 + R.rats.length * 0.15 + Object.values(R.rooms).reduce((a, r) => a + (r.def.dirt || 0), 0) * 0.15);
 const trainRooms = () => Object.values(R.rooms).filter((r) => ROOMS[r.type].train);
+const trainDur = (tr) => (tr.kind === 'lvl' ? DAY_LEN : DAY_LEN * 2); // ⭐ level course: 1 day · sanitary course: 2 days
 const trainerHere = (room) => room.staff.some((s) => s && s.mode === 'there');
 function trainRoomFor() { return trainRooms().find((r) => r.staff.some(Boolean) && S.staff.filter((s) => s.train && s.train.room === r.id).length < r.spots.length); }
-function startCourse(st) {
+function startCourse(st, kind = 'san') {
   if (!trainRooms().length) { toast(t('trn.noRoom'), 2200); return; }
   const room = trainRoomFor(); if (!room) { toast(trainRooms().some((r) => r.staff.some(Boolean)) ? t('trn.full') : t('trn.noTrainer'), 2200); return; }
+  if (kind === 'lvl') { if (st.skill >= 5) return; const c = LVL_COST(st); if (S.cash < c) { toast(t('build.noCash'), 1600); return; }
+    S.cash -= c; st.train = { room: room.id, t: 0, kind: 'lvl' }; chat(st.name + ' · ' + roleN(st.role), t('trn.lvlStart', { n: st.skill + 1 }), '⭐', { fun: true }); toast('⭐ ' + t('trn.lvlStartT', { name: st.name.split(' ')[0], n: st.skill + 1 }), 2200); save(); return; }
   const c = st.cert === 1 ? Math.round(COURSE_COST() / 2 / 10) * 10 : COURSE_COST(); if (S.cash < c) { toast(t('build.noCash'), 1600); return; }
   S.cash -= c; st.train = { room: room.id, t: st.cert === 1 ? DAY_LEN : 0 }; // day 1 already done: only the second day is left
   chat(st.name + ' · ' + roleN(st.role), t('trn.start'), '🎓', { fun: true }); toast('🎓 ' + t('trn.startT', { name: st.name.split(' ')[0] }), 2200); save();
@@ -2058,6 +2061,9 @@ function trainTick(dt) {
     }
     if (rs.mode !== 'there' || !trainerHere(room)) continue; // no trainer in the room: the course is on hold
     tr.t += dt;
+    if (tr.kind === 'lvl') { if (tr.t >= DAY_LEN) { d.skill = Math.min(5, d.skill + 1); d.wage += LVL_WAGE(d); d.train = null; rs.gradT = 3.6; lessonPose(rs, 'thumb'); for (const o of R.staff) if (o !== rs && o.at === 'train' && o.seat && room.spots.includes(o.seat)) { o.clapT = 3.2; lessonPose(o, 'clap'); }
+        AU.sfx('star'); chat(d.name + ' · ' + roleN(d.role), t('trn.lvlDone', { n: d.skill }), '⭐', { fun: true }); toast('⭐ ' + t('trn.lvlDoneT', { name: d.name.split(' ')[0], n: d.skill, m: money(Math.round(LVL_WAGE(d) * WAGE_K)) }), 3000); save(); }
+      continue; }
     if (tr.t >= DAY_LEN && !(d.cert >= 1)) { d.cert = 1; chat(d.name + ' · ' + roleN(d.role), t('trn.half'), '📘', { fun: true }); }
     if (tr.t >= DAY_LEN * 2) { d.cert = 2; d.train = null; rs.gradT = 3.6; lessonPose(rs, 'thumb'); for (const o of R.staff) if (o !== rs && o.at === 'train' && o.seat && room.spots.includes(o.seat)) { o.clapT = 3.2; lessonPose(o, 'clap'); } AU.sfx('star'); chat(d.name + ' · ' + roleN(d.role), t('trn.done'), '🎓', { fun: true }); toast('🎓 ' + t('trn.doneT', { name: d.name.split(' ')[0] }), 2800); save(); }
   }
@@ -2183,10 +2189,12 @@ function staffEpiRow(st) {
   const b = (id, txt, cls = 'y') => `<button class="btn ${cls}" data-${id}="${st.id}" style="padding:6px 10px;font-size:13.5px">${txt}</button>`;
   let h = '';
   if (st.sick) h += b('epiph', '💊 ' + t('epi.pharmBtn')) + b('epihome', '🏠 ' + t('epi.homeBtn'));
-  else if (st.train) h += `<span style="font-size:12.5px;font-weight:900;color:#5B6CC9">📘 ${t('trn.prog', { p: Math.min(100, Math.round((st.train.t / (DAY_LEN * 2)) * 100)) })}</span>`;
-  else if (!(st.cert >= 2)) h += b('course', '🎓 ' + t('trn.btn', { m: money(st.cert === 1 ? Math.round(COURSE_COST() / 20) * 10 : COURSE_COST()) }), 'g');
-  else h += `<span style="font-size:12.5px;font-weight:900;color:#5B6CC9">🎓 ${t('trn.immune')}</span>`;
-  return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">${h}</div>${st.cert === 1 && !st.train ? `<div style="font-size:12px;font-weight:800;color:#5B6CC9;margin-top:4px">📘 ${t('trn.halfInfo')}</div>` : ''}`;
+  else if (st.train) h += `<span style="font-size:12.5px;font-weight:900;color:#5B6CC9">${st.train.kind === 'lvl' ? '⭐ ' + t('trn.lvlProg', { n: st.skill + 1, p: Math.min(100, Math.round((st.train.t / trainDur(st.train)) * 100)) }) : '📘 ' + t('trn.prog', { p: Math.min(100, Math.round((st.train.t / trainDur(st.train)) * 100)) })}</span>`;
+  else {
+    h += !(st.cert >= 2) ? b('course', '🎓 ' + t('trn.btn', { m: money(st.cert === 1 ? Math.round(COURSE_COST() / 20) * 10 : COURSE_COST()) }), 'g') : `<span style="font-size:12.5px;font-weight:900;color:#5B6CC9">🎓 ${t('trn.immune')}</span>`;
+    h += st.skill < 5 ? b('lvl', '⭐ ' + t('trn.lvlBtn', { n: st.skill + 1, m: money(LVL_COST(st)) }), 'y') : `<span style="font-size:12.5px;font-weight:900;color:#B7791F">⭐ ${t('trn.lvlMax')}</span>`;
+  }
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">${h}</div>${!st.train && st.skill < 5 ? `<div style="font-size:12px;font-weight:800;color:var(--muted);margin-top:4px">⭐ ${t('trn.lvlInfo', { w: money(Math.round(LVL_WAGE(st) * WAGE_K)) })}</div>` : ''}${st.cert === 1 && !st.train ? `<div style="font-size:12px;font-weight:800;color:#5B6CC9;margin-top:4px">📘 ${t('trn.halfInfo')}</div>` : ''}`;
 }
 // ---- earthquake alert (Mexico City): the siren sounds, waiting visitors evacuate to the street for 20 s, rooms pause; afterwards some come in anxious
 function quakeStart() {
@@ -3057,7 +3065,7 @@ function openStaffList(filter) {
   $('sheet').querySelectorAll('[data-so]').forEach((b) => b.onclick = () => { const id = +b.dataset.so; staffOpen = staffOpen === id ? null : id; const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
   $('sheet').querySelectorAll('[data-fire]').forEach((b) => b.onclick = () => fire(+b.dataset.fire));
   const epiBtn = (k, fn) => $('sheet').querySelectorAll('[data-' + k + ']').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const st = S.staff.find((x) => x.id === +b.getAttribute('data-' + k)); if (!st) return; fn(st); const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
-  epiBtn('course', startCourse); epiBtn('epiph', sendPharm); epiBtn('epihome', sendHome);
+  epiBtn('course', startCourse); epiBtn('lvl', (st) => startCourse(st, 'lvl')); epiBtn('epiph', sendPharm); epiBtn('epihome', sendHome);
   $('sheet').querySelectorAll('[data-raise]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const st = S.staff.find((s) => s.id === +b.dataset.raise); if (!st) return;
     st.wage += Math.round(st.wage * 0.1 / 10) * 10; st.grumpy = 0; st.raiseDay = S.day; st.energy = Math.min(1, (st.energy ?? 1) + 0.5); save();
     chat(st.name + ' · ' + roleN(st.role), t('staff.raisedChat'), '🥹', { fun: true }); toast(t('staff.raised', { name: st.name.split(' ')[0] })); const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
