@@ -579,6 +579,13 @@ function makeGrid(rooms) {
   return blk;
 }
 function rebuildGrid() { gridBlk = makeGrid(S.rooms); }
+// furniture footprints become obstacles for the walk grid (people go around sofas, desks, poufs, beds…): every mesh between knee and chest height
+function roomObs(room) { const g = room.g; g.updateMatrixWorld(true); const skip = new Set([...(room.wallG || []), room.door && room.door.g]), bx = new THREE.Box3(), obs = [];
+  const walk = (o) => { for (const c of o.children) { if (skip.has(c)) continue; if (c.isMesh) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) obs.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); } walk(c); } };
+  walk(g); room.obs = obs; }
+// the Tripo/Meshy pieces load after the room is built: once they are in, measure the room again so people walk around the real furniture
+let obsT = null; const obsDirty = new Set();
+function roomObsLater(rid) { obsDirty.add(rid); clearTimeout(obsT); obsT = setTimeout(() => { let any = false; for (const id of obsDirty) { const rm = R.rooms && R.rooms[id]; if (rm && rm.g && rm.g.parent) { roomObs(rm); any = true; } } obsDirty.clear(); if (any && S && S.rooms) rebuildGrid(); }, 120); }
 const free = (blk, i, j) => i >= 0 && j >= 0 && i < GW && j < GH && !blk[j * GW + i];
 function reach(blk, from, to) {
   const [si, sj] = ci(from.x, from.z), [ti, tj] = ci(to.x, to.z); if (!free(blk, ti, tj)) return false;
@@ -601,15 +608,16 @@ function walkCells(ax, az, bx, bz, cb) {
   return true;
 }
 // straight walk a→b allowed? no blocked cell on the way (the end may be a seat), and no wall crossed — checked on the centre line and on both shoulders
-function los(a, b) {
-  const [ti, tj] = ci(b.x, b.z), inB = (i, j) => i >= 0 && j >= 0 && i < GW && j < GH;
-  const step = (i, j, pi, pj, centre) => { if (!inB(i, j) || !inB(pi, pj)) return false; if (centre && !(i === ti && j === tj) && gridBlk[j * GW + i]) return false; return crossOK(pj * GW + pi, j * GW + i); };
+function los(a, b, o) {
+  const [ti, tj] = ci(b.x, b.z), [oi, oj] = ci((o || a).x, (o || a).z), inB = (i, j) => i >= 0 && j >= 0 && i < GW && j < GH;
+  const end = (i, j) => (Math.abs(i - ti) <= 1 && Math.abs(j - tj) <= 1) || (Math.abs(i - oi) <= 1 && Math.abs(j - oj) <= 1);
+  const step = (i, j, pi, pj, centre) => { if (!inB(i, j) || !inB(pi, pj)) return false; if (gridBlk[j * GW + i] && (centre ? !(i === ti && j === tj) : !end(i, j))) return false; return crossOK(pj * GW + pi, j * GW + i); };
   if (!walkCells(a.x, a.z, b.x, b.z, (i, j, pi, pj) => step(i, j, pi, pj, true))) return false;
   const d = Math.hypot(b.x - a.x, b.z - a.z); if (d < 0.05) return true; const nx = -(b.z - a.z) / d * 0.2, nz = (b.x - a.x) / d * 0.2;
   for (const k of [1, -1]) if (!walkCells(a.x + nx * k, a.z + nz * k, b.x + nx * k, b.z + nz * k, (i, j, pi, pj) => step(i, j, pi, pj, false))) return false;
   return true;
 }
-function findPath(from, to) {
+function findPath(from, to, loose) {
   if (!Number.isFinite(to.x) || !Number.isFinite(to.z) || !Number.isFinite(from.x) || !Number.isFinite(from.z)) { console.warn('[findPath] bad point', JSON.stringify(from), JSON.stringify(to), new Error().stack.split('\n').slice(2, 5).join(' | ')); return []; }
   const [si, sj] = ci(from.x, from.z), [ti, tj] = ci(to.x, to.z);
   const N = GW * GH, inB = (i, j) => i >= 0 && j >= 0 && i < GW && j < GH;
@@ -620,9 +628,9 @@ function findPath(from, to) {
   const hpush = (e) => { open.push(e); let i = open.length - 1; while (i) { const p = (i - 1) >> 1; if (open[p][0] <= open[i][0]) break; [open[p], open[i]] = [open[i], open[p]]; i = p; } };
   const hpop = () => { const top = open[0], last = open.pop(); if (open.length) { open[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < open.length && open[l][0] < open[m][0]) m = l; if (r < open.length && open[r][0] < open[m][0]) m = r; if (m === i) break; [open[m], open[i]] = [open[i], open[m]]; i = m; } } return top; };
   // someone standing on a blocked cell (a seat against the wall, a staff spot) may step out through blocked cells of their own room; same to reach a blocked target
-  const sB = gridBlk[s], tB = gridBlk[tg], near = (n, c) => { const a = n % GW, b = c % GW; return Math.abs(a - b) <= 3 && Math.abs((n - a) / GW - (c - b) / GW) <= 3; };
+  const sB = gridBlk[s], tB = gridBlk[tg], R0 = loose ? 3 : 2, near = (n, c) => { const a = n % GW, b = c % GW; return Math.abs(a - b) <= R0 && Math.abs((n - a) / GW - (c - b) / GW) <= R0; };
   const ok = (i, j, from) => { if (!inB(i, j)) return false; const n = j * GW + i; if (from != null && !crossOK(from, n)) return false;
-    return !gridBlk[n] || n === tg || n === s || (sB && gridRid[n] && gridRid[n] === gridRid[s]) || (tB && gridRid[n] && gridRid[n] === gridRid[tg]) || (sB && near(n, s)) || (tB && near(n, tg)); };
+    return !gridBlk[n] || n === tg || n === s || (loose && sB && gridRid[n] && gridRid[n] === gridRid[s]) || (loose && tB && gridRid[n] && gridRid[n] === gridRid[tg]) || (sB && near(n, s)) || (tB && near(n, tg)); };
   let found = false, best = s, bh = 1e9;
   while (open.length) {
     const [, c] = hpop();
@@ -631,16 +639,17 @@ function findPath(from, to) {
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
       const ni = i + di, nj = j + dj; if (!ok(ni, nj, c)) continue;
       if (di && dj && (!ok(i + di, j, c) || !ok(i, j + dj, c))) continue;
-      const n = nj * GW + ni, ng = gS[c] + (di && dj ? 1.414 : 1) + (gridBlk[n] && n !== tg ? 4 : 0); // squeezing past furniture only when there's no other way
+      const n = nj * GW + ni, ng = gS[c] + (di && dj ? 1.414 : 1) + (gridBlk[n] && n !== tg ? 12 : 0); // squeezing past furniture only when there's no other way
       if (ng < gS[n]) { gS[n] = ng; par[n] = c; hpush([ng + Math.hypot(ti - ni, tj - nj), n]); }
     }
   }
+  if (!found && !loose) return findPath(from, to, true); // boxed in (a piece just landed on someone): the old, softer rules get them out
   const end = found ? tg : best;
   if (end === s) return found ? [{ x: to.x, z: to.z }] : []; // never a straight line through a wall
   const cells = []; for (let c = end; c !== -1 && c !== s; c = par[c]) cells.push(c); cells.reverse();
   const pts = cells.map((c) => cc(c % GW, (c - (c % GW)) / GW)); if (found) pts[pts.length - 1] = { x: to.x, z: to.z };
   const out = []; let cur = { x: from.x, z: from.z }, k = 0;
-  while (k < pts.length) { let far = k; for (let m = pts.length - 1; m > k; m--) if (los(cur, pts[m])) { far = m; break; } out.push(pts[far]); cur = pts[far]; k = far + 1; }
+  while (k < pts.length) { let far = k; for (let m = pts.length - 1; m > k; m--) if (los(cur, pts[m], from)) { far = m; break; } out.push(pts[far]); cur = pts[far]; k = far + 1; }
   return out;
 }
 const W_H = 2.6, T = 0.24;
@@ -807,7 +816,7 @@ function glbSwap(g, name, o = {}) {
     if (o.tint) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.color.multiply(new THREE.Color(o.tint)); } });
     if (o.glow) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.emissive = new THREE.Color(o.glow); c.material.emissiveIntensity = o.gi || 0.8; if (c.material.map) c.material.emissiveMap = c.material.map; } }); // recolour a shared model for one room's palette
     m.position.y = o.y || 0; g.add(m); g.userData.glb = name; if (o.onModel) o.onModel(m);
-    if (rid != null) m.traverse((c) => { if (c.isMesh) c.userData.roomId = rid; });
+    if (rid != null) { m.traverse((c) => { if (c.isMesh) c.userData.roomId = rid; }); roomObsLater(rid); }
   }).catch((e) => console.warn('[props]', name, e.message));
 }
 let cityScene = null;
@@ -1154,9 +1163,7 @@ function buildRoom(r) {
   }
   if (!(RS && RS.model)) { const pc = toW(r, Z.W / 2 - 0.6, -Z.D / 2 + 0.7); plant(pc.x, pc.z, 0.9, '#FFFFFF', g); }
   // furniture footprints become obstacles for the walk grid (people go around sofas, desks, poufs, machines…)
-  { g.updateMatrixWorld(true); const skip = new Set([...wallG, door.g]), bx = new THREE.Box3(), obs = [];
-    const walk = (o) => { for (const c of o.children) { if (skip.has(c)) continue; if (c.isMesh) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) obs.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); } walk(c); } };
-    walk(g); room.obs = obs; }
+  room.wallG = wallG; roomObs(room);
   if (GFX.batch) { for (const w of wallG) { const keep = w.children.filter((c) => c.userData.keepY); batchNode(w, new Set(keep), { userData: { roomId: r.id } }); for (const k of keep) batchNode(k, new Set(), { userData: { roomId: r.id } }); } batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
   { const ca = Math.cos(r.a), sa = Math.sin(r.a), hs = []; g.traverse((o) => { if (o.userData.whang) hs.push({ o, n: o.userData.whang }); else if (o.userData.hang) { const [lx, lz] = o.userData.hang; hs.push({ o, n: [Math.round(lx * ca + lz * sa), Math.round(-lx * sa + lz * ca)] }); } });
     world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
