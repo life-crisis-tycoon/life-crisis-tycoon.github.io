@@ -471,7 +471,8 @@ function proceduralPerson(o) {
   return root;
 }
 function poseStand(p) { if (p.anim) return p.anim.set('idle'); p.legs.forEach((l) => l.rotation.x = 0); p.knees.forEach((k) => k.rotation.x = 0); p.arms.forEach((a) => { a.rotation.x = 0; a.rotation.z = 0; }); p.body.position.y = 0; p.phone.visible = false; }
-function poseSit(p, lie) { if (p.anim) return p.anim.set(lie ? 'lie' : 'sit'); p.legs.forEach((l) => l.rotation.x = -Math.PI / 2); p.knees.forEach((k) => k.rotation.x = Math.PI / 2); p.arms.forEach((a) => a.rotation.x = -0.5); }
+function poseSit(p, lie) { if (p.anim) return p.anim.set(lie ? 'idle' : 'sit'); // lying = the standing idle laid flat by lieUpdate (Meshy's 'lie' clip is a half-sit)
+ p.legs.forEach((l) => l.rotation.x = -Math.PI / 2); p.knees.forEach((k) => k.rotation.x = Math.PI / 2); p.arms.forEach((a) => a.rotation.x = -0.5); }
 function poseWalk(p, ph, amp = 0.55, speed = 2.3) {
   if (p.anim) return p.anim.set('walk', speed / 2.3);
   p.legs[0].rotation.x = Math.sin(ph) * amp; p.legs[1].rotation.x = -Math.sin(ph) * amp;
@@ -1220,8 +1221,20 @@ function ambience(dt) {
   if (sleepers.length) { const v = rnd(sleepers); AU.sfx('snore', hearVol(v.av.position) * 0.9); }
   else if (Math.random() < 0.15) { const w = R.visitors.filter((v) => v.state === 'wait'); if (w.length) { const v = rnd(w); AU.sfx('yawn', hearVol(v.av.position) * 0.6); } }
 }
+// people on a bed lie flat on their back, head to the pillow, under a duvet (feet to chest); back upright when they get up
+const DUVET_C = ['#F4E3C8', '#CFE3F2', '#F6D3DC', '#D8EBCF'];
+function lieUpdate() {
+  const who = []; for (const v of R.visitors) who.push([v, v.state === 'treat' && v.rspot]); for (const rs of R.staff) who.push([rs, rs.mode === 'break' && rs.onBreak]);
+  for (const [o, sp] of who) { const av = o.av; if (!av) continue; const on = !!(sp && sp.lie && !(o.path && o.path.length) && Math.hypot(av.position.x - sp.x, av.position.z - sp.z) < 1.2);
+    if (on) { const L = 1.55 * av.scale.y, r = sp.rot || 0, s = Math.sin(r), c = Math.cos(r), base = 0.1 + (sp.y || 0);
+      av.rotation.order = 'YXZ'; av.rotation.set(-Math.PI / 2, r, 0); av.position.set(sp.x + s * L * 0.5, base + 0.13, sp.z + c * L * 0.5); // feet at +z, head toward -z (the pillow end)
+      const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
+      let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.66, 0.24, 1, rnd(DUVET_C), 0.1); dv.castShadow = true; dv.userData.swap = true; }
+      if (!dv.parent) scene.add(dv); const len = L * 0.74; dv.scale.z = len; dv.rotation.y = r; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.02), base + 0.14, sp.z + c * (L * 0.5 - len / 2 + 0.02)); dv.visible = av.visible !== false; }
+    else { if (av.rotation.x) av.rotation.x = 0; const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
+}
 function doorsUpdate(dt) {
-  ambience(dt);
+  ambience(dt); lieUpdate();
   const ds = world.doors; if (!ds || !ds.length) return;
   const movers = []; for (const v of R.visitors) movers.push(v.av.position); for (const rs of R.staff) movers.push(rs.av.position); if (R.mgr && R.mgr.av) movers.push(R.mgr.av.position);
   for (const d of ds) {
@@ -4045,7 +4058,7 @@ function staffEnergy(rs, dt) {
     return;
   }
   if (rs.onBreak) {
-    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'lie') pa.anim.set('lie'); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : 22)); if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
+    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'idle') pa.anim.set('idle'); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : 22)); if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
   } else if (rs.mode === 'there' || rs.task) {
     if (rs.at !== 'idle' && rs.at !== 'train' && rs.at !== 'heal') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (185 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
     if (d.energy < 0.25) {
