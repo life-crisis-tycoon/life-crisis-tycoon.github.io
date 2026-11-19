@@ -474,8 +474,8 @@ export function buildCity(kind, cg, H, box) {
       const bunting = (ax, az, bx, bz, y, n) => { const g = new THREE.Group(); cg.add(g); const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz), ry = Math.atan2(dx, dz);
         for (let i = 0; i <= n; i++) { const t = i / n, sag = Math.sin(t * Math.PI) * 0.5, f = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 3), mat(FL[i % FL.length], { r: 0.8 })); f.rotation.set(Math.PI, ry, 0); f.position.set(ax + dx * t, y - sag - 0.3, az + dz * t); g.add(f); }
         const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, L), mat('#F4EFE6')); rope.rotation.set(Math.PI / 2, 0, 0); const rg = new THREE.Group(); rg.add(rope); rg.position.set((ax + bx) / 2, y - 0.25, (az + bz) / 2); rg.rotation.y = ry; g.add(rg); return g; };
-      for (let x = -38; x < 48; x += 8) bunting(x, zS - 1.85, x + 4, zS + 1.9, GY + 3.4, 7); // flags across the high street, lamp to lamp
-      for (let z = zN + 6; z < zS - 4; z += 7) { bunting(xW - 1.9, z, xW + 1.9, z + 3.5, GY + 3.4, 6); bunting(xE + 1.9, z, xE - 1.9, z + 3.5, GY + 3.4, 6); }
+      for (let x = -38; x < 40; x += 8) { bunting(x, zS - 1.85, x + 8, zS - 1.85, GY + 3.4, 10); bunting(x + 4, zS + 1.9, x + 12, zS + 1.9, GY + 3.4, 10); } // garlands along both pavements, lamp to lamp
+      for (let z = zN + 6; z < zS - 11; z += 7) { bunting(xW + 1.9, z, xW + 1.9, z + 7, GY + 3.4, 9); bunting(xE - 1.9, z, xE - 1.9, z + 7, GY + 3.4, 9); }
       { const px = xW - 11, pz = 6.5, g = C(px, pz); g.position.y = GY; // park bandstand under bunting
         put(cyl(1.7, 1.8, 0.35, '#F4EFE6'), 0, 0.18, 0, g); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; put(cyl(0.06, 0.06, 2.0, '#2E6B4A'), Math.cos(a) * 1.5, 1.35, Math.sin(a) * 1.5, g); }
         const rf = new THREE.Mesh(new THREE.ConeGeometry(2.0, 1.1, 8), mat('#D9342B', { r: 0.7 })); put(rf, 0, 2.9, 0, g); put(sph(0.14, '#E3B341', { m: 0.6, r: 0.3 }), 0, 3.5, 0, g);
