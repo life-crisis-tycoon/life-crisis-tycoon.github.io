@@ -809,7 +809,8 @@ function lotOwned(i) {
 const R = { rooms: {}, staff: [], visitors: [], deskQ: [], deskQs: [], litter: [], rats: [], inspector: null, later: [] }; R.deskQs[0] = R.deskQ;
 // Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional fairy lights (no ivy).
 const WALL_HIP = 1.0, WALL_CUT = 0.3, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
-const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', lights: true, h: ROOM_H }, training: { v2: true, model: 'training_kit', kit: true, winSide: '1,0', wall: '#A9B3EE', inBase: '#8C97D8', floor: '#E7E9EF', door: '#7F8BD6', panel: '#7F8BD6', pop: '#F2C230', posts: true, h: ROOM_H } };
+const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', lights: true, h: ROOM_H }, training: { v2: true, model: 'training_kit', kit: true, winSide: 'none', // no window: the board, sink, shelf and table take the walls
+    wall: '#A9B3EE', inBase: '#8C97D8', floor: '#E7E9EF', door: '#7F8BD6', panel: '#7F8BD6', pop: '#F2C230', posts: true, h: ROOM_H } };
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };
 const WALL_TINT = { yoga: '#D3ECEE', lucha: '#F6D3E2', ahwa: '#F0DCC0', budget: '#F3D9B8', detox: '#D3E6F4', career: '#F2D6DE', cafe: '#D6EBDD', lab: '#DCE2EC', social: '#F8D7E2', parent: '#FBE2C0', moving: '#EADCC8', pharmacy: '#D2EDE6', glowup: '#F8DCE8', wedding: '#F8DCE6', jjim: '#F0D9C4', roda: '#D7EDD5', garage: '#F2E3BD', shop: '#F9DCCF', staffroom: '#EDE2CF', toilet: '#D9ECF8', therapy: '#D5E6D9' };
@@ -2008,7 +2009,7 @@ function epiTreated(st, room) { // a sick visitor was just helped: the person wh
   if (RNG() < 0.22 * epiDirt() * (d.cert === 1 ? 0.5 : 1)) infect(d);
 }
 function sendPharm(st) {
-  const rs = R.staff.find((x) => x.data === st), ph = Object.values(R.rooms).find((r) => r.type === 'pharmacy' && !r.closed && trainerHere(r));
+  const rs = R.staff.find((x) => x.data === st), ph = Object.values(R.rooms).find((r) => r.type === 'pharmacy' && !r.closed && r.staff.some((x) => x && x !== rs && x.mode === 'there')); // someone else has to be there to look after them
   if (!rs || !ph) { toast(t('epi.noPharm'), 2200); return; }
   if (st.train) { st.train = null; leaveTraining(rs); }
   const old = R.rooms[rs.at]; if (old && old.staff[rs.st] === rs) old.staff[rs.st] = null;
@@ -2095,7 +2096,7 @@ function epiHud() {
   const E = S.epi; if (E.ph === 'ann') return '🦠 ' + t('epi.hudAnn');
   const a = sickAtWork().length; let s = '🦠 ' + t('epi.hud', { a, b: sickHomeN(), d: Math.max(1, S.day - E.d0 + 1) });
   if (E.quar) s += ' · 🚫 ' + t('epi.quar');
-  else if (!a && E.el >= DAY_LEN * 0.25) s += ' · ⏱ ' + t('epi.quiet', { a: Math.floor(E.quiet || 0), b: EPI_QUIET });
+  else if (!a && E.el >= DAY_LEN * 0.25) s += ' · ⏱ ' + t('epi.quiet', { a: Math.min(EPI_QUIET, Math.floor(E.quiet || 0)), b: EPI_QUIET });
   if (E.brig > 0) s += ' · 🧑‍⚕️ ' + Math.ceil(E.brig) + 's';
   return s;
 }
