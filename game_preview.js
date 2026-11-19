@@ -1391,7 +1391,7 @@ function socialKit(g, cx, cz, room) {
 // Wedding Calm Bureau (Mumbai; layout = the wedding bureau painting): carved desk with the planner behind it, two red armchairs on a red rug, the lehenga on its mannequin, marigolds, the flower arch in the corner
 function weddingKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, bz = -D / 2;
-  const dz = bz + (S ? 1.2 : 1.45), dx = S ? 0 : -0.35, az = dz + (S ? 1.25 : 1.4);
+  const dz = bz + (S ? 1.05 : 1.45), dx = S ? 0 : w < 5 ? -0.25 : -0.35, az = dz + (S ? 1.05 : 1.4);
   const L = [{ p: 'k_desk', len: 1.25, x: dx, z: dz }, { p: 'k_armchair', h: 0.85, x: dx - 0.48, z: az, rot: Math.PI, solid: false }, { p: 'k_armchair', h: 0.85, x: dx + 0.48, z: az, rot: Math.PI }];
   if (first) L.push({ p: 'k_dress', h: 1.7, wall: 'left', u: 'B', gap: 0.15 });
   if (last && !S) L.push({ p: 'k_arch', h: 2.0, wall: 'back', u: 'R' });
