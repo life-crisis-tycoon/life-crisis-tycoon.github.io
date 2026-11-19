@@ -97,3 +97,11 @@ Read this first. The user (French or English; answer in the language she writes 
 - Extra Meshy clips live in the shared `models/vis/anims.js`: `Tr*` (class) and `X*` (XSitDrink, XStandDrink, XCheckout, XPickUp, XLookWalk). `chars.js` `trainClips()` copies them (+ Phone, IdleBreath) to the staff characters; avatars create actions lazily, so clips loaded later still play. States: talk, talk2, show, listen, answer, clap, thumb, drinksit, drink, till, pickup, lookwalk, idle2.
 - Hand props in code: `holdCup`, `holdBroom` (attached to the RightHand bone).
 - Note for the diorama work: game.js is now updated by applying only the training/animation commits; the café diorama slice (7eb5988) had leaked into game.js through a full copy at 11:26 and was taken back out of game.js. It stays in game_preview.js only.
+
+## Publishing preview -> live (rule for every session, 2026-11-19)
+- Several sessions work in game_preview.js at once. Never copy game_preview.js over game.js (that shipped the unapproved café slice once).
+- Publish only your own commits with `tools/publish.sh <commit>...`: it replays just their game_preview.js changes onto game.js (3-way), then checks syntax. Find yours with `git log --grep="<your Claude-Session id>"`.
+- Commit the result as `Live: ...` and list the preview commits it contains.
+
+## Diorama café live (2026-11-19, approved by the owner)
+- Published to game.js via tools/publish.sh: 7eb5988, 895de2f, 61dd20d, 26724d5, 70605d6 (diorama view button, rounded café walls/floor, calmer tiles, bigger pieces + wall decor, crisp plant leaves, succulent in the café, café visitors drink seated at the 3 chairs).
