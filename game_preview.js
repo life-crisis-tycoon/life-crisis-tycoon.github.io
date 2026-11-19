@@ -4707,7 +4707,7 @@ function openBrief() {
     ${nb.length ? `<div class="lbl">${t('br.new')}</div><ul class="blist">${nb.map((k) => li(BEH_E[k], `<b>${t('bh.' + k)}</b>`)).join('')}</ul>` : ''}
     <div class="lbl">${t('brief.goals')}</div><div class="bgoals">${GOALS.map((G, i) => goal(G, i)).join('')}</div>
     <div class="bfoot"><button class="btn g" id="bOpen" style="font-size:21px">${t('brief.open')}</button></div>`;
-  { const bi = document.querySelector('#brief .bimg'); bi.style.background = ''; } // live view of the city's empty lot for every city (no old screenshot)
+  { const bi = document.querySelector('#brief .bimg'), img = { london: 'assets/brief/london.webp' }[mapCity]; bi.style.background = img ? `#E9E1D3 url(${img}) center 55% / cover no-repeat` : ''; } // a framed shot of the city and its empty lot where we have one, otherwise the live view
   $('briefTag').textContent = t(C.tag);
   $('bOpen').onclick = () => { const sv = load(mapCity); if (sv) { RNG = Math.random; S = sv; S.city = S.city || mapCity; startGame(); } else startNew(mapCity); };
   show('brief');
