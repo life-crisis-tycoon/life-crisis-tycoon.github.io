@@ -5,7 +5,7 @@ import { buildCity, moveCity } from './city.js';
 import { makeAudio } from './audio.js';
 import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
-import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
+import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE, trainClips } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
 import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30, EXTRA31, EXTRA32, EXTRA33, EXTRA34 } from './i18n_mgr.js';
 import { EPI } from './i18n_epi.js';
@@ -957,7 +957,7 @@ function buildRoom(r) {
     { const ddx = dp.x - r.x, ddz = dp.z - r.z, ca = Math.cos(r.a), sa = Math.sin(r.a); tmp.door = { x: ca * ddx - sa * ddz - lx, z: sa * ddx + ca * ddz }; } // door in station coords
     furniture[r.type](sg, 0, 0, tmp, K);
     fitFurniture(sg, tmp, Z.W / Z.st, Z.D, RS ? 0.2 : 0.16);
-    const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a }; };
+    const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a, ...(p.rot2 != null ? { rot2: p.rot2 + r.a } : {}) }; };
     for (const sp of tmp.spots) room.spots.push({ ...conv(sp), st: i, busy: null });
     room.staffSpots[i] = tmp.staffSpot ? conv(tmp.staffSpot) : null;
   }
@@ -1298,7 +1298,8 @@ function trainingKit(g, cx, cz, room) {
   L.push({ p: 'k_table', len: 1.2, wall: 'right', u: Math.min(D / 2 - 1.2, z0 + 0.35) }, { p: '@plant', s: 1.5, wall: 'right', u: 'B' });
   kitRoom(g, cx, cz, room, ROOM_STYLE.training.model, L, TRAIN_DIMS);
   for (const s of seats) room.spots.push({ x: cx + s.x, z: cz + s.z, rot: Math.PI, sit: true, y: 0.02, busy: null });
-  room.staffSpot = { x: cx + (sz === 's' ? 0.85 : 1.05), z: cz + bz + 0.95, rot: -0.35, sit: false, y: 0 }; // beside the board, facing the class
+  const tx = sz === 's' ? 0.85 : 1.05, tz = bz + 0.95; // beside the board, facing the class; rot2 = turned to the board
+  room.staffSpot = { x: cx + tx, z: cz + tz, rot: -0.35, rot2: Math.atan2(-0.25 - tx, bz + 0.45 - tz), sit: false, y: 0 };
 }
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
@@ -1657,7 +1658,7 @@ function patientOf(rs) {
 }
 function staffAttend(rs, dt) {
   if (rs.data.role === 'maint' || !rs.target) return;
-  const p = rs.av.userData.p, base = rs.target.rot || 0, sit = !!rs.target.sit, v = patientOf(rs);
+  const p = rs.av.userData.p, base = (rs.lessonRot ?? rs.target.rot) || 0, sit = !!rs.target.sit, v = patientOf(rs);
   let want = base;
   if (v) { const dx = v.av.position.x - rs.av.position.x, dz = v.av.position.z - rs.av.position.z; if (dx * dx + dz * dz > 0.04) { const d = angW(Math.atan2(dx, dz) - base); want = base + (sit ? clamp(d, -0.7, 0.7) : d); } }
   turnTo(rs.av, want, dt, 5);
@@ -2017,9 +2018,35 @@ function startCourse(st) {
   S.cash -= c; st.train = { room: room.id, t: st.cert === 1 ? DAY_LEN : 0 }; // day 1 already done: only the second day is left
   chat(st.name + ' · ' + roleN(st.role), t('trn.start'), '🎓', { fun: true }); toast('🎓 ' + t('trn.startT', { name: st.name.split(' ')[0] }), 2200); save();
 }
-function leaveTraining(rs) { if (rs.seat) rs.seat.busy = null; rs.seat = null; if (rs.at === 'train') { rs.at = null; assignStaff(); } }
+// ---- the class itself: the trainer talks to the class, turns to show the board; the trainees listen, sometimes answer, clap when someone graduates
+let trainAsked = false;
+function lessonPose(rs, st) { const p = rs.av.userData.p; if (!p.anim) return; rs.lesPose = st; p.anim.set(st); }
+function lessonTick(dt) {
+  for (const room of trainRooms()) {
+    const tr = room.staff[0], kids = R.staff.filter((o) => o.at === 'train' && o.seat && room.spots.includes(o.seat) && o.mode === 'there' && !(o.gradT > 0));
+    for (const o of kids) { // listening; now and then someone answers a question
+      if (o.clapT > 0) { o.clapT -= dt; if (o.clapT > 0) continue; }
+      o.askT = (o.askT ?? 8 + RNG() * 20) - dt;
+      if (o.askT <= 0 && o.lesPose !== 'answer' && !kids.some((k) => k.lesPose === 'answer')) { o.askT = 4.5; lessonPose(o, 'answer'); continue; }
+      if (o.askT <= 0) o.askT = 14 + RNG() * 22;
+      const want = o.lesPose === 'answer' && o.askT > 0 ? 'answer' : 'listen'; const p = o.av.userData.p;
+      if (o.lesPose !== want || (p.anim && !String(p.anim.state || '').match(want === 'listen' ? /listen/ : /answer/))) lessonPose(o, want);
+    }
+    if (!tr || tr.mode !== 'there' || patientOf(tr)) continue;
+    if (!kids.length) { if (tr.lesPose) { tr.lesPose = null; tr.lessonRot = null; poseStand(tr.av.userData.p); } continue; }
+    tr.lesT = (tr.lesT ?? 0) - dt; const sp = tr.target || {};
+    if (tr.lesT <= 0) { // talk to the class (two gestures), then turn and show the board
+      const next = tr.lesPose === 'talk' || tr.lesPose === 'talk2' ? (RNG() < 0.45 ? 'show' : tr.lesPose === 'talk' ? 'talk2' : 'talk') : 'talk';
+      tr.lesT = next === 'show' ? 4.5 : 5 + RNG() * 4; tr.lessonRot = next === 'show' && sp.rot2 != null ? sp.rot2 : null; lessonPose(tr, next);
+    } else if (tr.av.userData.p.anim && tr.av.userData.p.anim.state !== tr.lesPose && !/talk|show/.test(String(tr.av.userData.p.anim.state))) lessonPose(tr, tr.lesPose);
+  }
+}
+function leaveTraining(rs) { if (rs.seat) rs.seat.busy = null; rs.seat = null; rs.lesPose = null; rs.gradT = 0; if (rs.at === 'train') { rs.at = null; assignStaff(); } }
 function trainTick(dt) {
+  if (!trainAsked && trainRooms().length) { trainAsked = true; trainClips(); } // the Meshy class clips (talk, show the board, listen, answer, clap)
+  lessonTick(dt);
   for (const rs of R.staff) {
+    if (rs.gradT > 0) { rs.gradT -= dt; if (rs.gradT <= 0) leaveTraining(rs); continue; }
     const d = rs.data, tr = d.train; if (!tr) continue;
     const room = R.rooms[tr.room];
     if (!room) { d.train = null; leaveTraining(rs); continue; } // the room was sold: the day in progress is lost
@@ -2032,7 +2059,7 @@ function trainTick(dt) {
     if (rs.mode !== 'there' || !trainerHere(room)) continue; // no trainer in the room: the course is on hold
     tr.t += dt;
     if (tr.t >= DAY_LEN && !(d.cert >= 1)) { d.cert = 1; chat(d.name + ' · ' + roleN(d.role), t('trn.half'), '📘', { fun: true }); }
-    if (tr.t >= DAY_LEN * 2) { d.cert = 2; d.train = null; leaveTraining(rs); AU.sfx('star'); chat(d.name + ' · ' + roleN(d.role), t('trn.done'), '🎓', { fun: true }); toast('🎓 ' + t('trn.doneT', { name: d.name.split(' ')[0] }), 2800); save(); }
+    if (tr.t >= DAY_LEN * 2) { d.cert = 2; d.train = null; rs.gradT = 3.6; lessonPose(rs, 'thumb'); for (const o of R.staff) if (o !== rs && o.at === 'train' && o.seat && room.spots.includes(o.seat)) { o.clapT = 3.2; lessonPose(o, 'clap'); } AU.sfx('star'); chat(d.name + ' · ' + roleN(d.role), t('trn.done'), '🎓', { fun: true }); toast('🎓 ' + t('trn.doneT', { name: d.name.split(' ')[0] }), 2800); save(); }
   }
 }
 // ---- sick staff
@@ -3399,11 +3426,11 @@ function step(dt, now = performance.now(), rdt = dt) {
   adUpdate(dt);
   for (const v of R.visitors.slice()) visitorUpdate(v, dt);
   for (const rs of R.staff) {
-    if (rs.mode === 'walk') { if (stepWalker(rs, dt, 2.6)) { rs.mode = rs.onBreak ? 'break' : rs.data.role === 'maint' ? 'free' : 'there'; settle(rs, rs.target); rs.busyPose = null; } }
+    if (rs.mode === 'walk') { if (stepWalker(rs, dt, 2.6)) { rs.mode = rs.onBreak ? 'break' : rs.data.role === 'maint' && rs.at !== 'train' && rs.at !== 'heal' ? 'free' : 'there'; settle(rs, rs.target); rs.busyPose = null; } }
     else if (rs.mode === 'there') staffAttend(rs, dt);
     else if (rs.target && !rs.target.sit) rs.av.userData.p.body.position.y = Math.sin(now / 400 + rs.data.id) * 0.015;
     staffEnergy(rs, dt);
-    if (rs.data.role === 'maint' && !rs.onBreak) maintUpdate(rs, dt);
+    if (rs.data.role === 'maint' && !rs.onBreak && rs.at !== 'train' && rs.at !== 'heal') maintUpdate(rs, dt);
   }
   doorsUpdate(dt); staffCover(dt); mgrUpdate(dt); if (S.pepT > 0) S.pepT -= dt; if (S.pepCd > 0) S.pepCd -= dt;
   pestUpdate(dt); vibeTick(dt); marksTick(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); decorUpdate(dt); checkGoals(); epiTick(dt);
