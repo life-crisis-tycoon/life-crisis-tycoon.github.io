@@ -10,9 +10,9 @@ for(const k of Object.keys(d.ROOMS)){const o=document.createElement('option');o.
 sel.value=q.get('room')&&d.ROOMS[q.get('room')]?q.get('room'):'career';
 document.querySelectorAll('#pv [data-s]').forEach(b=>{b.classList.toggle('on',b.dataset.s===size);b.onclick=()=>{size=b.dataset.s;document.querySelectorAll('#pv [data-s]').forEach(x=>x.classList.toggle('on',x===b));show()}});
 sel.onchange=show;$('pvGo').onclick=show;$('pvHide').onclick=()=>$('pv').classList.toggle('min');
-function show(){const type=sel.value;history.replaceState(null,'','?room='+type+'&size='+size);
+function show(){const type=sel.value;history.replaceState(null,'','?room='+type+'&size='+size+(q.get('city')?'&city='+q.get('city'):''));
  try{d.closeModal()}catch(e){}try{d.closeSheet()}catch(e){}
- d.startNew('london');try{d.closeModal()}catch(e){}d.S.tut=-1;d.S.cash=1e6;try{d.updateTut()}catch(e){}
+ d.startNew(q.get('city')||'london');try{d.closeModal()}catch(e){}d.S.tut=-1;d.S.cash=1e6;try{d.updateTut()}catch(e){}
  d.startPlace({type,size});const pr=d.placingR;let ok=false;
  if(pr){outer:for(const a of [0,1])for(let z=-4;z>=-22;z--)for(let x=-6;x<=16;x++){pr.x=x;pr.z=z;pr.a=a;if(d.placeValid(pr)){ok=true;break outer}}}
  if(ok){d.placeShow();d.endPlace(true)}else{d.endPlace(false)}try{d.closeSheet()}catch(e){}

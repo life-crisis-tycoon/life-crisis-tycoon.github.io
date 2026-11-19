@@ -447,7 +447,7 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 <div id="modal"><div class="box" id="modalBox"></div></div>
 
 
-<script type="module" src="./game_preview.js?v=1795100381"></script>
+<script type="module" src="./game_preview.js?v=1795100573"></script>
 
 <style>#pv{position:fixed;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));z-index:99999;background:#fff;border-radius:16px;box-shadow:0 3px 0 rgba(0,0,0,.15);padding:8px;font:800 12px 'Open Sans',sans-serif;display:flex;flex-wrap:wrap;gap:4px;align-items:center;flex-wrap:nowrap}
 #pv select,#pv button{font:inherit;border-radius:10px;border:2px solid #E3E6EC;background:#F4F6F9;padding:5px 7px}#pv select{max-width:120px}#pv button.on{background:#22305A;color:#fff;border-color:#22305A}
@@ -461,9 +461,9 @@ for(const k of Object.keys(d.ROOMS)){const o=document.createElement('option');o.
 sel.value=q.get('room')&&d.ROOMS[q.get('room')]?q.get('room'):'career';
 document.querySelectorAll('#pv [data-s]').forEach(b=>{b.classList.toggle('on',b.dataset.s===size);b.onclick=()=>{size=b.dataset.s;document.querySelectorAll('#pv [data-s]').forEach(x=>x.classList.toggle('on',x===b));show()}});
 sel.onchange=show;$('pvGo').onclick=show;$('pvHide').onclick=()=>$('pv').classList.toggle('min');
-function show(){const type=sel.value;history.replaceState(null,'','?room='+type+'&size='+size);
+function show(){const type=sel.value;history.replaceState(null,'','?room='+type+'&size='+size+(q.get('city')?'&city='+q.get('city'):''));
  try{d.closeModal()}catch(e){}try{d.closeSheet()}catch(e){}
- d.startNew('london');try{d.closeModal()}catch(e){}d.S.tut=-1;d.S.cash=1e6;try{d.updateTut()}catch(e){}
+ d.startNew(q.get('city')||'london');try{d.closeModal()}catch(e){}d.S.tut=-1;d.S.cash=1e6;try{d.updateTut()}catch(e){}
  d.startPlace({type,size});const pr=d.placingR;let ok=false;
  if(pr){outer:for(const a of [0,1])for(let z=-4;z>=-22;z--)for(let x=-6;x<=16;x++){pr.x=x;pr.z=z;pr.a=a;if(d.placeValid(pr)){ok=true;break outer}}}
  if(ok){d.placeShow();d.endPlace(true)}else{d.endPlace(false)}try{d.closeSheet()}catch(e){}
