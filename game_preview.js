@@ -845,7 +845,29 @@ function buildCityDecor(kind) {
   scene.fog = L.fog ? new THREE.Fog(res.bg, L.fog[0], L.fog[1]) : null;
   if (GFX.batch) { const stop = new Set([...res.buildings.map((b) => b.o), ...res.movers.filter((m) => m.o).map((m) => m.o)]); cg.traverse((o) => { if (o.userData.swap) stop.add(o); }); for (const b of res.buildings) batchNode(b.o); batchNode(cg, stop); }
   world.cityB = res.buildings; world.movers = res.movers; moveCity(world.movers, 0); updateCutaway(); placeBackdrop(BG_ON && kind === 'london');
-  buildShell(kind); buildAnnexLot(kind);
+  buildShell(kind); buildAnnexLot(kind); town3d(kind);
+}
+// ---- comparison test (preview only, ?town=3d): the owner's Claude Design town (assets/town3d) instead of the London city ----
+// Its town is built by its own <town-scene> element (kept alive off-screen so its traffic keeps moving, its own drawing switched off);
+// the pieces are moved into our scene at ×2.6 (its buses and houses at our scale) as the district behind the HQ; our London pieces behind the HQ are hidden.
+const TOWN3D = new URLSearchParams(location.search).get('town') === '3d';
+function town3d(kind) {
+  if (!TOWN3D || kind !== 'london' || world.town3d) return; world.town3d = 'loading';
+  const sc = document.createElement('script'); sc.src = './assets/town3d/town-scene.js'; document.head.appendChild(sc);
+  sc.onload = () => { const el = document.createElement('town-scene'); el.setAttribute('config', JSON.stringify({ coins: false, birds: true, orbit: false }));
+    el.style.cssText = 'position:fixed;left:-20px;top:-20px;width:8px;height:8px;opacity:0;pointer-events:none'; document.body.appendChild(el);
+    const wait = () => { if (!el.ready || !el.scene) return setTimeout(wait, 100); el.renderer.render = () => {}; el.renderer.setSize(2, 2);
+      const G = new THREE.Group(), K = 2.6, rs = plotOf('london').main.concat(plotOf('london').lots), bx = new THREE.Box3();
+      const x0 = Math.min(...rs.map((r) => r[0])), x1 = Math.max(...rs.map((r) => r[1])), z0 = Math.min(...rs.map((r) => r[2])); // the HQ, its plots and annexes
+      for (const o of [...el.scene.children]) if (!o.isLight && o !== el.sun.target) G.add(o);
+      // its town stands behind the HQ (its high street parallel to ours), our own street and plaza stay in front
+      G.scale.setScalar(K); G.position.set((x0 + x1) / 2, -0.12, z0 - 2 - 13.5 * K); scene.add(G); world.town3d = G; el.plot.visible = false;
+      if (world.cityG) { world.cityG.updateMatrixWorld(true); const cut = z0 - 1; for (const o of world.cityG.children) { bx.setFromObject(o); if (bx.isEmpty()) continue; const c = bx.getCenter(new THREE.Vector3()); if (c.z < cut && bx.max.x - bx.min.x < 200) o.visible = false; } }
+      world.cityB = (world.cityB || []).filter((b) => b.o.visible);
+      G.updateMatrixWorld(true);
+      for (const h of el.houses) { bx.setFromObject(h); const c = bx.getCenter(new THREE.Vector3()); world.cityB.push({ o: h, x: c.x, z: c.z, h: bx.max.y, r: Math.max(bx.max.x - bx.min.x, bx.max.z - bx.min.z) / 2, lm: true }); } // hidden by the cutaway when they would cover the HQ
+      updateCutaway(); };
+    wait(); };
 }
 function buildAnnexLot(c) {
   c = c || (S && S.city) || 'london';
