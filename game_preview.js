@@ -2660,7 +2660,7 @@ function spawnInspector(force) {
 }
 function inspectorUpdate(dt) {
   const I = R.inspector; if (!I) return;
-  if (I.stage === 0) { if (stepWalker(I, dt, 1.4)) { I.stage = 1; I.wait = 6; const rs0 = Object.values(R.rooms); const d1 = rs0.length ? doorPt(rnd(rs0).def, 0.9) : { x: 3.5, z: 4 }, d2 = rs0.length ? doorPt(rnd(rs0).def, 0.9) : { x: 2, z: 3 }; I.tour = findPath(I.av.position, d1).concat(findPath(d1, d2)); // around the floor, along the walkways const pa = I.av.userData.p; if (pa.anim) pa.anim.set('lookwalk'); } }
+  if (I.stage === 0) { if (stepWalker(I, dt, 1.4)) { I.stage = 1; I.wait = 6; const rs0 = Object.values(R.rooms); const d1 = rs0.length ? doorPt(rnd(rs0).def, 0.9) : { x: 3.5, z: 4 }, d2 = rs0.length ? doorPt(rnd(rs0).def, 0.9) : { x: 2, z: 3 }; I.tour = findPath(I.av.position, d1).concat(findPath(d1, d2)); const pa = I.av.userData.p; if (pa.anim) pa.anim.set('lookwalk'); } }
   else if (I.stage === 1) { I.wait -= dt; const pa = I.av.userData.p, q = I.tour && I.tour[0]; // walks slowly between two rooms, looking around and taking notes
     if (q) { const dx = q.x - I.av.position.x, dz = q.z - I.av.position.z, d = Math.hypot(dx, dz); if (d < 0.15) { I.tour.shift(); if (!I.tour.length && pa.anim) pa.anim.set('idle'); } else { const st = Math.min(d, dt * 0.75); I.av.position.x += dx / d * st; I.av.position.z += dz / d * st; turnTo(I.av, Math.atan2(dx, dz), dt, 5); if (pa.anim && pa.anim.state !== 'lookwalk') pa.anim.set('lookwalk'); } }
     if (I.wait <= 0 && (!I.tour || !I.tour.length || I.wait < -8)) { verdict(I.kind || 'health'); I.stage = 2; I.path = [{ x: 3.2, z: 7.5 }, { x: 3, z: 13 }]; } }
