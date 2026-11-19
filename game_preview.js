@@ -209,11 +209,11 @@ function fitSun() { // close up the shadow map covers just what you see, so shad
 }
 // ---- test (preview only): London as a painted panorama on a ring around the plot. The ring leans back by the camera's tilt so its far side
 // always faces the camera, whatever the rotation; the near side is culled. Tilt is locked to the painting's angle, zoom is limited, the 3D city is hidden.
-const BG_Q = new URLSearchParams(location.search), BG_ON = BG_Q.get('bg') !== '0', BG_PITCH = +(BG_Q.get('bgp') || 0.62), BG_R = +(BG_Q.get('bgr') || 30), BG_REP = +(BG_Q.get('bgrep') || 3);
+const BG_Q = new URLSearchParams(location.search), BG_ON = BG_Q.get('bg') !== '0', BG_PITCH = +(BG_Q.get('bgp') || 0.62), BG_R = +(BG_Q.get('bgr') || 21), BG_REP = +(BG_Q.get('bgrep') || 3);
 const bgMode = () => BG_ON && S && (S.city || 'london') === 'london';
 function placeBackdrop(on) {
   if (world.bg) { world.bg.parent && world.bg.parent.remove(world.bg); world.bg = null; }
-  if (world.cityG) world.cityG.visible = !on;
+  if (world.cityG) world.cityG.visible = !on || BG_Q.get('bgcity') === '1'; // ?bgcity=1 keeps the 3D streets in front of the painting
   if (!on) return;
   const tex = new THREE.TextureLoader().load('assets/bg/london_pano.jpg?v=1'); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; tex.wrapS = THREE.RepeatWrapping; tex.repeat.set(-BG_REP, 1);
   const P = plotBox(S.city || 'london'), cx = (P[0] + P[1]) / 2, cz = (P[2] + P[3]) / 2, tn = Math.tan(BG_PITCH), cs = Math.cos(BG_PITCH);
