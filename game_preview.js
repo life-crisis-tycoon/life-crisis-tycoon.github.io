@@ -613,11 +613,12 @@ function floorMat(kind, w, d) { // one material per (kind, size) so the pattern 
 function floorPlane(x0, x1, z0, z1, m, y = 0.1, parent = scene) {
   const f = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.04, z1 - z0), m); f.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); f.receiveShadow = true; parent.add(f); return f;
 }
-function plant(x, z, s = 1, pot = '#E9785F', p = scene) {
+function plant(x, z, s = 1, pot = '#E9785F', p = scene, force = null) { // force: { v: model name, h: height } to pick a given plant
   const g = grp(x, z, 0, p); g.position.y = 0.1;
   put(cyl(0.22 * s, 0.17 * s, 0.38 * s, pot), 0, 0.19 * s, 0, g);
   [[0, 0.6, 0, 0.26], [0.16, 0.5, 0.08, 0.2], [-0.15, 0.52, -0.05, 0.2], [0.05, 0.78, -0.06, 0.18]].forEach((q, i) => put(sph(q[3] * s, ['#4E9E58', '#6DBA63', '#3F8A4D'][i % 3], { r: 0.85 }), q[0] * s, q[1] * s, q[2] * s, g));
-  if (pot !== '#E3B341') { const v = ['plant_s', 'plant_m', 'plant_l'][Math.abs(Math.round(x * 7.3 + z * 3.1)) % 3]; glbSwap(g, v, { h: { plant_s: 0.72, plant_m: 0.95, plant_l: 1.1 }[v] * s }); }
+  if (force) glbSwap(g, force.v, { h: force.h });
+  else if (pot !== '#E3B341') { const v = ['plant_s', 'plant_m', 'plant_l'][Math.abs(Math.round(x * 7.3 + z * 3.1)) % 3]; glbSwap(g, v, { h: { plant_s: 0.72, plant_m: 0.95, plant_l: 1.1 }[v] * s }); }
   return g;
 }
 const world = { roomGroups: {}, lotGroup: null, decor: {} };
@@ -1233,7 +1234,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     let p; if (it.hang) { const wn = it.wall === 'back' ? [0, -1] : it.wall === 'left' ? [-1, 0] : it.wall === 'right' ? [1, 0] : [0, 1], o = pd / 2 + gp; // anchor on the wall line (the cutaway judges it there), piece set into the room
       const A = W(x + wn[0] * o, z + wn[1] * o), n2 = F.T(wn[0], wn[1]); p = grp(A.x, A.z, R, g); p.userData.hang = [Math.round(n2.x), Math.round(n2.z)]; p.userData.swap = true; p = grp(0, o, 0, p); } else p = grp(P.x, P.z, R, g);
     box.at = { x: P.x, z: P.z, rot: R, pw, pd };
-    if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p); box.g = p; continue; } // the game's own potted plants
+    if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5) } : null); box.g = p; continue; } // the game's own potted plants
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
     glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len } : { h: it.h }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p;
@@ -1316,7 +1317,7 @@ function cafeKit(g, cx, cz, room) {
     else { const bx = sx * (w / 2 - 0.33); // banquette on the side wall away from the door, its table and one chair facing it; a second table on the door side
       L.push({ p: 'k_bench', h: 0.95 * K, wall: sx > 0 ? 'right' : 'left', u: 0.9 }, { p: 'k_table', h: 0.78 * K, x: bx - sx * 0.95 * K, z: 0.9 }, { p: 'k_chair', h: 0.95 * K, x: bx - sx * 1.65 * K, z: 0.9, rot: sx * H },
         { p: 'k_table', h: 0.78 * K, x: -sx * (1.6 + (K - 1) * 1.0), z: 1.4 }, { p: 'k_chair', h: 0.95 * K, x: -sx * (1.6 + (K - 1) * 1.0) - 0.75, z: 1.4, rot: H }, { p: 'k_chair', h: 0.95 * K, x: -sx * (1.6 + (K - 1) * 1.0) + 0.75, z: 1.4, rot: -H },
-        { p: '@plant', s: 1.8 * K, wall: sx > 0 ? 'right' : 'left', u: 'B' }); }
+        { p: '@plant', s: 1.8 * K, v: K > 1 ? 'plant_l' : null, vh: 1.25, wall: sx > 0 ? 'right' : 'left', u: 'B' }); } // diorama café: the monstera (crisp leaves), same height as before
     kitRoom(g, cx, cz, room, ROOM_STYLE.cafe.model, L, CAFE_DIMS, F);
     const P = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; }, b = P(ccx, ccz - 1.0 * K);
     room.staffSpot = { x: b.x, z: b.z, rot: F.rho, sit: false, y: 0 };
