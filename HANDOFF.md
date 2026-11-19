@@ -111,3 +111,8 @@ Read this first. The user (French or English; answer in the language she writes 
 - f4a4de9 (live too): close up, doors in walls cut to hip drop with them (updateCutaway: frame scaled to WALL_HIP, leaf/arch/top hidden, d.cut).
 - da436c6 (live too): city brief = bullet lists (💰 budget and 🏠 rent first in local rules, goals per star with no days/done, new behaviours by name only), picture = live view of the city with its empty lot (camera framed on plotOf(c).main; old assets/brief_london.jpg no longer used).
 - Preview only: preview.html?town=3d puts the owner's Claude Design town (assets/town3d/town-scene.js, SRC='three') behind the London HQ at ×2.6 for comparison (town3d(), called from buildCityDecor).
+
+## Budget Booth from Tripo pieces (2026-11-19, preview only)
+- `models/props/budget_kit.js` (k_desk, k_chair, k_bookcase, k_easel, k_armchair, k_table; spec `tools/gltfx/budget_spec.json`, packed with `packmulti.mjs`), `budgetKit()`; `ROOM_STYLE.budget.model = 'budget_kit', kit: true` replaces the fused `budget_in` model.
+- Layout: desk mid-back with coach chair behind and client chair in front on a round rug; bookcase back-left (first station), easel + plant back-right (last station), armchair + round table on the left wall (M/L). Layout report clean in S/M/L.
+- Staff room L: bunk bed (2 `bed` spots, nap energy x2) is live.
