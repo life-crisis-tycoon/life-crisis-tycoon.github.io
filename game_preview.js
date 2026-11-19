@@ -257,7 +257,8 @@ function updateCutaway() {
   for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = (!up || close) && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
   for (const w of world.roomCut || []) { w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
   for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
-  for (const d of world.doors || []) { d.g.scale.y = 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
+  for (const d of world.doors || []) { const c = close && d.g.userData.n && cut(d.g.userData.n, [d.x, d.z]); // close up, a door in a wall that drops to hip height drops with it (frame cut down, leaf and arch hidden)
+    d.g.scale.y = c ? WALL_HIP / ROOM_H : 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = !c; d.cut = !!c; }
   const ep = camPitch(), tan = Math.tan(ep);
   // how far toward the camera the HQ (and its plaza) reaches from the point you look at, capped by the bottom of the screen:
   // a city building whose roof would hide any of that is squashed. Low tilts need this, as roofs then hide a lot more.
