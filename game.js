@@ -8,7 +8,9 @@ import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
 import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30, EXTRA31, EXTRA32, EXTRA33, EXTRA34 } from './i18n_mgr.js';
+import { EPI } from './i18n_epi.js';
 for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l], EXTRA30[l], EXTRA31[l], EXTRA32[l], EXTRA33[l], EXTRA34[l]);
+for (const l in EPI) if (DICT[l]) Object.assign(DICT[l], EPI[l]);
 const AU = makeAudio();
 
 /* =========================================================
@@ -43,7 +45,8 @@ const PROBLEMS = {
   rentshock: { e: '🏙️', room: 'budget', fee: 300, city: 'newyork' }, grind: { e: '☕', room: 'yoga', fee: 320, city: 'newyork' }, swipe: { e: '📲', room: 'social', fee: 260, city: 'newyork' }, roomie: { e: '🛋️', room: 'therapy', fee: 290, city: 'newyork' },
   ahorita: { e: '⏳', room: 'career', fee: 270, city: 'mexico' }, quake: { e: '🫨', room: 'therapy', fee: 300, city: 'mexico' }, antojo: { e: '🌮', room: 'pharmacy', fee: 220, city: 'mexico' }, coraje: { e: '😤', room: 'lucha', fee: 290, city: 'mexico' },
   quarter: { e: '🫠', room: 'therapy', fee: 340, myst: true }, thirty: { e: '🎂', room: 'career', fee: 320, myst: true }, situation: { e: '🫤', room: 'social', fee: 300, myst: true }, mercury: { e: '🪐', room: 'nap', fee: 310, myst: true },
-  lowmood: { e: '🪫', room: 'therapy', fee: 300, care: true }, impostor: { e: '🎭', room: 'therapy', fee: 290 }, overthink: { e: '🌀', room: 'therapy', fee: 280 },
+  lowmood: { e: '🪫', room: 'therapy', fee: 300, care: true },
+  flu: { e: '🤒', room: 'pharmacy', fee: 180, epi: true }, flurest: { e: '🤧', room: 'nap', fee: 200, epi: true }, // epidemic waves only impostor: { e: '🎭', room: 'therapy', fee: 290 }, overthink: { e: '🌀', room: 'therapy', fee: 280 },
 };
 const ROOMS = {
   budget: { e: '💸', cost: 2500, role: 'coach', time: 8, pill: '#A86A1E', floor: '#E7C08C' },
@@ -69,6 +72,7 @@ const ROOMS = {
   staffroom: { e: '☕', cost: 1500, role: null, pill: '#8A6A45', floor: '#F1E4CC', staffOnly: true },
   toilet: { e: '🚻', cost: 1200, role: null, pill: '#5AB8F0', floor: '#E6F3FC', loo: true },
   therapy: { e: '🛋️', cost: 3200, role: 'therapist', time: 11, pill: '#0E6E2C', floor: '#D7EBDD' },
+  training: { e: '🎓', cost: 3400, role: 'trainer', time: 0, pill: '#5B6CC9', floor: '#E9ECF5', train: true, oneSt: true }, // career mode, from Mumbai
 };
 const ROLES = {
   host: { uni: '#FFD25E', pants: '#2F3A52', wage: [600, 950], bg: '#FFF3CF', strip: '#F2C14E' },
@@ -78,6 +82,7 @@ const ROLES = {
   researcher: { uni: '#FFFFFF', pants: '#2F3A52', wage: [900, 1500], bg: '#E3ECF5', strip: '#5AB8F0' },
   pharmacist: { uni: '#FFFFFF', pants: '#2BB5A6', wage: [700, 1100], bg: '#DFF5F1', strip: '#2BB5A6' },
   therapist: { uni: '#0E6E2C', pants: '#3B4A6B', wage: [1000, 1600], bg: '#D7EBDD', strip: '#2E7D4F' },
+  trainer: { uni: '#5B6CC9', pants: '#2F3A52', wage: [900, 1400], bg: '#E6E9F7', strip: '#5B6CC9' },
 };
 const TRAITS = [
   { n: 'Actually Reads Emails', t: 'good', speed: 1.2 }, { n: 'Spreadsheet Wizard', t: 'good', speed: 1.15 }, { n: 'Calm Voice', t: 'good', calm: 0.7 }, { n: 'Has a Dog', t: 'good', vibe: 1 },
@@ -140,6 +145,7 @@ const heldOk = (s, i, m) => s.mode !== 'career' || !!(s.holdDone || {})[holdKey(
 const vibeHeld = (s, i) => heldOk(s, i, 'vibes');
 const partOk = (s, i, m, v) => (m === 'vibes' ? vibeHeld(s, i) && true : metric(s, m) >= v);
 const mkGoals = (arr) => arr.map((parts, i) => ({ k: 'g' + (i + 1), i, parts, ok: (s) => parts.every(([m, v, days]) => (days && s.mode === 'career' ? heldOk(s, i, m) : metric(s, m) >= v)) }));
+for (const C of Object.values(CITIES)) if ((C.lvl || 0) >= 2 && !C.goals[2].some((g) => g[0] === 'epiclean')) C.goals[2].push(['epiclean', 2]); // 3★: get through 2 epidemics without a penalty
 let GOALS = mkGoals(CITIES.london.goals);
 const goalText = (G) => G.parts.map(([m, v, days]) => t('gp.' + m, { n: m === 'cash' || m === 'value' ? money(v) : v }) + (days ? ' (' + t('obj.days', { d: days }) + ')' : '')).join(' · ');
 const cityOf = () => CITIES[(S && S.city) || 'london'];
@@ -194,8 +200,14 @@ let PR_BASE = null; // pixel ratio chosen by the graphics level / speed watcher;
 function closePR() { if (PR_BASE == null) PR_BASE = renderer.getPixelRatio(); const dpr = window.devicePixelRatio || 1;
   const want = view.half < CLOSE_HALF - 0.4 ? Math.max(PR_BASE, Math.min(dpr, GFX.low ? 2 : 3)) : view.half > CLOSE_HALF + 0.4 ? PR_BASE : null;
   if (want != null && Math.abs(renderer.getPixelRatio() - want) > 0.01) { renderer.setPixelRatio(want); renderer.setSize(innerWidth, innerHeight, false); } }
+function fitSun() { // close up the shadow map covers just what you see, so shadows stay crisp; further out it covers the whole HQ as before
+  const sc = sun.shadow.camera, close = view.half < 9;
+  if (close) { const r = Math.ceil(view.half * 1.9 + 3), qx = Math.round(view.tx), qz = Math.round(view.tz); Object.assign(sc, { left: -r, right: r, top: r, bottom: -r }); sun.target.position.set(qx, 0, qz); sun.position.set(qx + 17, 24, qz + 8); } // snapped to whole metres so shadows don't shimmer while panning
+  else { Object.assign(sc, { left: -20, right: 22, top: 20, bottom: -20 }); sun.target.position.set(-1, 0, 2); sun.position.set(16, 24, 10); }
+  sc.updateProjectionMatrix(); sun.target.updateMatrixWorld();
+}
 function placeCam() {
-  closePR();
+  closePR(); fitSun();
   const a = innerWidth / innerHeight;
   cam.left = -view.half * a; cam.right = view.half * a; cam.top = view.half; cam.bottom = -view.half; cam.updateProjectionMatrix();
   const D = 65, ep = camPitch(), cp = Math.cos(ep);
@@ -226,7 +238,7 @@ function updateCutaway() {
   const up = WALLS_UP, cut = (n, p) => { if (close && fr(p)) return true; if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
   const tv = new THREE.Vector3(), wp2 = (o) => { o.getWorldPosition(tv); return [tv.x, tv.z]; };
   for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = (!up || close) && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
-  for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1;
+  for (const w of world.roomCut || []) { w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
   for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
   for (const d of world.doors || []) { d.g.scale.y = 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
   const ep = camPitch(), tan = Math.tan(ep);
@@ -319,7 +331,7 @@ sty('boss hustle rent fuel subs flat', { walk: 'WalkQuick', sit: 'SitCross' });
 sty('haircut botoxfomo beauty', { idle: 'IdleMirror', phone: 'IdleMirror' }); sty('lonely ghosted', { walk: 'WalkTired', idle: 'IdleBreath' });
 sty('schoolrun toddler tablet homework sugar', { walk: 'WalkQuick' });
 const styleFor = (prob) => Object.assign({ angry: 'IdleAngry' }, PSTYLE[prob] || {});
-const EXTRA_VIS = ['v16', 'v08', 'v15', 'v22', 'sp_health', 'sp_safety', 'sp_mystery', 'sp_influencer']; // inspector + the "crew"
+const EXTRA_VIS = ['v16', 'v08', 'v15', 'v22', 'sp_health', 'sp_safety', 'sp_mystery', 'sp_influencer', 'sp_trainer']; // inspector + the "crew"
 function visPerson(key, fb) { if (CHAR.A.full[key]) { const a = person({ vm: key, tall: VIS[key].h / 1.75 }, 'visitor'); if (a.userData.p.glb) return a; } loadFull(key); return person(fb); }
 function preloadVisitors(c) { if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return; for (const k of Object.keys(visPool(c))) loadFull(k); for (const k of EXTRA_VIS.concat(['v25', 'v26', 'v27', 'v28'])) loadFull(k); }
 function visitorPose(v) {
@@ -803,7 +815,8 @@ function lotOwned(i) {
 const R = { rooms: {}, staff: [], visitors: [], deskQ: [], deskQs: [], litter: [], rats: [], inspector: null, later: [] }; R.deskQs[0] = R.deskQ;
 // Room style kit (v2 look): thick rounded matte walls, cream cap, darker skirting, optional fairy lights (no ivy).
 const WALL_HIP = 1.0, WALL_CUT = 0.3, DOOR_H = 2.15, DOOR_W = 1.15, ROOM_H = DOOR_H + 0.12; // interior walls are exactly as tall as the door frame // walls taller than people (~1.75 m), one modern door per room
-const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', lights: true, h: ROOM_H } };
+const ROOM_STYLE = { nap: { wall: '#E4D6F6', cap: '#FFF7EC', base: '#BFA6E6', floor: '#EFE4FA', lights: true, h: ROOM_H }, training: { v2: true, model: 'training_kit', kit: true, winSide: 'none', // no window: the board, sink, shelf and table take the walls
+    wall: '#A9B3EE', inBase: '#8C97D8', floor: '#E7E9EF', door: '#7F8BD6', panel: '#7F8BD6', pop: '#F2C230', posts: true, h: ROOM_H } };
 // soft pastel wall per room (from its colour), cream rounded caps and posts — same family as the nap room
 const _mix = (a, b, k) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, k).getHexString(); };
 const WALL_TINT = { yoga: '#D3ECEE', lucha: '#F6D3E2', ahwa: '#F0DCC0', budget: '#F3D9B8', detox: '#D3E6F4', career: '#F2D6DE', cafe: '#D6EBDD', lab: '#DCE2EC', social: '#F8D7E2', parent: '#FBE2C0', moving: '#EADCC8', pharmacy: '#D2EDE6', glowup: '#F8DCE8', wedding: '#F8DCE6', jjim: '#F0D9C4', roda: '#D7EDD5', garage: '#F2E3BD', shop: '#F9DCCF', staffroom: '#EDE2CF', toilet: '#D9ECF8', therapy: '#D5E6D9' };
@@ -815,7 +828,7 @@ ROOM_STYLE.career = { v2: true, model: 'career_kit', kit: true, winOuter: true, 
 ROOM_STYLE.pharmacy = { v2: true, model: 'pharmacy_kit', kit: true, floorMap: () => PHARMA_FLOOR(), wall: '#CFE6D4', inBase: '#A9D3B6', floor: '#F6F3EC', door: '#8FC7A0', panel: '#8FC7A0', pop: '#5BB37A', posts: true, h: ROOM_H };
 ROOM_STYLE.therapy = { v2: true, model: 'therapy_kit', kit: true, winSide: '-1,0', winOuter: true, wood: ['#F4F0E9', '#EAE4DA'], wall: '#5C3A26', inBase: '#3F2719', floor: '#F4F0E9', door: '#C8644E', panel: '#C8644E', pop: '#E3A23B', posts: true, h: ROOM_H };
 ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0', winOuter: true, floorMap: () => TERRAZZO(), wall: '#EFA7AE', inBase: '#D9858F', floor: '#F2C2C4', door: '#E98C98', panel: '#E98C98', pop: '#E7B04A', posts: true, h: ROOM_H };
-ROOM_STYLE.cafe = { v2: true, model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
+ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER_SOFT(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
@@ -827,6 +840,24 @@ function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
 // Every room builds only on its own side of the wall line (plus a thin cream skin outside, thinner than any neighbour's own
 // lining), so two rooms sharing a wall never overlap or flicker and each shows its own colour inside. Against the building's
 // outer wall (userData.outer) the lining sits just proud of that wall instead of being skipped.
+// ---- diorama look (vertical slice: rooms whose style has chunky / ao) ----
+// soft grounding: a gradient strip on the floor along each inner wall, and a blurred blob under each piece of furniture
+const AO_STRIP = () => GC.aoStrip || (GC.aoStrip = canvasTex(4, 64, (c, W, H) => { const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(60,45,30,0.55)'); gr.addColorStop(0.3, 'rgba(60,45,30,0.22)'); gr.addColorStop(1, 'rgba(60,45,30,0)'); c.fillStyle = gr; c.fillRect(0, 0, W, H); }));
+const AO_BLOB = () => GC.aoBlob || (GC.aoBlob = canvasTex(64, 64, (c, W, H) => { const gr = c.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W / 2); gr.addColorStop(0, 'rgba(55,40,28,0.7)'); gr.addColorStop(0.5, 'rgba(55,40,28,0.4)'); gr.addColorStop(1, 'rgba(55,40,28,0)'); c.fillStyle = gr; c.fillRect(0, 0, W, H); }));
+const aoMat = (k, tex) => MC[k] || (MC[k] = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, toneMapped: false }));
+function aoStrip(parent, cx, cz, len, n, inset, w = 0.6) { // n points out of the room; the dark edge sits against the wall face
+  const m = new THREE.Mesh(GC.aoPlane || (GC.aoPlane = new THREE.PlaneGeometry(1, 1)), aoMat('aoStrip', AO_STRIP()));
+  m.scale.set(len, w, 1); m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2, Math.atan2(-n[0], -n[1]), 0);
+  m.position.set(cx - n[0] * (inset + w / 2), 0.134, cz - n[1] * (inset + w / 2)); m.renderOrder = 1; m.userData.swap = true; parent.add(m); return m;
+}
+function aoBlob(parent, x, z, w, d, rot = 0) {
+  const m = new THREE.Mesh(GC.aoPlane || (GC.aoPlane = new THREE.PlaneGeometry(1, 1)), aoMat('aoBlob', AO_BLOB()));
+  m.scale.set(w, d, 1); m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2, rot, 0); m.position.set(x, 0.135, z); m.renderOrder = 1; m.userData.swap = true; parent.add(m); return m;
+}
+// softer café checker: half-metre tiles with grout lines and a faint bevel on each tile, lower contrast than the old one
+const CHECKER_SOFT = () => GC.checkerSoft || (GC.checkerSoft = canvasTex(256, 256, (c, W) => { const t = W / 2; c.fillStyle = '#D9D0BA'; c.fillRect(0, 0, W, W);
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const x = i * t + 3, y = j * t + 3, s = t - 6, base = (i + j) % 2 ? '#B7C69C' : '#F3EDDF';
+    c.fillStyle = base; c.fillRect(x, y, s, s); const gr = c.createLinearGradient(x, y, x + s, y + s); gr.addColorStop(0, 'rgba(255,255,255,0.22)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(70,60,40,0.10)'); c.fillStyle = gr; c.fillRect(x, y, s, s); } }, [6, 6]));
 function wallSegV2(x0, z0, x1, z1, S, parent) {
   const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (len < 0.05) return;
@@ -834,10 +865,23 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
   const run = (a, b, hh, y, c, r, o, ex = 0) => wbox(parent, alongX, cx, cz, 1, n, -len / 2 - ex, len / 2 + ex, a, b, hh, y, c, r, o);
   run(-IN, 0, h, h / 2 + 0.1, parent.userData.wall || S.wall, 0.05, { r: 0.95 });
   if (OUT) run(0, OUT, h, h / 2 + 0.1, OUT_WALL, 0.03, { r: 0.95 });
+  if (S.chunky) { // diorama wall: a thick, fully rounded cream rim and a tall sage plinth outside (kept within 8.5 cm so a neighbour's lining still hides it)
+    // the rim lives in its own group that keeps its shape when the cutaway squashes the wall to hip height
+    const rim = new THREE.Group(); rim.position.y = h + 0.17; rim.userData.keepY = true; parent.add(rim);
+    wbox(rim, alongX, cx, cz, 1, n, -len / 2 - 0.03, len / 2 + 0.03, -IN - 0.12, OUT + (ow ? 0 : 0.1), 0.22, 0, OUT_CAP, 0.11, { r: 0.8 });
+    parent.userData.rim = rim;
+    if (OUT) { const base = new THREE.Group(); base.userData.keepY = true; parent.add(base); wbox(base, alongX, cx, cz, 1, n, -len / 2 - 0.005, len / 2 + 0.005, OUT - 0.005, OUT + 0.025, 0.46, 0.33, S.plinth || OUT_BASE, 0.03, { r: 0.9 }); }
+    if (S.ao && parent.parent) aoStrip(parent.parent, cx, cz, len, n, IN);
+  } else {
   run(-IN - 0.04, OUT + (ow ? 0 : 0.04), 0.1, h + 0.15, OUT_CAP, 0.045, { r: 0.85 }, 0.02); // soft rounded rim
   if (OUT) run(OUT - 0.005, OUT + 0.045, 0.22, 0.21, OUT_BASE, 0.02, { r: 0.9 }, 0.005); // sage skirting outside
+  }
   run(-IN - 0.035, -IN + 0.005, 0.14, 0.17, S.inBase, 0.02, { r: 0.9 }, 0.005);
-  if (S.posts && !ow) { const ds = Math.sign(alongX ? x1 - x0 : z1 - z0) || 1;
+  if (S.posts && !ow && S.chunky) { const ds = Math.sign(alongX ? x1 - x0 : z1 - z0) || 1, bm = (OUT - IN) / 2; // rounded column at each end of the run, centred in the wall's thickness
+    for (const [px, pz, d] of [[x0, z0, ds], [x1, z1, -ds]]) { const ax = px + (alongX ? d * 0.07 : 0) + n[0] * bm, az = pz + (alongX ? 0 : d * 0.07) + n[1] * bm;
+      const rim = parent.userData.rim || parent; put(cyl(0.135, 0.135, h, OUT_WALL, { r: 0.95 }), ax, h / 2 + 0.1, az, parent);
+      put(cyl(0.2, 0.2, 0.22, OUT_CAP, { r: 0.8 }), ax, rim === parent ? h + 0.17 : 0, az, rim); put(sph(0.2, OUT_CAP, { r: 0.8 }), ax, (rim === parent ? h + 0.17 : 0) + 0.11, az, rim).scale.y = 0.4; } }
+  else if (S.posts && !ow) { const ds = Math.sign(alongX ? x1 - x0 : z1 - z0) || 1;
     for (const [px, pz, d] of [[x0, z0, ds], [x1, z1, -ds]]) { wbox(parent, alongX, px, pz, d, n, -0.02, 0.2, -IN - 0.02, OUT + 0.02, h, h / 2 + 0.1, OUT_WALL, 0.05, { r: 0.95 }); wbox(parent, alongX, px, pz, d, n, -0.04, 0.23, -IN - 0.05, OUT + 0.03, 0.1, h + 0.16, OUT_CAP, 0.04, { r: 0.85 }); } }
   if (S.stars && len > 1) { let sd = Math.round((x0 * 7 + z0 * 13) * 10); const rr = () => ((sd = (sd * 16807 + 11) % 2147483647) / 2147483647);
     for (let u = 0.3; u < len - 0.2; u += 0.32) { const px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u, y = h - 0.15 - rr() * 0.55;
@@ -888,7 +932,7 @@ function wallWithGap(x0, z0, x1, z1, gap, g, S) {
 function buildRoom(r) {
   if (world.roomGroups[r.id]) { const og = world.roomGroups[r.id]; if (og.parent) og.parent.remove(og); }
   const g = new THREE.Group(); scene.add(g); world.roomGroups[r.id] = g;
-  const def = ROOMS[r.type], Z = SIZES[r.size], q = roomRect(r), dp = doorPt(r, 0);
+  const def = ROOMS[r.type], Z = def.oneSt ? { ...SIZES[r.size], st: 1 } : SIZES[r.size], q = roomRect(r), dp = doorPt(r, 0);
   const RS = ROOM_STYLE[r.type];
   const fm = RS && RS.floorMap ? mat('#FFFFFF', { map: RS.floorMap(), mapK: 'fm' + r.type, r: 0.6 }) : RS && RS.wood ? mat('#FFFFFF', { map: woodTex(RS.wood[0], RS.wood[1], [5, 5]), mapK: 'wk' + r.type, r: 0.8 }) : RS && RS.floor ? mat(RS.floor, { r: 1 }) : r.type === 'budget' || r.type === 'cafe' ? mat('#FFFFFF', { map: woodTex(def.floor, '#D9AE78', [3, 3]), mapK: 'w' + r.type }) : mat(def.floor, { r: 0.9 });
   floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] && !(RS && RS.model) ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
@@ -922,7 +966,7 @@ function buildRoom(r) {
   { g.updateMatrixWorld(true); const skip = new Set([...wallG, door.g]), bx = new THREE.Box3(), obs = [];
     const walk = (o) => { for (const c of o.children) { if (skip.has(c)) continue; if (c.isMesh) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) obs.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); } walk(c); } };
     walk(g); room.obs = obs; }
-  if (GFX.batch) { for (const w of wallG) batchNode(w, new Set(), { userData: { roomId: r.id } }); batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
+  if (GFX.batch) { for (const w of wallG) { const keep = w.children.filter((c) => c.userData.keepY); batchNode(w, new Set(keep), { userData: { roomId: r.id } }); for (const k of keep) batchNode(k, new Set(), { userData: { roomId: r.id } }); } batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
   { const ca = Math.cos(r.a), sa = Math.sin(r.a), hs = []; g.traverse((o) => { if (o.userData.whang) hs.push({ o, n: o.userData.whang }); else if (o.userData.hang) { const [lx, lz] = o.userData.hang; hs.push({ o, n: [Math.round(lx * ca + lz * sa), Math.round(-lx * sa + lz * ca)] }); } });
     world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
   world.roomCut = (world.roomCut || []).filter((w) => w.parent && w.parent.parent).concat(wallG); updateCutaway();
@@ -1136,7 +1180,8 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     box.at = { x: P.x, z: P.z, rot: R, pw, pd };
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p); box.g = p; continue; } // the game's own potted plants
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
-    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len } : { h: it.h }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p; }
+    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len } : { h: it.h }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p;
+    if (!it.hang && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
 }
@@ -1240,6 +1285,20 @@ function napKit(g, cx, cz, room) {
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
+}
+const TRAIN_DIMS = {"k_board":[0.9538,0.998,0.4711],"k_chair":[0.6579,0.998,0.6337],"k_table":[0.998,0.6348,0.6582],"k_shelf":[0.6621,0.998,0.3457],"k_sink":[0.6348,0.998,0.5723]};
+// Training room from the Tripo pieces (layout = the training room painting): whiteboard on wheels at the back with the trainer beside it,
+// yellow tablet chairs facing it (S 2 · M 4 · L 6), sink + soap and the binder shelf on the left wall, the first-aid / CPR table on the right, a ficus in the corner
+function trainingKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, sz = room.sz || 'm', bz = -D / 2;
+  const n = { s: 2, m: 4, l: 6 }[sz], cols = n === 6 ? 3 : 2, dx = cols === 3 ? 1.35 : sz === 's' ? 1.3 : 1.5, z0 = bz + (sz === 's' ? 1.6 : 1.8), dz = 1.25;
+  const L = [{ p: 'k_board', h: 1.75, x: -0.25, z: bz + 0.45 }];
+  const seats = []; for (let i = 0; i < n; i++) { const c = i % cols, r = Math.floor(i / cols), x = -0.2 + (c - (cols - 1) / 2) * dx, z = z0 + r * dz; seats.push({ x, z }); L.push({ p: 'k_chair', h: 0.9, x, z, rot: Math.PI, solid: false }); }
+  L.push({ p: 'k_sink', h: 1.0, wall: 'left', u: 'B' }, { p: 'k_shelf', h: 1.45, wall: 'left', u: 'F' });
+  L.push({ p: 'k_table', len: 1.2, wall: 'right', u: Math.min(D / 2 - 1.2, z0 + 0.35) }, { p: '@plant', s: 1.5, wall: 'right', u: 'B' });
+  kitRoom(g, cx, cz, room, ROOM_STYLE.training.model, L, TRAIN_DIMS);
+  for (const s of seats) room.spots.push({ x: cx + s.x, z: cz + s.z, rot: Math.PI, sit: true, y: 0.02, busy: null });
+  room.staffSpot = { x: cx + (sz === 's' ? 0.85 : 1.05), z: cz + bz + 0.95, rot: -0.35, sit: false, y: 0 }; // beside the board, facing the class
 }
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
@@ -1475,6 +1534,38 @@ const furniture = {
     room.staffSpot = { x: cx + 1.8 * K, z: cz + 0.6 * K, rot: -Math.PI / 2, sit: false, y: 0 };
     for (const [ox, oz, rot] of [[-1.6, -1.6, Math.PI], [0.4, -1.6, Math.PI], [2.2, -1.5, Math.PI], [-0.6, -1.6, Math.PI]].slice(0, seatsN(room))) room.spots.push({ x: cx + ox * K, z: cz + oz * K, rot, sit: false, y: 0, busy: null });
   },
+  training(g, cx, cz, room, K = 1) { if (ROOM_STYLE.training.kit && PROPS_ON) { trainingKit(g, cx, cz, room); return; } // code fallback (props off): code furniture until the modelled pieces arrive: whiteboard on wheels, yellow tablet chairs facing it, sink + shelf, first-aid table
+    const W = room.w || 6, D = SIZES[room.sz || 'm'].D, sz = room.sz || 'm', bz = cz - D / 2 + 0.5;
+    const wb = grp(cx - 0.25, bz, 0, g); // whiteboard on wheels, facing the seats
+    for (const sx of [-0.85, 0.85]) { put(rbox(0.06, 1.9, 0.06, '#9AA3AD', 0.02, { m: 0.5, r: 0.35 }), sx, 1.02, 0, wb); put(rbox(0.08, 0.05, 0.55, '#9AA3AD', 0.02, { m: 0.5, r: 0.35 }), sx, 0.12, 0, wb); for (const wz of [-0.24, 0.24]) put(cyl(0.05, 0.05, 0.05, '#2F3640'), sx, 0.06, wz, wb); }
+    put(rbox(1.7, 1.0, 0.05, '#C9CED6', 0.02, { m: 0.4, r: 0.4 }), 0, 1.45, 0, wb); put(rbox(1.6, 0.9, 0.02, '#FFFFFF', 0.01, { r: 0.25 }), 0, 1.45, 0.03, wb);
+    put(rbox(1.5, 0.04, 0.1, '#C9CED6', 0.01), 0, 0.93, 0.06, wb);
+    for (const [x, y, w, c] of [[-0.45, 1.7, 0.6, '#2F6FD6'], [-0.5, 1.58, 0.45, '#2F3640'], [-0.48, 1.47, 0.5, '#2F3640'], [0.35, 1.62, 0.12, '#E5484D'], [0.35, 1.62, 0.04, '#E5484D'], [0.3, 1.3, 0.5, '#2E9E5B'], [-0.45, 1.22, 0.35, '#2F3640']]) put(rbox(w, w < 0.06 ? 0.12 : 0.025, 0.005, c, 0.002), x, y, 0.045, wb);
+    put(rbox(0.12, 0.12, 0.005, '#E5484D', 0.002), 0.35, 1.62, 0.045, wb); // a red cross drawn on the board
+    for (const [mx, mc] of [[-0.3, '#2F6FD6'], [-0.15, '#E5484D'], [0, '#2F3640']]) put(cyl(0.012, 0.012, 0.12, mc), mx, 0.97, 0.06, wb).rotation.z = Math.PI / 2;
+    room.staffSpot = { x: cx + 1.0 * (sz === 's' ? 0.8 : 1), z: bz + 0.45, rot: -0.35, sit: false, y: 0 }; // the trainer stands beside the board, facing the class
+    const n = { s: 2, m: 4, l: 6 }[sz], cols = n === 6 ? 3 : 2, rows = n / cols, dx = cols === 3 ? 1.35 : sz === 's' ? 1.3 : 1.5, z0 = sz === 's' ? bz + 1.55 : bz + 1.75, dz = 1.25;
+    for (let i = 0; i < n; i++) { // yellow tablet chairs, facing the whiteboard
+      const c = i % cols, r = Math.floor(i / cols), x = cx - 0.2 + (c - (cols - 1) / 2) * dx, z = z0 + r * dz, ch = grp(x, z, Math.PI, g);
+      put(rbox(0.5, 0.07, 0.48, '#F2C230', 0.03), 0, 0.47, 0, ch); put(rbox(0.5, 0.5, 0.06, '#F2C230', 0.03), 0, 0.78, -0.24, ch);
+      for (const [lx, lz] of [[-0.21, -0.2], [0.21, -0.2], [-0.21, 0.2], [0.21, 0.2]]) put(cyl(0.018, 0.018, 0.44, '#3B4452'), lx, 0.22, lz, ch);
+      put(rbox(0.26, 0.03, 0.36, '#F2C230', 0.02), -0.36, 0.72, 0.12, ch); put(cyl(0.015, 0.015, 0.26, '#3B4452'), -0.3, 0.6, -0.02, ch); // the writing tablet on the arm
+      put(rbox(0.16, 0.01, 0.22, '#FFFFFF', 0.005), -0.36, 0.74, 0.12, ch);
+      room.spots.push({ x, z, rot: Math.PI, sit: true, y: 0.02, busy: null });
+    }
+    const lw = cx - W / 2 + 0.3; // left wall: sink with soap, then a shelf of binders and a first-aid box
+    const sk = grp(lw, bz + 0.85, Math.PI / 2, g); put(rbox(0.6, 0.12, 0.45, '#F4F6F8', 0.04, { r: 0.2 }), 0, 0.85, 0, sk); put(rbox(0.12, 0.8, 0.12, '#E2E6EA', 0.03), 0, 0.42, -0.08, sk);
+    put(rbox(0.4, 0.05, 0.28, '#BFE3F2', 0.02, { r: 0.1 }), 0, 0.9, 0.02, sk); put(cyl(0.015, 0.015, 0.2, '#B8C0C8', { m: 0.7, r: 0.25 }), 0, 1.0, -0.17, sk);
+    put(cyl(0.035, 0.04, 0.14, '#7ACB4E'), 0.22, 0.98, -0.12, sk); put(cyl(0.01, 0.01, 0.06, '#FFFFFF'), 0.22, 1.08, -0.12, sk); // soap dispenser
+    put(rbox(0.5, 0.6, 0.03, '#DDE7F0', 0.01, { m: 0.3, r: 0.15 }), 0, 1.5, -0.2, sk); // mirror
+    if (sz !== 's') { const sh = grp(lw, cz + 0.25, Math.PI / 2, g); put(rbox(1.1, 1.3, 0.34, '#FFFFFF', 0.03), 0, 0.68, 0, sh);
+      for (let k = 0; k < 2; k++) { put(rbox(1.0, 0.03, 0.3, '#E8ECF0', 0.01), 0, 0.5 + k * 0.5, 0.02, sh); for (let b = 0; b < 6; b++) put(rbox(0.07, 0.34, 0.24, ['#2F6FD6', '#E5484D', '#F2C230', '#2E9E5B', '#7F68C9', '#2F6FD6'][(b + k) % 6], 0.01), -0.4 + b * 0.09, 0.69 + k * 0.5, 0.04, sh); }
+      put(rbox(0.32, 0.22, 0.24, '#FFFFFF', 0.03), 0.3, 1.47, 0.04, sh); put(rbox(0.04, 0.14, 0.01, '#E5484D', 0.004), 0.3, 1.47, 0.165, sh); put(rbox(0.14, 0.04, 0.01, '#E5484D', 0.004), 0.3, 1.47, 0.165, sh); }
+    const tz = Math.min(cz + D / 2 - 1.15, z0 + 0.4), tb = grp(cx + W / 2 - 0.45, tz, -Math.PI / 2, g); // right wall: table with the first-aid kit and the CPR mannequin
+    put(rbox(1.2, 0.05, 0.6, '#E8EBEF', 0.02), 0, 0.76, 0, tb); for (const [lx, lz] of [[-0.55, -0.25], [0.55, -0.25], [-0.55, 0.25], [0.55, 0.25]]) put(cyl(0.025, 0.025, 0.74, '#9AA3AD', { m: 0.5, r: 0.35 }), lx, 0.38, lz, tb);
+    put(rbox(0.36, 0.2, 0.24, '#E5484D', 0.04), -0.35, 0.89, 0, tb); put(rbox(0.04, 0.12, 0.005, '#FFFFFF', 0.002), -0.35, 0.9, 0.122, tb); put(rbox(0.12, 0.04, 0.005, '#FFFFFF', 0.002), -0.35, 0.9, 0.122, tb);
+    const mq = put(rbox(0.5, 0.14, 0.3, '#E9C9A8', 0.06), 0.2, 0.86, 0, tb); put(sph(0.1, '#E9C9A8'), 0.53, 0.88, 0, tb); put(rbox(0.3, 0.02, 0.22, '#5AB8F0', 0.01), 0.15, 0.94, 0, tb); mq.userData.cpr = true;
+  },
   staffroom(g, cx, cz, room, K = 1) {
     const so = grp(cx - 0.6 * K, cz - 1.8 * K, 0, g); put(rbox(2.4, 0.42, 0.85, '#FFB067', 0.15), 0, 0.32, 0, so); put(rbox(2.4, 0.6, 0.25, '#FFB067', 0.1), 0, 0.68, -0.33, so); glbSwap(so, 'sofa', { len: 2.5, h: 1.0, y: 0.12 });
     for (const ox of [-0.7, 0.7]) room.spots.push({ x: cx - 0.6 * K + ox, z: cz - 1.75 * K, rot: 0, sit: true, y: 0.05, busy: null });
@@ -1530,23 +1621,24 @@ function staffLook(st) {
   if (st.role === 'researcher') Object.assign(L, { coat: true, shirt: '#5AB8F0', inner: '#5AB8F0', goggles: true, lanyard: true });
   return L;
 }
-const energyF = (rs) => ((rs.data.energy ?? 1) < 0.25 ? 0.6 : 1) * (rs.data.sadT > 0 ? 0.7 : 1);
+const energyF = (rs) => ((rs.data.energy ?? 1) < 0.25 ? 0.6 : 1) * (rs.data.sadT > 0 ? 0.7 : 1) * (rs.data.sick ? 0.5 : 1);
+const staffPerson = (st) => (st.role === 'trainer' && CHAR.A.full.sp_trainer ? visPerson('sp_trainer', staffLook(st)) : person(staffLook(st), 'staff'));
 function traitVal(st, key, def = 1) { let v = def; for (const n of st.traits) { const x = TRAITS.find((y) => y.n === n); if (x && x[key] != null) v *= x[key]; } return v; }
 function spawnStaffAvatar(st) {
-  const av = person(staffLook(st), 'staff'); av.position.set(3, 0.1, 11); scene.add(av);
+  const av = staffPerson(st); av.position.set(3, 0.1, 11); scene.add(av);
   const rs = { data: st, av, at: null, path: [], ph: 0, mode: 'walk', task: null, work: 0 };
   R.staff.push(rs); return rs;
 }
 const MAINT_HOME = (i) => ({ x: 5.9 - i * 0.6, z: 1.0, rot: Math.PI / 4, sit: false, y: 0 });
 function assignStaff() {
-  for (const rs of R.staff) if (rs.at != null && !['desk', 'idle', 'maint'].includes(rs.at) && (!R.rooms[rs.at] || R.rooms[rs.at].staff[rs.st] !== rs)) rs.at = null;
+  for (const rs of R.staff) if (rs.at != null && !['desk', 'idle', 'maint', 'train', 'heal'].includes(rs.at) && (!R.rooms[rs.at] || R.rooms[rs.at].staff[rs.st] !== rs)) rs.at = null;
   desks().forEach((_, di) => { if (deskHost(di)) return; const h = R.staff.find((rs) => rs.data.role === 'host' && (!rs.at || rs.at === 'idle')); if (h) { h.at = 'desk'; h.desk = di; goStaff(h, deskSpot(di)); } });
   for (const room of Object.values(R.rooms)) {
     if (!ROOMS[room.type].role) continue;
     room.staff.forEach((s, i) => {
       if (s && R.staff.includes(s) && s.at === room.id && s.st === i) return;
       room.staff[i] = null;
-      const c = R.staff.find((rs) => rs.data.role === ROOMS[room.type].role && (rs.at == null || rs.at === 'idle'));
+      const c = R.staff.find((rs) => rs.data.role === ROOMS[room.type].role && (rs.at == null || rs.at === 'idle') && !rs.data.train);
       if (c && room.staffSpots[i]) { c.at = room.id; c.st = i; room.staff[i] = c; goStaff(c, room.staffSpots[i]); }
     });
   }
@@ -1713,7 +1805,7 @@ function spawnVisitor(prob, em, vip, look0) {
   if (!prob && S.ad && S.ad.room && RNG() < 0.5) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].room === S.ad.room));
   if (!prob && unlocked('lab') && S.mode === 'career' && RNG() < 0.12) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].myst && unlocked(PROBLEMS[k].room)));
   const cityOk = (k) => !PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london');
-  if (!prob) { const pool = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].fam && cityOk(k) && unlocked(PROBLEMS[k].room)); const w = pool.map((k) => (hasRoom(PROBLEMS[k].room) ? 3 : 1) * (PROBLEMS[k].city ? (cityOf().sig === k ? 4 : 2) : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); prob = pool[pool.length - 1]; for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) { prob = pool[i]; break; } } }
+  if (!prob) { const pool = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].fam && !PROBLEMS[k].epi && cityOk(k) && unlocked(PROBLEMS[k].room)); const w = pool.map((k) => (hasRoom(PROBLEMS[k].room) ? 3 : 1) * (PROBLEMS[k].city ? (cityOf().sig === k ? 4 : 2) : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); prob = pool[pool.length - 1]; for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) { prob = pool[i]; break; } } }
   const vm = look0 ? null : vip && VIS.sp_influencer ? 'sp_influencer' : pickVis(spawnKid, PROBLEMS[prob] && PROBLEMS[prob].room === 'nap'); // the influencer has her own model
   const look = look0 || { vm, kid: famNext || ['toddler', 'schoolrun', 'tablet', 'homework', 'sugar'].includes(prob) ? pickVis(true) || 'v25' : null, skin: rnd(SKIN), hair: rnd(HAIR), style: rnd(STYLES), shirt: rnd(SHIRTS), pants: rnd(['#3B4A6B', '#2F3A52', '#5E6B3A', '#7A5A3A', '#2A2A2E', '#8A9AB0']), tall: 0.85 + RNG() * 0.35, wide: 0.85 + RNG() * 0.4, glasses: RNG() < 0.25, nose: RNG() < 0.5, shoes: rnd(['#2A2A2E', '#F4EFE6', '#E9785F']) };
   if (look0 && !look0.vm) look0.vm = pickVis(false, PROBLEMS[prob] && PROBLEMS[prob].room === 'nap'); // visitors from older saves
@@ -1729,6 +1821,7 @@ function spawnVisitor(prob, em, vip, look0) {
   if (vip) { v.vip = true; v.name = '@' + crnd(['glowwithjade', 'kaivibes', 'lunchbreaklena', 'mainchar.mo', 'softlifesam']); const cr = new THREE.Sprite(iconTex('👑')); cr.scale.set(0.45, 0.45, 1); cr.position.set(0.35, 2.5 * look.tall, -0.35); cr.renderOrder = 10; hud.add(cr); }
   if (em) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.08, 8, 32), mat('#FF2D2D', { e: '#FF2D2D', ei: 1.5 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; hud.add(ring); v.emRing = ring; const sb = new THREE.Sprite(iconTex('🚨')); sb.scale.set(0.42, 0.42, 1); sb.position.set(-0.4, 2.45 * look.tall, 0.4); sb.renderOrder = 10; hud.add(sb); v.prio = true; }
   v.need = RNG() < 0.35 ? 0.3 + RNG() * 0.4 : 0; // some arrive already needing the loo
+  if (PROBLEMS[prob] && PROBLEMS[prob].epi) v.virus = true;
   R.visitors.push(v); if (!wavePending) behSpawn(v); if (!em && beh('nolines') && ['grind', 'rentshock'].includes(prob) && DQ(0).length >= 6 && desks().length <= 1) { behSeen('nolines'); floatAt(v.av.position, '🙅 nope'); joinQueue(v); leave(v, false); return v; } if (em) { finishCheckin(v, true); return v; } joinQueue(v); return v;
 }
 
@@ -1902,8 +1995,172 @@ const UNLOCK = { pharmacy: 1, pharmacist: 1, glowup: 2, career: 1, social: 1, pa
 const localRoom = (k) => Object.values(PROBLEMS).some((p) => p.city && p.city === (S.city || 'london') && p.room === k);
 // London is the simple first city: no Innovation Lab / research (and so no mystery cases) — they start in Lagos. A London save that already built a lab keeps it.
 const noResearch = () => !!(S && S.mode === 'career' && (S.city || 'london') === 'london' && !(S.rooms || []).some((r) => r.type === 'lab'));
-const unlocked = (k) => !S || S.mode !== 'career' || ((k === 'lab' || k === 'researcher') && noResearch() ? false : localRoom(k) || (UNLOCK[k] || 0) <= S.stars);
+const unlocked = (k) => (k === 'training' || k === 'trainer') ? epiCity() : !S || S.mode !== 'career' || ((k === 'lab' || k === 'researcher') && noResearch() ? false : localRoom(k) || (UNLOCK[k] || 0) <= S.stars);
 const done = (k) => S.research.done.includes(k);
+// ================= Training room + epidemics (career mode, from Mumbai) =================
+// The 🎓 sanitary course (2 full days, paid): after day 1 the risk is halved, after day 2 the person is immune for good (in this city's save).
+// Epidemics: announced a day ahead, a wave of sick visitors, untrained staff who treat them can catch it and pass it on at work.
+const epiCity = () => !!(S && S.mode === 'career' && (cityOf().lvl || 0) >= 2);
+const COURSE_COST = () => Math.round(RENT * 0.45 / 50) * 50, BRIG_COST = () => Math.round(RENT * 2.2 / 50) * 50;
+const EPI_QUIET = DAY_LEN / 2; // "no new case for half a day" closes the epidemic
+const sickAtWork = () => R.staff.filter((rs) => rs.data.sick && !(rs.data.awayT > 0) && rs.at !== 'heal');
+const sickN = () => S.staff.filter((s) => s.sick || (s.sickHome && s.awayT > 0)).length;
+const sickHomeN = () => S.staff.filter((s) => s.sickHome && s.awayT > 0).length;
+const epiDirt = () => 1 + Math.min(1, R.litter.length * 0.05 + R.rats.length * 0.15 + Object.values(R.rooms).reduce((a, r) => a + (r.def.dirt || 0), 0) * 0.15);
+const trainRooms = () => Object.values(R.rooms).filter((r) => ROOMS[r.type].train);
+const trainerHere = (room) => room.staff.some((s) => s && s.mode === 'there');
+function trainRoomFor() { return trainRooms().find((r) => r.staff.some(Boolean) && S.staff.filter((s) => s.train && s.train.room === r.id).length < r.spots.length); }
+function startCourse(st) {
+  if (!trainRooms().length) { toast(t('trn.noRoom'), 2200); return; }
+  const room = trainRoomFor(); if (!room) { toast(trainRooms().some((r) => r.staff.some(Boolean)) ? t('trn.full') : t('trn.noTrainer'), 2200); return; }
+  const c = st.cert === 1 ? Math.round(COURSE_COST() / 2 / 10) * 10 : COURSE_COST(); if (S.cash < c) { toast(t('build.noCash'), 1600); return; }
+  S.cash -= c; st.train = { room: room.id, t: st.cert === 1 ? DAY_LEN : 0 }; // day 1 already done: only the second day is left
+  chat(st.name + ' · ' + roleN(st.role), t('trn.start'), '🎓', { fun: true }); toast('🎓 ' + t('trn.startT', { name: st.name.split(' ')[0] }), 2200); save();
+}
+function leaveTraining(rs) { if (rs.seat) rs.seat.busy = null; rs.seat = null; if (rs.at === 'train') { rs.at = null; assignStaff(); } }
+function trainTick(dt) {
+  for (const rs of R.staff) {
+    const d = rs.data, tr = d.train; if (!tr) continue;
+    const room = R.rooms[tr.room];
+    if (!room) { d.train = null; leaveTraining(rs); continue; } // the room was sold: the day in progress is lost
+    if (rs.at !== 'train') { // they walk over once their current session is over
+      if (d.awayT > 0 || rs.onBreak || rs.at === 'heal' || patientOf(rs)) continue;
+      const seat = room.spots.find((sp) => !sp.busy); if (!seat) continue;
+      const old = R.rooms[rs.at]; if (old && old.staff[rs.st] === rs) old.staff[rs.st] = null;
+      rs.at = 'train'; seat.busy = rs; rs.seat = seat; goStaff(rs, seat); assignStaff(); continue;
+    }
+    if (rs.mode !== 'there' || !trainerHere(room)) continue; // no trainer in the room: the course is on hold
+    tr.t += dt;
+    if (tr.t >= DAY_LEN && !(d.cert >= 1)) { d.cert = 1; chat(d.name + ' · ' + roleN(d.role), t('trn.half'), '📘', { fun: true }); }
+    if (tr.t >= DAY_LEN * 2) { d.cert = 2; d.train = null; leaveTraining(rs); AU.sfx('star'); chat(d.name + ' · ' + roleN(d.role), t('trn.done'), '🎓', { fun: true }); toast('🎓 ' + t('trn.doneT', { name: d.name.split(' ')[0] }), 2800); save(); }
+  }
+}
+// ---- sick staff
+function infect(d) {
+  const E = S.epi; if (!E || E.ph !== 'on' || d.sick || d.cert >= 2 || d.awayT > 0) return;
+  if (sickN() >= Math.floor(S.staff.length * 0.5)) return; // never more than half the team at once (for now)
+  d.sick = 1; d.sickT = DAY_LEN * 2; E.cases = (E.cases || 0) + 1; E.quiet = 0;
+  chat(d.name + ' · ' + roleN(d.role), t('epi.caught'), '🤒'); toast('🤒 ' + t('epi.caughtT', { name: d.name.split(' ')[0] }), 2600); AU.sfx('pop');
+}
+function epiTreated(st, room) { // a sick visitor was just helped: the person who helped them may catch it (the main source)
+  const d = st.data; if (!S.epi || S.epi.ph !== 'on' || d.cert >= 2) return;
+  if (RNG() < 0.22 * epiDirt() * (d.cert === 1 ? 0.5 : 1)) infect(d);
+}
+function sendPharm(st) {
+  const rs = R.staff.find((x) => x.data === st), ph = Object.values(R.rooms).find((r) => r.type === 'pharmacy' && !r.closed && r.staff.some((x) => x && x !== rs && x.mode === 'there')); // someone else has to be there to look after them
+  if (!rs || !ph) { toast(t('epi.noPharm'), 2200); return; }
+  if (st.train) { st.train = null; leaveTraining(rs); }
+  const old = R.rooms[rs.at]; if (old && old.staff[rs.st] === rs) old.staff[rs.st] = null;
+  const p = doorPt(ph.def, 0.8); rs.at = 'heal'; rs.healT = 18; goStaff(rs, { x: p.x, z: p.z, rot: Math.atan2(ph.cx - p.x, ph.cz - p.z), sit: false, y: 0 }); assignStaff();
+  toast('💊 ' + t('epi.toPharm', { name: st.name.split(' ')[0] }), 2200); save();
+}
+function sendHome(st) {
+  const rs = R.staff.find((x) => x.data === st); if (st.train) { st.train = null; if (rs) leaveTraining(rs); }
+  st.sick = 0; st.sickHome = 1; st.awayT = DAY_LEN * (1 + Math.random()); // 1–2 days at home, not contagious there
+  chat(st.name + ' · ' + roleN(st.role), t('epi.home'), '🏠'); save();
+}
+// ---- the epidemic itself
+function epiDay() { // called at each new day
+  if (!epiCity()) return;
+  if (S.epiNext == null) { S.epiNext = S.day + 6; setTimeout(() => { chat(t('from.hq'), t('trn.unl'), '🎓'); toast('🎓 ' + t('trn.unlT'), 3500); }, 1200); }
+  const E = S.epi;
+  if (E && E.ph === 'ann' && S.day >= E.day) {
+    Object.assign(E, { ph: 'on', d0: S.day, el: 0, quiet: 0, cases: 0, wt: 3 });
+    chat(t('from.hq'), t('epi.start'), '🦠'); toast('🦠 ' + t('epi.startT'), 3500); AU.sfx('siren');
+  } else if (!E && S.day >= S.epiNext - 1) {
+    if (S.em || (S.emBurst || 0) > 0 || S.emAt > 0) { S.epiNext = S.day + 2; return; } // never on top of another emergency
+    S.epi = { ph: 'ann', day: S.day + 1 }; chat(t('from.hq'), t('epi.ann'), '🦠');
+    setTimeout(() => { if (!S.epi || modalPaused) return; modal(`<div style="font-size:46px">🦠</div><h2>${t('epi.annT')}</h2><p>${t('epi.annP')}</p>
+      <div class="receipt" style="text-align:left;font-size:13.5px"><div>🎓 ${t('epi.tip1')}</div><div>🧹 ${t('epi.tip2')}</div><div>💊 ${t('epi.tip3')}</div></div>
+      <div class="row2" style="margin-top:8px"><button class="btn y" id="eStaff">👥 ${t('epi.staffBtn')}</button><button class="btn g" id="mOk">${t('insp.ok')}</button></div>`);
+      $('mOk').onclick = closeModal; $('eStaff').onclick = () => { closeModal(); openStaffList('all'); }; }, 600);
+  }
+}
+function epiTick(dt) {
+  if (!S || S.mode !== 'career') return;
+  trainTick(dt);
+  for (const rs of R.staff) {
+    const d = rs.data;
+    if (rs.at === 'heal' && rs.mode === 'there') { rs.healT -= dt; if (rs.healT <= 0) { d.sick = 0; rs.at = null; assignStaff(); chat(d.name + ' · ' + roleN(d.role), t('epi.healed'), '💊', { fun: true }); } }
+    if (d.sick && !(d.awayT > 0)) { d.sickT = (d.sickT ?? DAY_LEN * 2) - dt; if (d.sickT <= 0) d.sick = 0; } // gets better on their own after ~2 days
+  }
+  const E = S.epi; if (!E || E.ph !== 'on') return;
+  E.el = (E.el || 0) + dt;
+  if (E.el < DAY_LEN * 2 && !E.quar) { // the wave of sick visitors: busy the first day, lighter the second
+    E.wt = (E.wt ?? 3) - dt;
+    if (E.wt <= 0) { E.wt = (E.el < DAY_LEN ? 7 : 13) * (0.7 + RNG() * 0.6); const ps = ['flu', 'flurest'].filter((k) => hasRoom(PROBLEMS[k].room)); if (ps.length && R.visitors.filter((v) => v.virus && !v.cured).length < 6) spawnVisitor(rnd(ps)); }
+  }
+  const work = sickAtWork(), dm = epiDirt();
+  if (work.length) for (const rs of R.staff) { // sick colleagues at work pass it on (slower than patients do)
+    const d = rs.data; if (d.sick || d.cert >= 2 || d.awayT > 0 || rs.at == null || rs.at === 'heal') continue;
+    if (RNG() < 0.15 / EPI_QUIET * work.length * dm * (d.cert === 1 ? 0.5 : 1) * dt) infect(d);
+  }
+  if (work.length) E.quiet = 0; else E.quiet = (E.quiet || 0) + dt;
+  if (E.quar && !work.length) { E.quar = 0; chat(t('from.hq'), t('epi.reopen'), '🔓'); toast('🔓 ' + t('epi.reopen'), 2800); }
+  if (E.brig > 0) { E.brig -= dt; if (E.brig <= 0) { for (const s of S.staff) s.sick = 0; chat(t('epi.brigN'), t('epi.brigDone'), '🧑‍⚕️'); toast('🧑‍⚕️ ' + t('epi.brigDone'), 2800); } }
+  const n = S.staff.length, fr = n ? sickN() / n : 0; E.fr = fr;
+  if (fr >= 0.25 && fr < 0.4) vb('epi', -5 * dt / DAY_LEN); // 25–40 % of the team sick: −5 % vibes a day
+  if (E.cd > 0) E.cd -= dt;
+  if (E.inspIn > 0) { E.inspIn -= dt; if (E.inspIn <= 0) { if (R.inspector) E.inspIn = 4; else spawnInspector('epi'); } }
+  else if (fr >= 0.4 && !(E.cd > 0) && !(R.inspector && R.inspector.kind === 'epi')) { E.inspIn = 12; E.cd = 1e9; chat(t('ik.epi'), t('epi.called'), '🦠'); toast('🦠 ' + t('epi.called'), 2800); } // over 40 %: the health inspector is called in
+  if (E.el >= DAY_LEN && E.quiet >= EPI_QUIET && !E.quar && !(E.inspIn > 0) && !(R.inspector && R.inspector.kind === 'epi')) epiEnd();
+}
+function epiEnd() {
+  const E = S.epi, clean = !E.pen, bonus = Math.round(RENT * (clean ? 0.6 : 0.25) / 50) * 50;
+  S.cash += bonus; vb('epi', clean ? 4 : 1); if (clean) incCnt('epiclean'); S.epiN = (S.epiN || 0) + 1;
+  S.epi = null; S.epiNext = S.day + 15 + Math.floor(Math.random() * 6);
+  AU.sfx('cash'); chat(t('from.hq'), '✅ ' + t('epi.over') + ' · +' + money(bonus), '✅');
+  modal(`<div style="font-size:46px">✅</div><h2>${t('epi.over')}</h2><p>${t('epi.overP', { n: E.cases || 0, d: Math.max(1, S.day - E.d0 + 1) })}</p>
+    <div class="receipt"><div><span>${t('epi.bonus')}</span><span>+${money(bonus)}</span></div></div>
+    <p style="font-weight:800;color:${clean ? '#1E8A3A' : 'var(--red)'}">${clean ? '🛡️ ' + t('epi.clean') : '⚠️ ' + t('epi.notClean')}</p><button class="btn g" id="mOk" style="width:100%">${t('insp.ok')}</button>`);
+  $('mOk').onclick = closeModal; save();
+}
+function epiVerdict() { // the epidemic inspector: cleanliness, sick staff still working, sick visitors left waiting
+  const { sc, ded } = inspScore('epi'), lv = cityOf().lvl || 0, base = Math.round(RENT * 0.25 * (1 + 0.1 * lv) / 50) * 50;
+  const tier = sc >= 95 ? 'gold' : sc >= 85 ? 'great' : sc >= 70 ? 'pass' : sc >= 55 ? 'warn' : 'fail';
+  const T = { gold: [3, 8, 5], great: [2, 6, 4], pass: [1, 4, 3], warn: [-0.5, -3, 0], fail: [-2.5, -10, 0] }[tier], cash = Math.round(base * T[0] / 50) * 50;
+  S.cash += cash; vb('insp', 0 + T[1]); if (T[2]) addKudos(T[2]);
+  const E = S.epi; let quar = false;
+  if (E) { E.cd = DAY_LEN / 2; if (tier === 'fail') { E.pen = 1; E.inspIn = DAY_LEN / 2; quar = sickAtWork().length > 0; E.quar = quar ? 1 : 0; } } // a fail: back within half a day
+  const m = (cash >= 0 ? '+' : '−') + money(Math.abs(cash)), v = (T[1] >= 0 ? '+' : '−') + Math.abs(T[1]) + '%';
+  chat(t('ik.epi'), t('iv.' + tier) + ' · ' + t('iv.p', { s: sc, m, v }) + (quar ? ' · 🚫 ' + t('epi.quar') : ''), '🦠');
+  const why = ded.slice(0, 3).map(([k, n]) => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${t('iv.r.' + k)}</span><b>−${n}</b></div>`).join('');
+  modal(`<div style="font-size:44px">${tier === 'gold' ? '🏆' : tier === 'fail' ? '❌' : '🦠'}</div><h2>${t('ik.epi')} · ${t('iv.' + tier)}</h2><p style="font:700 22px Fredoka">${sc}/100</p><p>${t('iv.p', { s: sc, m, v })}</p>
+  ${quar ? `<p style="font-weight:800;color:var(--red)">🚫 ${t('epi.quarP')}</p>` : ''}${tier === 'fail' ? `<p style="font-weight:800;color:var(--red)">🔁 ${t('epi.back')}</p>` : ''}${why ? `<div class="receipt" style="text-align:left"><div style="font-weight:800;margin-bottom:4px">${t('iv.lost')}</div>${why}</div>` : ''}
+  <button class="btn g" id="mOk" style="width:100%">${t('insp.ok')}</button>`);
+  $('mOk').onclick = closeModal;
+}
+function epiHud() {
+  const E = S.epi; if (E.ph === 'ann') return '🦠 ' + t('epi.hudAnn');
+  const a = sickAtWork().length; let s = '🦠 ' + t('epi.hud', { a, b: sickHomeN(), d: Math.max(1, S.day - E.d0 + 1) });
+  if (E.quar) s += ' · 🚫 ' + t('epi.quar');
+  else if (!a && E.el >= DAY_LEN * 0.25) s += ' · ⏱ ' + t('epi.quiet', { a: Math.min(EPI_QUIET, Math.floor(E.quiet || 0)), b: EPI_QUIET });
+  if (E.brig > 0) s += ' · 🧑‍⚕️ ' + Math.ceil(E.brig) + 's';
+  return s;
+}
+function openEpi() {
+  const E = S.epi; if (!E) return;
+  const n = S.staff.length, fr = n ? sickN() / n : 0, pct = Math.round(fr * 100), canBrig = E.ph === 'on' && !E.brigUsed;
+  const tierTxt = fr >= 0.4 ? t('epi.t3') : fr >= 0.25 ? t('epi.t2') : t('epi.t1');
+  modal(`<div style="font-size:44px">🦠</div><h2>${E.ph === 'ann' ? t('epi.annT') : t('epi.title')}</h2>
+    ${E.ph === 'on' ? `<p style="font-weight:800">${epiHud().replace('🦠 ', '')}</p><div class="receipt" style="text-align:left;font-size:13.5px"><div><span>${t('epi.sickPct')}</span><span>${pct}%</span></div><div>${tierTxt}</div><div style="font-size:12px;color:var(--muted)">${t('epi.rules')}</div></div>` : `<p>${t('epi.annP')}</p>`}
+    <div class="receipt" style="text-align:left;font-size:13.5px"><div>🎓 ${t('epi.tip1')}</div><div>🧹 ${t('epi.tip2')}</div><div>💊 ${t('epi.tip3')}</div></div>
+    ${canBrig ? `<button class="btn y" id="eBrig" style="width:100%;margin-top:6px">🧑‍⚕️ ${t('epi.brigBtn', { m: money(BRIG_COST()) })}</button><p class="sub" style="margin:2px 0 0">${t('epi.brigD')}</p>` : E.brig > 0 ? `<p class="sub">🧑‍⚕️ ${t('epi.brigOn')}</p>` : ''}
+    <div class="row2" style="margin-top:8px"><button class="btn y" id="eStaff">👥 ${t('epi.staffBtn')}</button><button class="btn g" id="mOk">${t('insp.ok')}</button></div>`);
+  $('mOk').onclick = closeModal; $('eStaff').onclick = () => { closeModal(); openStaffList('all'); };
+  if ($('eBrig')) $('eBrig').onclick = () => { const c = BRIG_COST(); if (S.cash < c) { toast(t('build.noCash'), 1600); return; } S.cash -= c; E.brigUsed = 1; E.brig = DAY_LEN / 2; closeModal(); chat(t('epi.brigN'), t('epi.brigGo'), '🧑‍⚕️'); save(); };
+}
+// staff card: course / sick buttons
+function staffEpiRow(st) {
+  if (S.mode !== 'career' || !epiCity()) return '';
+  const b = (id, txt, cls = 'y') => `<button class="btn ${cls}" data-${id}="${st.id}" style="padding:6px 10px;font-size:13.5px">${txt}</button>`;
+  let h = '';
+  if (st.sick) h += b('epiph', '💊 ' + t('epi.pharmBtn')) + b('epihome', '🏠 ' + t('epi.homeBtn'));
+  else if (st.train) h += `<span style="font-size:12.5px;font-weight:900;color:#5B6CC9">📘 ${t('trn.prog', { p: Math.min(100, Math.round((st.train.t / (DAY_LEN * 2)) * 100)) })}</span>`;
+  else if (!(st.cert >= 2)) h += b('course', '🎓 ' + t('trn.btn', { m: money(st.cert === 1 ? Math.round(COURSE_COST() / 20) * 10 : COURSE_COST()) }), 'g');
+  else h += `<span style="font-size:12.5px;font-weight:900;color:#5B6CC9">🎓 ${t('trn.immune')}</span>`;
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">${h}</div>${st.cert === 1 && !st.train ? `<div style="font-size:12px;font-weight:800;color:#5B6CC9;margin-top:4px">📘 ${t('trn.halfInfo')}</div>` : ''}`;
+}
 // ---- earthquake alert (Mexico City): the siren sounds, waiting visitors evacuate to the street for 20 s, rooms pause; afterwards some come in anxious
 function quakeStart() {
   S.quake = { t: 20 }; AU.sfx('siren'); toast('🚨 ' + t('qk.alert'), 3500); say('qk', t('qk.alert'), 0); chat(t('from.hq'), '🚨 ' + t('qk.chat'), '🚨');
@@ -2185,7 +2442,7 @@ function visitorUpdate(v, dt) {
         const pr = (S.price || 1) * (cityOf().hustle ? 1.1 : 1) * (isNight() ? 1.15 : 1), fee = Math.round(PROBLEMS[v.prob].fee * 1.3 * (0.7 + S.vibes / 200) * pr);
         const twoVisit = beh('stamps2') && v.prob === 'paperwork', gain = Math.round(fee * (v.vip ? 2 : 1) * (twoVisit ? 0.5 : 1)), iou = beh('iou') && BROKE.has(v.prob);
         if (iou) { S.iou = (S.iou || 0) + gain; behSeen('iou'); floatAt(v.av.position, '🧾 ' + money(gain)); } else S.cash += gain;
-        roomEarn(room.id, gain); addDirt(room, 0.035); S.earned += gain; S.served++; outcome(true); S.dServ = (S.dServ || 0) + 1; if (isNight()) S.nServ = (S.nServ || 0) + 1; v.spent = (v.spent || 0) + gain; dailyHit(v);
+        if (v.virus) epiTreated(st, room); roomEarn(room.id, gain); addDirt(room, 0.035); S.earned += gain; S.served++; outcome(true); S.dServ = (S.dServ || 0) + 1; if (isNight()) S.nServ = (S.nServ || 0) + 1; v.spent = (v.spent || 0) + gain; dailyHit(v);
         if (cityOf().tips && v.pat > 0.5) { const tip = Math.round(gain * 0.25); S.cash += tip; S.earned += tip; roomEarn(room.id, tip); incCnt('tips'); setTimeout(() => floatAt(v.av.position, '💵 tip +' + money(tip)), 400); } // happy & quick → they tip
         if (twoVisit && !v.stage2) { behSeen('stamps2'); R.later.push({ t: 40 + RNG() * 40, prob: 'paperwork', stage2: true }); floatAt(v.av.position, '📑 1/2'); }
         const SS = S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; SS.prob[v.prob] = (SS.prob[v.prob] || 0) + 1; SS.room[room.type] = (SS.room[room.type] || 0) + 1; SS.staff[st.data.id] = (SS.staff[st.data.id] || 0) + 1;
@@ -2334,12 +2591,12 @@ function pestUpdate(dt) { updateMessIcons();
 
 // ---------------- inspector ----------------
 // three kinds of visit (London only gets the health one): each scores the centre on different things, and the reward grows with the score, the city and a streak of good visits
-const INSP = { health: { e: '📋', look: { shirt: '#5E6B7A', pants: '#3B4452', hair: '#5A5A5A' } }, safety: { e: '🦺', look: { shirt: '#F28C28', pants: '#2F3A4A', hair: '#2B2B2B' } }, critic: { e: '🕵️', look: { shirt: '#2D2D3A', pants: '#1F1F28', hair: '#7A4B2A' } } };
-function spawnInspector() {
-  tip('insp');
-  const kinds = (S.city || 'london') === 'london' ? ['health'] : Object.keys(INSP).filter((k) => k !== S.inspLast);
-  const kind = rnd(kinds); S.inspLast = kind; const L = INSP[kind].look;
-  const av = visPerson({ health: 'sp_health', safety: 'sp_safety', critic: 'sp_mystery' }[kind] || 'v16', { skin: rnd(SKIN), hair: L.hair, style: 'short', shirt: L.shirt, pants: L.pants, clip: kind !== 'critic', glasses: kind !== 'safety', tall: 1.12, wide: 0.9, nose: true });
+const INSP = { epi: { e: '🦠', look: { shirt: '#4E8C7A', pants: '#2F3A4A', hair: '#3A3A3A' } }, health: { e: '📋', look: { shirt: '#5E6B7A', pants: '#3B4452', hair: '#5A5A5A' } }, safety: { e: '🦺', look: { shirt: '#F28C28', pants: '#2F3A4A', hair: '#2B2B2B' } }, critic: { e: '🕵️', look: { shirt: '#2D2D3A', pants: '#1F1F28', hair: '#7A4B2A' } } };
+function spawnInspector(force) {
+  if (!force) tip('insp');
+  const kinds = (S.city || 'london') === 'london' ? ['health'] : Object.keys(INSP).filter((k) => k !== S.inspLast && k !== 'epi');
+  const kind = force || rnd(kinds); if (!force) S.inspLast = kind; const L = INSP[kind].look;
+  const av = visPerson({ epi: 'sp_health', health: 'sp_health', safety: 'sp_safety', critic: 'sp_mystery' }[kind] || 'v16', { skin: rnd(SKIN), hair: L.hair, style: 'short', shirt: L.shirt, pants: L.pants, clip: kind !== 'critic', glasses: kind !== 'safety', tall: 1.12, wide: 0.9, nose: true });
   av.position.set(3, 0.1, 12.5); scene.add(av);
   R.inspector = { kind, av, path: [{ x: 3.2, z: 7.5 }, { x: 3, z: 3 }, { x: 1.2, z: 1.2 }, { x: 3.5, z: 2.5 }], ph: 0, stage: 0, wait: 0 };
   chat(t('ik.' + kind), t('ik.' + kind + '.arrive'), INSP[kind].e);
@@ -2353,7 +2610,11 @@ function inspectorUpdate(dt) {
 function inspScore(kind) {
   const ded = []; const minus = (k, n) => { if (n > 0) ded.push([k, Math.round(n)]); };
   const waiting = R.visitors.filter((v) => ['queue', 'wait'].includes(v.state)), heavy = R.litter.filter((l) => l.heavy).length;
-  if (kind === 'health') {
+  if (kind === 'epi') {
+    minus('litter', R.litter.length * 7 + heavy * 8); minus('rats', R.rats.length * 18); minus('vomit', R.litter.filter((l) => l.vomit).length * 6);
+    minus('dirty', Object.values(R.rooms).reduce((a, room) => a + ((room.def.dirt || 0) >= 0.35 ? (room.def.dirt || 0) * 12 : 0), 0));
+    minus('sickw', sickAtWork().length * 12); minus('sickp', R.visitors.filter((v) => v.virus && !v.cured && ['queue', 'wait', 'toWait'].includes(v.state)).length * 6);
+  } else if (kind === 'health') {
     minus('litter', R.litter.length * 7 + heavy * 8); minus('rats', R.rats.length * 18); if (!hasRoom('toilet')) minus('loo', 15);
     if (!R.staff.some((rs) => rs.at === 'desk')) minus('desk', 20);
     minus('staff', Object.values(R.rooms).filter((room) => ROOMS[room.type].role && !room.staff.some(Boolean)).length * 10);
@@ -2372,6 +2633,7 @@ function inspScore(kind) {
   return { sc: clamp(100 - ded.reduce((a, d) => a + d[1], 0), 0, 100), ded };
 }
 function verdict(kind = 'health') {
+  if (kind === 'epi') return epiVerdict();
   const { sc, ded } = inspScore(kind), lv = cityOf().lvl || 0, base = Math.round(RENT * 0.25 * (1 + 0.1 * lv) / 50) * 50; // tied to the weekly rent so it weighs the same in every city
   const tier = sc >= 95 ? 'gold' : sc >= 85 ? 'great' : sc >= 70 ? 'pass' : sc >= 55 ? 'warn' : 'fail';
   const T = { gold: [3, 8, 5], great: [2, 6, 4], pass: [1, 4, 3], warn: [-0.5, -3, 0], fail: [-2.5, -10, 0] }[tier];
@@ -2397,7 +2659,7 @@ function emNext() { // called whenever an emergency is over (won, failed or decl
   const st2 = (S.stars || 0) >= 2; S.nextEm = S.day + (st2 ? 3 + Math.floor(Math.random() * 2) : 4 + Math.floor(Math.random() * 3)); }
 // the clock is sized to your centre: roughly the time your staffed rooms need to help that many people, +40 %, plus walking time
 function emClock(E) {
-  const types = new Set(E.mix ? Object.keys(ROOMS).filter((k) => ROOMS[k].role && !ROOMS[k].shop && k !== 'cafe' && k !== 'lab') : (E.probs || []).map((p) => PROBLEMS[p] && PROBLEMS[p].room).filter(Boolean));
+  const types = new Set(E.mix ? Object.keys(ROOMS).filter((k) => ROOMS[k].role && !ROOMS[k].shop && !ROOMS[k].train && k !== 'cafe' && k !== 'lab') : (E.probs || []).map((p) => PROBLEMS[p] && PROBLEMS[p].room).filter(Boolean));
   let thr = 0; for (const r of Object.values(R.rooms)) if (types.has(r.type) && r.staff.some(Boolean)) thr += (capOf(r.type, r.size) || 1) * sizeSpd(r) / (ROOMS[r.type].time || 9);
   const max = E.time || 150; if (!thr) return max;
   return Math.round(clamp((E.need || 4) / thr * 1.4 + 25, 60, max));
@@ -2543,15 +2805,15 @@ let placing = null;
 function openBuild() {
   let h = `<h2>${t('build.title')}</h2><p class="sub">${t('build.sub')}</p>`;
   // grouped: reception · care rooms (with the problems each one treats) · comfort for visitors · for the team
-  const cat = (k) => (ROOMS[k].staffOnly || k === 'lab' ? 'staff' : ROOMS[k].shop || ROOMS[k].loo || k === 'cafe' ? 'comfort' : 'care');
+  const cat = (k) => (ROOMS[k].staffOnly || ROOMS[k].train || k === 'lab' ? 'staff' : ROOMS[k].shop || ROOMS[k].loo || k === 'cafe' ? 'comfort' : 'care');
   const hdr = (k) => `<div class="lbl" style="margin:12px 0 6px">${t('bc.' + k)}</div>`;
-  const treats = (k) => { const ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && (!PROBLEMS[p].city || PROBLEMS[p].city === (S.city || 'london'))); return ps.length ? `<div style="font-size:12px;color:#2D3748;margin-top:2px"><b>${t('build.treats')}</b> ${ps.map((p) => PROBLEMS[p].e + ' ' + t('p.' + p)).join(' · ')}</div>` : ''; };
+  const treats = (k) => { const ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && !PROBLEMS[p].epi && (!PROBLEMS[p].city || PROBLEMS[p].city === (S.city || 'london'))); return ps.length ? `<div style="font-size:12px;color:#2D3748;margin-top:2px"><b>${t('build.treats')}</b> ${ps.map((p) => PROBLEMS[p].e + ' ' + t('p.' + p)).join(' · ')}</div>` : ''; };
   const nOwn = (k) => S.rooms.filter((r) => r.type === k).length;
   const roomRow = (k, r) => { const ok = unlocked(k);
     return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b>${ok && nOwn(k) ? ` <span class="own" style="background:#E7EEF7;color:#2D3748;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800;white-space:nowrap">${t('build.have', { n: nOwn(k) })}</span>` : ''}<div>${t('r.' + k + '.d')}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : t('lock.at', { n: UNLOCK[k] })}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
   h += hdr('desk') + `<div class="opt w"><div class="oi" style="background:#DDF3E2">🛎️</div><div class="ot"><b>${t('build.moveDesk')}</b><div>${t('build.moveDeskD')}</div></div><button class="btn y" id="bMoveDesk">${t('build.moveBtn')}</button></div><div class="opt w"><div class="oi" style="background:#FFF3C4">➕</div><div class="ot"><b>${t('desk2.title')}</b><div>${t('desk2.D', { n: (S.desks2 || []).length + 2 })}</div></div><button class="btn g" id="bDesk2">${money(DESK_COST)}</button></div>`;
   for (const c of ['care', 'comfort', 'staff']) {
-    const ks = Object.entries(ROOMS).filter(([k, r]) => (!r.city || r.city === (S.city || 'london')) && cat(k) === c); if (!ks.length) continue;
+    const ks = Object.entries(ROOMS).filter(([k, r]) => (!r.city || r.city === (S.city || 'london')) && !(r.train && !epiCity()) && cat(k) === c); if (!ks.length) continue;
     h += hdr(c) + ks.map(([k, r]) => roomRow(k, r)).join('');
   }
   h += buildExtras();
@@ -2708,7 +2970,7 @@ function portrait(st) {
   const key = st.id ? 's' + st.id : st.name + st.skill;
   if (portraits[key]) return portraits[key];
   pScene.background = new THREE.Color(ROLES[st.role].bg);
-  const p = person(staffLook(st), 'staff'); p.rotation.y = 0.25; pScene.add(p);
+  const p = staffPerson(st); p.rotation.y = 0.25; pScene.add(p);
   if (p.userData.p.glb) p.userData.p.anim.update(0.05); p.updateMatrixWorld(true); const hy = p.userData.p.head.getWorldPosition(new THREE.Vector3()).y + 0.04;
   pCam.position.set(0.15, hy + 0.1, 2.3); pCam.lookAt(0, hy - 0.18, 0);
   portraitR.render(pScene, pCam); portraits[key] = portraitR.domElement.toDataURL('image/jpeg', 0.85);
@@ -2734,7 +2996,7 @@ function openHire(tab) {
 }
 function hire(i, tab) {
   tab = tab || hireTab; const c = candidates[tab][i]; const img = portrait(c); c.id = S.nextId++; portraits['s' + c.id] = img;
-  S.staff.push(c); candidates[tab][i] = makeCandidate(tab);
+  if (c.role === 'trainer') c.cert = 2; S.staff.push(c); candidates[tab][i] = makeCandidate(tab);
   spawnStaffAvatar(c); closeSheet(); assignStaff(); save(); AU.sfx('hire');
   chat(c.name + ' · ' + roleN(c.role), crnd(tList('hire.hello')), '👋', { fun: true });
 }
@@ -2755,10 +3017,10 @@ function openStaffList(filter) {
     h += `<div class="stGroup" style="border-left-color:${ROLES[r].strip}"><b>${roleN(r)} · ${list.length}</b><span>${r === 'maint' || r === 'researcher' && !rooms.length ? t('job.' + r) : seats ? t('staff.seats', { a: filled, b: seats }) : t('job.' + r)}</span><button class="w" data-hr="${r}">+ ${t('staff.hireRole')}</button></div>`;
     for (const st of list) {
       const rs = R.staff.find((x) => x.data === st), en = st.energy ?? 1;
-      const where = st.awayT > 0 ? '🏠 ' + t('life.away') : rs && rs.onBreak ? '☕ ' + t('st.break') : rs && rs.at === 'desk' ? t('staff.desk') : rs && R.rooms[rs.at] ? rn(R.rooms[rs.at].type) : rs && rs.at === 'maint' ? t('job.maint') : t('staff.waiting');
+      const where = st.sickHome && st.awayT > 0 ? '🏠 ' + t('epi.atHome') : st.awayT > 0 ? '🏠 ' + t('life.away') : rs && rs.at === 'train' ? '📘 ' + t('trn.inClass') : rs && rs.at === 'heal' ? '💊 ' + t('epi.atPharm') : st.train ? '📘 ' + t('trn.going') : rs && rs.onBreak ? '☕ ' + t('st.break') : rs && rs.at === 'desk' ? t('staff.desk') : rs && R.rooms[rs.at] ? rn(R.rooms[rs.at].type) : rs && rs.at === 'maint' ? t('job.maint') : t('staff.waiting');
       const open = staffOpen === st.id;
-      h += `<div class="stRow w" data-so="${st.id}"><img src="${portrait(st)}" alt=""><div class="stMid"><b>${st.name}${st.grumpy ? ' 😒' : ''}${st.sadT > 0 ? ' 💔' : ''}${st.wfh ? ' 🏠' : ''}</b><small>${where}</small><div class="stMeta"><span class="stars">${'★'.repeat(st.skill)}</span><span class="en"><i style="width:${Math.round(en * 100)}%;background:${en < 0.25 ? '#E5484D' : '#7ACB4E'}"></i></span></div></div><div class="stWage">${money(Math.round(st.wage * WAGE_K))}<small>${open ? '▴' : '▾'}</small></div></div>`;
-      if (open) h += `<div class="stMore"><div>${st.traits.map(trChip).join('')}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span style="font-size:12px;font-weight:900;color:var(--muted)">⚡ ${t('st.energy')} ${Math.round(en * 100)}%</span><span style="display:flex;gap:6px"><button class="btn g" data-raise="${st.id}" style="padding:6px 10px;font-size:13.5px">💸 ${t('staff.raise', { m: money(Math.round(st.wage * 0.1 / 10) * 10) })}</button><button class="btn y" data-fire="${st.id}" style="padding:6px 10px;font-size:13.5px">${t('staff.fire')}</button></span></div>${st.grumpy ? `<div style="font-size:12px;font-weight:800;color:var(--red);margin-top:6px">😒 ${t('staff.grumpyInfo')}</div>` : ''}</div>`;
+      h += `<div class="stRow w" data-so="${st.id}"><img src="${portrait(st)}" alt=""><div class="stMid"><b>${st.name}${st.grumpy ? ' 😒' : ''}${st.sadT > 0 ? ' 💔' : ''}${st.wfh ? ' 🏠' : ''}${st.sick ? ' 🤒' : ''}${st.cert >= 2 ? ' 🎓' : ''}</b><small>${where}</small><div class="stMeta"><span class="stars">${'★'.repeat(st.skill)}</span><span class="en"><i style="width:${Math.round(en * 100)}%;background:${en < 0.25 ? '#E5484D' : '#7ACB4E'}"></i></span></div></div><div class="stWage">${money(Math.round(st.wage * WAGE_K))}<small>${open ? '▴' : '▾'}</small></div></div>`;
+      if (open) h += `<div class="stMore"><div>${st.traits.map(trChip).join('')}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span style="font-size:12px;font-weight:900;color:var(--muted)">⚡ ${t('st.energy')} ${Math.round(en * 100)}%</span><span style="display:flex;gap:6px"><button class="btn g" data-raise="${st.id}" style="padding:6px 10px;font-size:13.5px">💸 ${t('staff.raise', { m: money(Math.round(st.wage * 0.1 / 10) * 10) })}</button><button class="btn y" data-fire="${st.id}" style="padding:6px 10px;font-size:13.5px">${t('staff.fire')}</button></span></div>${st.grumpy ? `<div style="font-size:12px;font-weight:800;color:var(--red);margin-top:6px">😒 ${t('staff.grumpyInfo')}</div>` : ''}${staffEpiRow(st)}</div>`;
     }
   }
   openSheet(h);
@@ -2767,6 +3029,8 @@ function openStaffList(filter) {
   $('sheet').querySelectorAll('[data-hr]').forEach((b) => b.onclick = () => openHire(b.dataset.hr));
   $('sheet').querySelectorAll('[data-so]').forEach((b) => b.onclick = () => { const id = +b.dataset.so; staffOpen = staffOpen === id ? null : id; const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
   $('sheet').querySelectorAll('[data-fire]').forEach((b) => b.onclick = () => fire(+b.dataset.fire));
+  const epiBtn = (k, fn) => $('sheet').querySelectorAll('[data-' + k + ']').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const st = S.staff.find((x) => x.id === +b.getAttribute('data-' + k)); if (!st) return; fn(st); const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
+  epiBtn('course', startCourse); epiBtn('epiph', sendPharm); epiBtn('epihome', sendHome);
   $('sheet').querySelectorAll('[data-raise]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const st = S.staff.find((s) => s.id === +b.dataset.raise); if (!st) return;
     st.wage += Math.round(st.wage * 0.1 / 10) * 10; st.grumpy = 0; st.raiseDay = S.day; st.energy = Math.min(1, (st.energy ?? 1) + 0.5); save();
     chat(st.name + ' · ' + roleN(st.role), t('staff.raisedChat'), '🥹', { fun: true }); toast(t('staff.raised', { name: st.name.split(' ')[0] })); const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
@@ -2776,7 +3040,7 @@ function fire(id, silent) {
   S.staff.splice(S.staff.indexOf(st), 1);
   const rs = R.staff.find((x) => x.data === st);
   if (rs) { for (const room of Object.values(R.rooms)) room.staff = room.staff.map((s) => (s === rs ? null : s)); scene.remove(rs.av); R.staff.splice(R.staff.indexOf(rs), 1); }
-  if (rs && rs.onBreak) rs.onBreak.busy = null;
+  if (rs && rs.onBreak) rs.onBreak.busy = null; if (rs && rs.seat) rs.seat.busy = null;
   if (!silent) { chat(st.name, t('staff.fired'), '👋'); closeSheet(); } assignStaff(); save();
 }
 
@@ -2993,15 +3257,15 @@ function dayTick(dt) {
   }
   S.t += dt;
   if (S.inspectAt > 0 && S.t >= S.inspectAt && !R.inspector) { S.inspectAt = -1; spawnInspector(); }
-  if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && hasRoom(PROBLEMS[k].room)); if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
+  if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && hasRoom(PROBLEMS[k].room)); if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
   if (S.crewAt > 0 && S.t >= S.crewAt && !modalPaused) { S.crewAt = -1; crewVisit(); }
   if (S.evAt > 0 && S.t >= S.evAt && !S.ev && !modalPaused) { S.evAt = -1; startEvent(); }
   if (S.raiseAt > 0 && S.t >= S.raiseAt && !modalPaused) { S.raiseAt = -1; raiseRequest(); }
   if (S.lifeAt > 0 && S.t >= S.lifeAt && !modalPaused) { S.lifeAt = -1; lifeEvent(); }
   if (S.incAt > 0 && S.t >= S.incAt) { S.incAt = -1; incStart(); }
-  if (S.emAt > 0 && S.t >= S.emAt) { if (S.em || modalPaused) S.emAt = S.t + 10; else { S.emAt = -1; offerEmergency(); } }
+  if (S.emAt > 0 && S.t >= S.emAt) { if (S.em || S.epi || modalPaused) S.emAt = S.t + 10; else { S.emAt = -1; offerEmergency(); } }
   if (S.t >= DAY_LEN) {
-    S.t -= DAY_LEN; dailyEnd(); S.bestDay = Math.max(S.bestDay || 0, S.dServ || 0); S.bestNight = Math.max(S.bestNight || 0, S.nServ || 0); S.dServ = 0; S.nServ = 0; S.day++; dailyNew(); if (S.day >= 3 && RNG() < ((S.stars || 0) >= 2 ? 0.45 : 0.3)) S.incAt = 10 + RNG() * 50;
+    S.t -= DAY_LEN; dailyEnd(); S.bestDay = Math.max(S.bestDay || 0, S.dServ || 0); S.bestNight = Math.max(S.bestNight || 0, S.nServ || 0); S.dServ = 0; S.nServ = 0; S.day++; dailyNew(); epiDay(); if (S.day >= 3 && RNG() < ((S.stars || 0) >= 2 ? 0.45 : 0.3)) S.incAt = 10 + RNG() * 50;
     if (cityOf().quake && S.day >= 3 && Math.random() < 0.3) S.quakeAt = 15 + Math.random() * 50;
     if (S.iou) { S.cash += S.iou; chat(t('from.hq'), t('bh.iouPaid', { m: money(S.iou) }), '🧾'); S.iou = 0; }
     if (RENT_EVERY - ((S.day - 1) % RENT_EVERY) === 1) say('rent', t('pa.rent', { m: money(RENT) }), 0);
@@ -3023,7 +3287,7 @@ function dayTick(dt) {
     if (S.mode === 'career' && !S.annexNote && annexRent()) { S.annexNote = 1; chat(t('from.landlord'), t('lot.rentNote', { m: money(annexRent()) }), '🏠'); }
     decorDaily();
     if (S.emAt >= DAY_LEN - 1) S.emAt = Math.max(3, S.emAt - DAY_LEN); // an offer that slipped past midnight comes early the next day
-    if (S.day >= S.nextEm && !S.em && !(S.emAt > 0) && !((S.emBurst || 0) > 0)) { S.nextEm = S.day + 99; emStartBurst(); }
+    if (S.day >= S.nextEm && !S.em && !S.epi && !(S.emAt > 0) && !((S.emBurst || 0) > 0)) { S.nextEm = S.day + 99; emStartBurst(); }
     else if ((S.emBurst || 0) > 0 && !S.em && !(S.emAt > 0)) emNext();
     billWarn();
     if ((S.day - 1) % RENT_EVERY === 0) {
@@ -3113,7 +3377,9 @@ function updateHUD() { navResearch();
   $('hCash').textContent = money(S.cash); $('hCash').style.color = S.cash < 0 ? 'var(--red)' : '';
   { const tr = vibeTrend(); $('hVibes').innerHTML = '<span class="stars">★</span> ' + Math.round(S.vibes) + '% ' + (S.mode === 'career' ? `<span style="font-size:13px">${TIER_FX[vibeTier()].e}</span>` + (tr > 0.5 ? '<span style="color:#1E8A3A;font-size:13px">▲</span>' : tr < -0.5 ? '<span style="color:#E53E3E;font-size:13px">▼</span>' : '') : ''); }
   const ec = $('emchip');
-  if (!S.em && S.ev) { ec.style.display = 'block'; ec.style.borderLeftColor = '#FF9F43'; ec.textContent = EVENTS[S.ev.k].e + ' ' + (S.ev.k === 'leak' ? t('ev.leak', { room: rn((R.rooms[S.ev.room] || {}).type || 'budget') }) : t('ev.hud', { name: t('ev.' + S.ev.k), t: Math.ceil(S.ev.t) + 's' })); }
+  ec.onclick = S.epi && !S.em ? openEpi : null; ec.style.cursor = S.epi && !S.em ? 'pointer' : '';
+  if (!S.em && S.epi) { ec.style.display = 'block'; ec.style.borderLeftColor = '#7F68C9'; ec.textContent = epiHud(); }
+  else if (!S.em && S.ev) { ec.style.display = 'block'; ec.style.borderLeftColor = '#FF9F43'; ec.textContent = EVENTS[S.ev.k].e + ' ' + (S.ev.k === 'leak' ? t('ev.leak', { room: rn((R.rooms[S.ev.room] || {}).type || 'budget') }) : t('ev.hud', { name: t('ev.' + S.ev.k), t: Math.ceil(S.ev.t) + 's' })); }
   else if (!S.em && S.ad) { ec.style.display = 'block'; ec.style.borderLeftColor = '#16963C'; ec.textContent = ADS[S.ad.k].e + ' ' + t('mk.active', { name: t('mk.' + S.ad.k), t: Math.ceil(S.ad.t) + 's' }); }
   else if (S.em) { ec.style.borderLeftColor = ''; const s = Math.max(0, Math.ceil(S.em.t)); ec.style.display = 'block'; ec.textContent = '🚨 ' + t('em.hud', { name: t('em.' + S.em.k), a: S.em.got, b: S.em.need, t: Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') }); ec.style.color = s <= 30 ? '#E53E3E' : ''; ec.style.fontWeight = s <= 30 ? '900' : ''; }
   else ec.style.display = 'none';
@@ -3121,12 +3387,12 @@ function updateHUD() { navResearch();
 }
 // the street sends more people to a bigger centre: every staffed treatment room past the 3rd adds 6 % more arrivals (up to +80 %), and the building holds more at once
 let flowCache = { t: -1, n: 0 };
-function staffedRooms() { const now = performance.now(); if (now - flowCache.t > 1000) { flowCache = { t: now, n: Object.values(R.rooms).filter((r) => ROOMS[r.type].role && !ROOMS[r.type].shop && r.type !== 'cafe' && r.type !== 'lab' && r.staff.some(Boolean)).length }; } return flowCache.n; }
+function staffedRooms() { const now = performance.now(); if (now - flowCache.t > 1000) { flowCache = { t: now, n: Object.values(R.rooms).filter((r) => ROOMS[r.type].role && !ROOMS[r.type].shop && r.type !== 'cafe' && r.type !== 'lab' && !ROOMS[r.type].train && r.staff.some(Boolean)).length }; } return flowCache.n; }
 const flowMul = () => (S.mode === 'career' ? Math.min(1.8, 1 + 0.06 * Math.max(0, staffedRooms() - 3)) : 1);
 const visCap = () => (S.mode === 'career' ? Math.min(36, 18 + Math.round(1.5 * Math.max(0, staffedRooms() - 3))) : 18);
 function step(dt, now = performance.now(), rdt = dt) {
   dayTick(dt); if (!inGame) return; probIntroTick(rdt); behTick(dt); laterTick(dt); caseTick(); tempTick(dt); quakeTick(dt); doomers = beh('slowdoom') ? R.visitors.filter((u) => DOOM.has(u.prob) && !u.cured && u.path && u.path.length) : [];
-  spawnT -= dt;
+  spawnT -= dt; if (S.epi && S.epi.quar) spawnT = Math.max(spawnT, 1.5); // quarantine: the front desk turns new people away
   if (spawnT <= 0 && S.mode === 'career' && cityOf().groups && cityOf().groups.kind === 'families' && RNG() < cityOf().groups.chance && R.visitors.length < 15) { const kp = ['toddler', 'schoolrun', 'tablet', 'homework', 'sugar']; famNext = true; const pr = spawnVisitor(unlocked('parent') ? rnd(kp) : undefined); famNext = false; const gid = S.nextId++; S.gs = S.gs || {}; S.gs[gid] = 1; pr.gid = gid; spawnT = 9; }
   else if (spawnT <= 0 && S.mode === 'career' && cityOf().groups && cityOf().groups.kind !== 'families' && RNG() < cityOf().groups.chance && R.visitors.length < 15) { const pr = spawnVisitor(); const gid = S.nextId++; S.gs = S.gs || {}; const n = 2 + (RNG() < 0.4 ? 1 : 0); S.gs[gid] = n; pr.gid = gid; for (let i = 1; i < n; i++) { const o = spawnVisitor(pr.prob); o.gid = gid; } spawnT = 9; }
   if (spawnT <= 0) { const base = S.mode === 'career' ? 5.6 : 4.2; spawnT = (base / (S.mode === 'career' ? 1.2 * TIER_FX[vibeTier()].spawn : 0.6 + S.vibes / 100)) * (0.7 + RNG() * 0.6) / adMul() * Math.pow(S.price || 1, S.mode === 'career' && vibeTier() === 'adored' ? 0.6 : 1.2) / (cityOf().waves && S.mode === 'career' ? 1 + 0.45 * Math.sin(S.t / 9) : 1) / flowMul() / (cityOf().evening && S.mode === 'career' ? (S.t > DAY_LEN * 0.6 ? 1.7 : S.t < DAY_LEN * 0.35 ? 0.75 : 1) : 1); if (R.visitors.length < visCap() + (S.ad ? 6 : 0)) spawnVisitor(); }
@@ -3140,7 +3406,7 @@ function step(dt, now = performance.now(), rdt = dt) {
     if (rs.data.role === 'maint' && !rs.onBreak) maintUpdate(rs, dt);
   }
   doorsUpdate(dt); staffCover(dt); mgrUpdate(dt); if (S.pepT > 0) S.pepT -= dt; if (S.pepCd > 0) S.pepCd -= dt;
-  pestUpdate(dt); vibeTick(dt); marksTick(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); decorUpdate(dt); checkGoals();
+  pestUpdate(dt); vibeTick(dt); marksTick(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); decorUpdate(dt); checkGoals(); epiTick(dt);
   saveT += rdt; if (saveT > 3) { saveT = 0; save(); }
 }
 const fpsW = { t: 0, n: 0, sum: 0, done: false };
@@ -3396,13 +3662,13 @@ function staffEnergy(rs, dt) {
   if (d.awayT > 0) {
     if (rs.mode !== 'away' && patientOf(rs)) return; // life event, day off…: they finish the session in progress first, then go
     d.awayT -= dt; rs.av.visible = false; rs.mode = 'away';
-    if (d.awayT <= 0) { d.awayT = 0; rs.av.visible = true; rs.av.position.set(3, 0.1, 11); d.energy = 1; goStaff(rs, postSpot(rs)); chat(d.name + ' · ' + roleN(d.role), t('life.back', { name: d.name.split(' ')[0] }), '👋', { fun: true }); }
+    if (d.awayT <= 0) { d.awayT = 0; d.sickHome = 0; rs.av.visible = true; rs.av.position.set(3, 0.1, 11); d.energy = 1; goStaff(rs, postSpot(rs)); chat(d.name + ' · ' + roleN(d.role), t('life.back', { name: d.name.split(' ')[0] }), '👋', { fun: true }); }
     return;
   }
   if (rs.onBreak) {
     if (rs.mode === 'break') { d.energy = Math.min(1, d.energy + dt / 22); if (d.energy >= 1) { rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
   } else if (rs.mode === 'there' || rs.task) {
-    if (rs.at !== 'idle') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (185 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
+    if (rs.at !== 'idle' && rs.at !== 'train' && rs.at !== 'heal') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (185 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
     if (d.energy < 0.25) {
       const spot = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).map((r) => r.spots.find((s) => !s.busy)).find(Boolean);
       if (spot && !rs.task && !patientOf(rs)) { spot.busy = rs; rs.onBreak = spot; /* never walk out mid-session */ rs.goingTo = null; goStaff(rs, spot); tip('break'); }
@@ -3413,7 +3679,7 @@ function staffEnergy(rs, dt) {
     }
   }
   if (!rs.zz) { rs.zz = new THREE.Sprite(iconTex('😮‍💨')); rs.zz.scale.set(0.5, 0.5, 1); rs.zz.position.y = 2.3; rs.zz.renderOrder = 10; rs.av.add(rs.zz); }
-  rs.zz.material = iconTex(rs.onBreak ? '☕' : d.sadT > 0 ? '💔' : '😮‍💨'); rs.zz.visible = !!rs.onBreak || d.energy < 0.25 || d.sadT > 0;
+  rs.zz.material = iconTex(rs.onBreak ? '☕' : d.sick ? '🤒' : d.sadT > 0 ? '💔' : '😮‍💨'); rs.zz.visible = !!rs.onBreak || !!d.sick || d.energy < 0.25 || d.sadT > 0;
 }
 function raiseRequest() {
   const cand = S.staff.filter((s) => s.skill >= 2 && !s.grumpy && (s.raiseDay == null || s.raiseDay < S.day - 5)); if (!cand.length) return;
@@ -4336,12 +4602,12 @@ function staffCover(dt) {
 
 const MODELS_URL = (() => { const q = new URLSearchParams(location.search).get('models'); return q && !/:\/\//.test(q) ? q : 'models/manifest.json'; })();
 function swapStaffAvatar(rs) {
-  const old = rs.av, av = person(staffLook(rs.data), 'staff'); if (!av.userData.p.glb) return;
+  const old = rs.av, av = staffPerson(rs.data); if (!av.userData.p.glb) return;
   av.position.copy(old.position); av.rotation.copy(old.rotation); scene.remove(old); scene.add(av); rs.av = av; delete portraits['s' + rs.data.id];
   const p = av.userData.p, sp = rs.target;
   if (rs.mode === 'walk') poseWalk(p, 0); else if (rs.mode === 'there') { rs.busyPose = null; if (sp && sp.sit) poseSit(p); else poseStand(p); } else if (sp && sp.sit) poseSit(p); else poseStand(p);
 }
-CHAR.onModel = (role) => { if (role.startsWith('mgr_')) { refreshMgrModel(); return; } if (VIS[role]) { for (const v of R.visitors) if (v.look.vm === role && !v.av.userData.p.glb) swapVisitorAvatar(v); return; } for (const rs of R.staff) if (rs.data.role === role && !rs.av.userData.p.glb) swapStaffAvatar(rs); };
+CHAR.onModel = (role) => { if (role.startsWith('mgr_')) { refreshMgrModel(); return; } if (VIS[role]) { if (role === 'sp_trainer') for (const rs of R.staff) if (rs.data.role === 'trainer' && !rs.av.userData.p.glb) swapStaffAvatar(rs); for (const v of R.visitors) if (v.look.vm === role && !v.av.userData.p.glb) swapVisitorAvatar(v); return; } for (const rs of R.staff) if (rs.data.role === role && !rs.av.userData.p.glb) swapStaffAvatar(rs); };
 loadCharacters(MODELS_URL).then((ok) => { if (ok) { if (S) preloadVisitors(S.city); for (const k in portraits) delete portraits[k]; console.info('[chars] GLB avatars ready', CHAR.errors); } });
 
 // ---------------- style showcase (GLB modelled in Blender) ----------------
@@ -4373,5 +4639,5 @@ async function startShowcase() {
 }
 if (new URLSearchParams(location.search).get('showcase')) setTimeout(() => startShowcase().catch((e) => console.warn(e)), 600);
 
-window.__dbg = { settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; decorShow(); }, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
+window.__dbg = { epi: { epiDay: () => epiDay(), openEpi: () => openEpi(), startCourse: (st) => startCourse(st), sendPharm: (st) => sendPharm(st), sendHome: (st) => sendHome(st), infect: (d) => infect(d), staff: () => openStaffList("all"), verdict: () => epiVerdict(), sickAtWork: () => sickAtWork() }, settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; decorShow(); }, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
 requestAnimationFrame(loop);
