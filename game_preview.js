@@ -1724,6 +1724,7 @@ function staffAttend(rs, dt) {
   if (!busy && rt && (rt.shop || room.type === 'cafe')) { const u = R.visitors.find((x) => (x.state === 'cafe' && roomOfSpot(x.lspot) === room) || (x.state === 'shopping' && roomOfSpot(x.sspot) === room) || (x.state === 'line' && room.lineQ && room.lineQ[0] === x));
     if (u) { busy = rt.shop ? 'till' : 'work'; const dx = u.av.position.x - rs.av.position.x, dz = u.av.position.z - rs.av.position.z; if (dx * dx + dz * dz > 0.04 && !sit) turnTo(rs.av, Math.atan2(dx, dz), dt, 4); } } // the barista serves, the cashier rings up
   if (!busy && room && room.type === 'lab' && S.research && S.research.active) busy = 'work'; // researching: working at the bench
+  if (busy === true && rt && rt.shop) busy = 'till';
   if (busy) rs.fid = null;
   if (busy !== rs.busyPose) { rs.busyPose = busy; rs.fid = null; if (busy === 'till' && p.anim) p.anim.set('till'); else if (busy) poseWork(p, sit); else if (sit) poseSit(p); else poseStand(p); }
   if (!busy && !sit && p.anim && !rs.lesPose && rs.at !== 'train') { // standing staff don't stand frozen: a breath, a look at the phone, then back
@@ -2117,11 +2118,11 @@ function handBone(av) { let h = null; av.traverse((o) => { if (!h && o.isBone &&
 function holdProp(av, key, on, make) {
   const ud = av.userData; if (!on) { if (ud[key]) { ud[key].parent && ud[key].parent.remove(ud[key]); ud[key] = null; } return; }
   if (ud[key] || !av.userData.p || !av.userData.p.glb) return; const h = handBone(av); if (!h) return;
-  av.updateMatrixWorld(true); const ws = h.getWorldScale(new THREE.Vector3()), g = new THREE.Group(); make(g); g.scale.set(1 / ws.x, 1 / ws.y, 1 / ws.z); h.add(g); ud[key] = g;
+  av.updateMatrixWorld(true); const ws = h.getWorldScale(new THREE.Vector3()); if (!(ws.x > 1e-6 && ws.y > 1e-6 && ws.z > 1e-6)) return; const g = new THREE.Group(); make(g); g.scale.set(1 / ws.x, 1 / ws.y, 1 / ws.z); h.add(g); ud[key] = g;
 }
 function holdCup(av, on) { holdProp(av, 'cup', on, (g) => { const c = put(cyl(0.04, 0.032, 0.1, '#F4EFE6'), 0, 0.09, 0.03, g); put(cyl(0.036, 0.036, 0.01, '#6B4226'), 0, 0.135, 0.03, g); c.castShadow = false; }); }
 function holdBroom(av, on) { holdProp(av, 'broom', on, (g) => { const b = new THREE.Group(); g.add(b); b.position.set(0, 0.05, 0.02);
-  put(cyl(0.014, 0.014, 1.25, '#B5793A'), 0, -0.45, 0, b); put(rbox(0.32, 0.12, 0.07, '#E3B341', 0.02), 0, -1.1, 0, b); }); }
+  put(cyl(0.014, 0.014, 1.25, '#B5793A'), 0, 0.45, 0, b); put(rbox(0.32, 0.12, 0.07, '#E3B341', 0.02), 0, 1.1, 0, b); }); }
 function leaveTraining(rs) { if (rs.seat) rs.seat.busy = null; rs.seat = null; rs.lesPose = null; rs.gradT = 0; if (rs.at === 'train') { rs.at = null; assignStaff(); } }
 function trainTick(dt) {
   lessonTick(dt);
