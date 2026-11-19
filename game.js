@@ -840,7 +840,11 @@ ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', floorM:
 ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 // diorama look (validated on the café) for every room built from Tripo/Meshy pieces: rounded walls and floor, sage plinth, soft contact shadows, pieces ×1.1
-for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
+// the older rooms (code-built furniture, interiors not redone yet) get the same walls and floors: their pastel tint inside, cream outside, arched door
+for (const k of ['detox', 'lab', 'parent', 'moving', 'jjim', 'yoga', 'lucha', 'ahwa', 'roda', 'garage', 'shop', 'staffroom', 'toilet']) { const st = ROOM_STYLE[k]; if (!st || st.v2) continue;
+  const c = new THREE.Color(st.wall), h = {}; c.getHSL(h); const tone = (s2, l2) => '#' + new THREE.Color().setHSL(h.h, Math.min(1, s2), l2).getHexString(); // a bit more colour inside, a door in the deep version of the room's hue
+  const dc = tone(h.s * 0.55 + 0.25, 0.42); Object.assign(st, { v2: true, chunky: true, ao: true, wall: tone(h.s * 1.25, h.l * 0.9), inBase: tone(h.s * 0.9, h.l * 0.72), door: dc, panel: dc, pop: '#E3B341' }); }
+for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 // one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
 function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
@@ -977,7 +981,7 @@ function buildRoom(r) {
     const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.04, bevelEnabled: false, curveSegments: 10 }); geo.rotateX(-Math.PI / 2);
     const fW = x1 - x0, fD = z1 - z0, metre = (m) => { if (!m.map) return m; const k = 'fmM' + m.uuid + '|' + fW.toFixed(2) + '|' + fD.toFixed(2); // same tiling as the flat floor, in metre UVs
       if (!MC[k]) { const tx = m.map.clone(); tx.repeat.set(m.map.repeat.x / fW, m.map.repeat.y / fD); tx.needsUpdate = true; MC[k] = m.clone(); MC[k].map = tx; } return MC[k]; };
-    const fl = new THREE.Mesh(geo, RS.floorM ? RS.floorM() : metre(fm)); fl.position.y = 0.09; fl.receiveShadow = true; g.add(fl); }
+    const fl = new THREE.Mesh(geo, RS.floorM ? RS.floorM() : metre(FLOOR_KIND[r.type] && !RS.model ? floorMat(FLOOR_KIND[r.type], fW, fD) : fm)); fl.position.y = 0.09; fl.receiveShadow = true; g.add(fl); }
   else floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] && !(RS && RS.model) ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
