@@ -1787,12 +1787,23 @@ const furniture = {
     put(rbox(0.36, 0.2, 0.24, '#E5484D', 0.04), -0.35, 0.89, 0, tb); put(rbox(0.04, 0.12, 0.005, '#FFFFFF', 0.002), -0.35, 0.9, 0.122, tb); put(rbox(0.12, 0.04, 0.005, '#FFFFFF', 0.002), -0.35, 0.9, 0.122, tb);
     const mq = put(rbox(0.5, 0.14, 0.3, '#E9C9A8', 0.06), 0.2, 0.86, 0, tb); put(sph(0.1, '#E9C9A8'), 0.53, 0.88, 0, tb); put(rbox(0.3, 0.02, 0.22, '#5AB8F0', 0.01), 0.15, 0.94, 0, tb); mq.userData.cpr = true;
   },
-  staffroom(g, cx, cz, room, K = 1) {
-    const so = grp(cx - 0.6 * K, cz - 1.8 * K, 0, g); put(rbox(2.4, 0.42, 0.85, '#FFB067', 0.15), 0, 0.32, 0, so); put(rbox(2.4, 0.6, 0.25, '#FFB067', 0.1), 0, 0.68, -0.33, so); glbSwap(so, 'sofa', { len: 2.5, h: 1.0, y: 0.12 });
-    for (const ox of [-0.7, 0.7]) room.spots.push({ x: cx - 0.6 * K + ox, z: cz - 1.75 * K, rot: 0, sit: true, y: 0.05, busy: null });
-    const tb = grp(cx - 0.6 * K, cz - 0.6 * K, 0, g); put(cyl(0.45, 0.45, 0.06, '#FFFFFF'), 0, 0.55, 0, tb); put(cyl(0.06, 0.06, 0.5, '#7A8088'), 0, 0.28, 0, tb); put(cyl(0.07, 0.06, 0.14, '#E9785F'), 0.1, 0.65, 0, tb);
+  staffroom(g, cx, cz, room, K = 1) { // every seat is a real piece: sofa (2), armchairs (1 each), beanbags (1 each); a big room's 2nd half is a games corner
+    const seat = (x, z, rot, y = 0.05) => room.spots.push({ x, z, rot, sit: true, y, busy: null });
+    const sofa = (x, z, rot = 0) => { const so = grp(x, z, rot, g); put(rbox(2.4, 0.42, 0.85, '#FFB067', 0.15), 0, 0.32, 0, so); put(rbox(2.4, 0.6, 0.25, '#FFB067', 0.1), 0, 0.68, -0.33, so); glbSwap(so, 'sofa', { len: 2.5, h: 1.0, y: 0.12 }); for (const ox of [-0.7, 0.7]) seat(x + ox * Math.cos(rot), z - ox * Math.sin(rot) + 0.05, rot); };
+    const arm = (x, z, rot) => { const a = grp(x, z, rot, g); put(rbox(0.9, 0.45, 0.85, '#7ACB4E', 0.15), 0, 0.3, 0, a); put(rbox(0.9, 0.55, 0.2, '#7ACB4E', 0.1), 0, 0.7, -0.33, a); glbSwap(a, 'armchair', { len: 1.0, y: 0.1 }); seat(x, z, rot); };
+    const bag = (x, z, rot, c) => { const b = grp(x, z, rot, g); const bb = sph(0.48, c); bb.scale.set(1, 0.6, 1); put(bb, 0, 0.3, 0, b); glbSwap(b, 'beanbag', { len: 0.95, y: 0.1 }); seat(x, z, rot, 0); };
+    const table = (x, z) => { const tb = grp(x, z, 0, g); put(cyl(0.45, 0.45, 0.06, '#FFFFFF'), 0, 0.45, 0, tb); put(cyl(0.06, 0.06, 0.4, '#7A8088'), 0, 0.23, 0, tb); put(cyl(0.07, 0.06, 0.14, '#E9785F'), 0.1, 0.55, 0, tb); glbSwap(tb, 'sidetable', { h: 0.55, y: 0.1 }); };
+    const H = Math.PI / 2, half = room.nst === 2 && room.st === 1;
+    if (half) { // games corner: foosball table, two beanbags and an armchair around it
+      const fb = grp(cx, cz - 0.9 * K, 0, g); put(rbox(1.5, 0.12, 0.8, '#2E8B57', 0.04), 0, 0.85, 0, fb); put(rbox(1.6, 0.25, 0.9, '#8A5A35', 0.05), 0, 0.72, 0, fb);
+      for (const sx of [-0.65, 0.65]) for (const sz of [-0.35, 0.35]) put(rbox(0.08, 0.7, 0.08, '#6B4426', 0.02), sx, 0.35, sz, fb);
+      for (let i = -2; i <= 2; i++) put(cyl(0.015, 0.015, 1.15, '#C9CED6'), i * 0.28, 0.95, 0, fb).rotation.x = H;
+      bag(cx - 1.0 * K, cz + 1.2 * K, Math.PI * 0.85, '#FF8FAB'); bag(cx + 1.0 * K, cz + 1.3 * K, -Math.PI * 0.85, '#5AB8F0'); arm(cx + 1.3 * K, cz - 2.2 * K, Math.PI * 0.1);
+      return; }
+    sofa(cx - 0.4 * K, cz - 1.8 * K); table(cx - 0.4 * K, cz - 0.6 * K);
+    const n = seatsN(room) - 2; // armchairs facing the sofa across the coffee table
+    if (n >= 1) arm(cx + 1.2 * K, cz - 0.4 * K, -H * 1.3); if (n >= 2) arm(cx - 2.0 * K, cz - 0.4 * K, H * 1.3);
     const cm = grp(cx + 1.9 * K, cz - 2.2 * K, 0, g); put(rbox(0.9, 1.0, 0.6, '#2F3A52', 0.06), 0, 0.6, 0, cm); put(rbox(0.5, 0.4, 0.5, '#C0C6CC', 0.05, { m: 0.5, r: 0.3 }), 0, 1.3, 0, cm); glbSwap(cm, 'kitchenette', { len: 1.4, y: 0.1 });
-    const nb = seatsN(room) - 2; for (const [bx, bz, br, bc] of [[1.4, 0.6, -Math.PI * 0.75, '#7ACB4E'], [-1.6, 1.0, Math.PI * 0.75, '#FFB067']].slice(0, nb)) { const bb = sph(0.5, bc); bb.scale.set(1, 0.6, 1); put(bb, cx + bx * K, 0.35, cz + bz * K, g); room.spots.push({ x: cx + bx * K, z: cz + bz * K, rot: br, sit: true, y: 0, busy: null }); }
   },
   toilet(g, cx, cz, room, K = 1) {
     const n = room.sz ? { s: 2, m: 4, l: 3 }[room.sz] : K < 0.8 ? 2 : 3;
