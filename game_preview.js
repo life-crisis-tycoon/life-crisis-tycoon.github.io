@@ -1842,7 +1842,6 @@ const furniture = {
     const n = seatsN(room) - 2; // armchairs facing the sofa across the coffee table
     if (n >= 1) arm(cx + 1.2 * K, cz - 0.4 * K, -H * 1.3); if (n >= 2) arm(cx - 2.0 * K, cz - 0.4 * K, H * 1.3);
     const cm = grp(cx + 1.9 * K, cz - 2.2 * K, 0, g); put(rbox(0.9, 1.0, 0.6, '#2F3A52', 0.06), 0, 0.6, 0, cm); put(rbox(0.5, 0.4, 0.5, '#C0C6CC', 0.05, { m: 0.5, r: 0.3 }), 0, 1.3, 0, cm); glbSwap(cm, 'kitchenette', { len: 1.4, y: 0.1 });
-    if (room.sz === 'm' || half === false && room.nst === 2) { const lk = grp(cx + 2.4 * K, cz + 1.0 * K, -H, g); put(rbox(1.2, 1.8, 0.5, '#9CB7C9', 0.04), 0, 0.95, 0, lk); glbSwap(lk, 'locker', { h: 1.8, y: 0.1 }); }
   },
   toilet(g, cx, cz, room, K = 1) {
     const n = room.sz ? { s: 2, m: 4, l: 3 }[room.sz] : K < 0.8 ? 2 : 3;
