@@ -173,7 +173,7 @@ const GFX = (() => { let q = null; try { q = localStorage.getItem('ahq_gfx'); } 
   const weak = hint === 'low' || (navigator.deviceMemory && navigator.deviceMemory <= 3);
   const mode = q === 'high' || q === 'low' ? q : weak ? 'low' : 'high';
   return { pref: q || 'auto', mode, low: mode === 'low', batch: true }; })();
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }); renderer.localClippingEnabled = true; // London kit houses are cut open (clip plane) instead of squashed
 renderer.setPixelRatio(GFX.low ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, MOBILE ? 2 : 2.5));
 canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); try { if (inGame) save(); } catch (er) {} setTimeout(() => location.reload(), 300); });
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -253,7 +253,7 @@ function updateCutaway() {
     const dx = b.x - view.tx, dz = b.z - view.tz, along = dx * cx + dz * cz;
     const perp = Math.abs(dx * cz - dz * cx);
     const occl = along > -b.r && perp < side + b.r && b.h / tan > along - b.r - reach;
-    if (b.lm) b.o.visible = !occl; else { const ky = occl ? Math.max(0.06, Math.min(1, 1.6 / b.h)) : 1; b.o.scale.y = ky; if (b.onSquash && b._ky !== ky) { b._ky = ky; b.onSquash(ky); } }
+    if (b.lm) b.o.visible = !occl; else if (b.clip) { if (b._occ !== occl) { b._occ = occl; b.clip(occl); } } else { const ky = occl ? Math.max(0.06, Math.min(1, 1.6 / b.h)) : 1; b.o.scale.y = ky; if (b.onSquash && b._ky !== ky) { b._ky = ky; b.onSquash(ky); } }
   }
 }
 function resize() { renderer.setSize(innerWidth, innerHeight, false); placeCam(); }
@@ -291,6 +291,13 @@ function canvasTex(w, h, draw, rep) {
   return tx;
 }
 const woodTex = (a, b, rep) => canvasTex(128, 128, (g, w) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? a : b; g.fillRect(0, i * 16, w, 16); g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, i * 16, w, 1); } }, rep);
+const cobbleTex = () => canvasTex(256, 256, (g) => { // warm cobbles like the reference painting, offset rows of rounded stones
+  g.fillStyle = '#A6978A'; g.fillRect(0, 0, 256, 256); let sd = 7; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  const cols = ['#C9C0B4', '#C0B6A9', '#D2C9BD', '#BAAF A1'.replace(' ', ''), '#CCC3B8', '#C4BAAE'];
+  for (let row = 0; row < 10; row++) for (let i = -1; i < 10; i++) { const w = 25.6, x = i * w + (row % 2 ? w / 2 : 0) + 1.5, y = row * 25.6 + 1.5;
+    g.fillStyle = cols[Math.floor(rr() * cols.length)]; g.beginPath(); g.roundRect(x, y, w - 3, 22.6, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.roundRect(x + 3, y + 2, w - 10, 6, 3); g.fill(); }
+}, [26, 26]);
 const tileTex = (a, b, rep) => canvasTex(64, 64, (g) => { g.fillStyle = a; g.fillRect(0, 0, 64, 64); g.fillStyle = b; g.fillRect(0, 0, 32, 32); g.fillRect(32, 32, 32, 32); }, rep);
 
 // ---------------- people ----------------
@@ -611,6 +618,35 @@ function floorMat(kind, w, d) { // one material per (kind, size) so the pattern 
   }
   return MC[key];
 }
+// preview, London: a lot you can buy is a lush little garden like the reference painting: striped lawn, clipped hedge border,
+// flower beds in the corners, a gravel path, a round tree and a bench
+const LAWN_TEX = (rep) => canvasTex(128, 128, (g) => { g.fillStyle = '#6CAF48'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#79BB53'; g.fillRect(0, 0, 64, 128);
+  for (let k = 0; k < 220; k++) { g.fillStyle = k % 2 ? 'rgba(40,110,30,0.16)' : 'rgba(255,255,200,0.14)'; g.fillRect((k * 37) % 128, (k * 59) % 128, 2, 4); } }, rep);
+function lotGarden(L, i, g) {
+  const w = L[1] - L[0], d = L[3] - L[2], cx = (L[0] + L[1]) / 2, cz = (L[2] + L[3]) / 2; let sd = i * 7 + 3; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  put(rbox(w - 0.2, 0.3, d - 0.2, '#8C6B4E', 0.06), cx, -0.4, cz, g); // soil edge
+  const lm = mat('#FFFFFF', { r: 0.95, map: LAWN_TEX([Math.max(1, w / 3), Math.max(1, d / 3)]), mapK: 'lawn' + i + '|' + w + '|' + d });
+  floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, lm, -0.24, g);
+  // hedge border: a rounded clipped box with soft bumps in three greens, gaps for the path
+  const HG = ['#3F9A3A', '#4FAE44', '#5DBB4E'], hy = -0.24, hh = 0.62, ht = 0.5, gate = [cx - 0.9, cx + 0.9];
+  const hedge = (x0, z0, x1, z1) => { const len = Math.hypot(x1 - x0, z1 - z0); if (len < 0.4) return; const ax = x0 === x1 ? 'z' : 'x';
+    put(rbox(ax === 'x' ? len : ht, hh, ax === 'x' ? ht : len, HG[0], 0.2), (x0 + x1) / 2, hy + hh / 2, (z0 + z1) / 2, g);
+    for (let t = 0.25; t < len - 0.1; t += 0.42) { const b = sph(0.2 + rr() * 0.06, HG[1 + (rr() < 0.5 ? 0 : 1)], { r: 0.9 }); b.scale.y = 0.75; put(b, ax === 'x' ? x0 + t : x0 + (rr() - 0.5) * 0.1, hy + hh - 0.02, ax === 'x' ? z0 + (rr() - 0.5) * 0.1 : z0 + t, g); } };
+  const e = 0.35; hedge(L[0] + e, L[2] + e, L[1] - e, L[2] + e); hedge(L[0] + e, L[2] + e, L[0] + e, L[3] - e); hedge(L[1] - e, L[2] + e, L[1] - e, L[3] - e);
+  hedge(L[0] + e, L[3] - e, gate[0], L[3] - e); hedge(gate[1], L[3] - e, L[1] - e, L[3] - e);
+  // gravel path from the gate to a little round plaza
+  const pm = mat('#EAD9B5', { r: 1 }); floorPlane(gate[0] + 0.15, gate[1] - 0.15, cz, L[3] - 0.1, pm, -0.22, g);
+  const pl = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.04, 28), pm); pl.position.set(cx, -0.21, cz); pl.receiveShadow = true; g.add(pl);
+  // flower beds in the corners: dark soil heaped with clay blooms
+  const FL = ['#FF6F91', '#FFD25E', '#FF4F5E', '#FFFFFF', '#B57BE8', '#FF9F43', '#FF8FC8'];
+  for (const [fx, fz] of [[L[0] + 1.5, L[2] + 1.5], [L[1] - 1.5, L[2] + 1.5], [L[0] + 1.5, L[3] - 1.6], [L[1] - 1.5, L[3] - 1.6]]) {
+    const bed = sph(0.95, '#6B4A33', { r: 1 }); bed.scale.set(1, 0.22, 0.8); put(bed, fx, -0.22, fz, g);
+    for (let k = 0; k < 16; k++) { const a = rr() * Math.PI * 2, r = Math.sqrt(rr()) * 0.78, lf = sph(0.13, k % 3 ? '#4FAE44' : '#3F9A3A', { r: 0.9 }); put(lf, fx + Math.cos(a) * r, -0.1, fz + Math.sin(a) * r * 0.8, g);
+      const f = sph(0.1 + rr() * 0.04, FL[Math.floor(rr() * FL.length)], { r: 0.7 }); put(f, fx + Math.cos(a) * r, 0.02 + rr() * 0.06, fz + Math.sin(a) * r * 0.8, g); } }
+  // round clay tree and a bench by the plaza
+  const tg = grp(cx + (i % 2 ? -1 : 1) * Math.min(3.2, w / 2 - 1.8), cz - Math.min(2.2, d / 2 - 1.8), 0, g); put(sph(1.2, '#4FAE44'), 0, 2.2, 0, tg); glbSwap(tg, 'lon_tree_round', { h: 4.2, y: -0.24 });
+  const bg = grp(cx, cz - 1.9, 0, g); put(rbox(1.5, 0.08, 0.42, '#B5793A', 0.03), 0, 0.2, 0, bg); glbSwap(bg, 'bench', { len: 1.5, y: -0.24 });
+}
 function floorPlane(x0, x1, z0, z1, m, y = 0.1, parent = scene) {
   const f = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.04, z1 - z0), m); f.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); f.receiveShadow = true; parent.add(f); return f;
 }
@@ -665,7 +701,7 @@ function propModel(name) {
     return gl.scene;
   })());
 }
-const INST = {}, INST_NAMES = new Set(['tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
+const INST = {}, INST_NAMES = new Set(['lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true;
   let rec = INST[name]; if (!rec || rec.done) { rec = INST[name] = { list: [], done: false }; const R0 = rec; propModel(name).then((src) => { R0.done = true; buildInst(src, R0.list); }).catch((e) => console.warn('[props]', name, e.message)); }
@@ -708,7 +744,7 @@ function glbSwap(g, name, o = {}) {
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
     if (o.tint) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.color.multiply(new THREE.Color(o.tint)); } });
     if (o.glow) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.emissive = new THREE.Color(o.glow); c.material.emissiveIntensity = o.gi || 0.8; if (c.material.map) c.material.emissiveMap = c.material.map; } }); // recolour a shared model for one room's palette
-    m.position.y = o.y || 0; g.add(m); g.userData.glb = name;
+    m.position.y = o.y || 0; g.add(m); g.userData.glb = name; if (o.onModel) o.onModel(m);
     if (rid != null) m.traverse((c) => { if (c.isMesh) c.userData.roomId = rid; });
   }).catch((e) => console.warn('[props]', name, e.message));
 }
@@ -775,12 +811,20 @@ const CITY_LIGHT = {
   cairo: { hemi: ['#FFE4C2', '#B08A5E', 0.66], sun: ['#FFC98A', 3.2], fill: ['#FFE9CF', 0.3], fog: [80, 170] },
   london: { hemi: ['#FFE6C4', '#A8865E', 0.72], sun: ['#FFC27A', 3.0], fill: ['#FFE2C2', 0.3], wet: true, fog: [70, 150] }, // warm golden late-afternoon light
 };
+// a passer-by for the city streets: one of the city's visitor models, walking (created once its model is loaded)
+function cityWalker(cb) {
+  if (CHAR.status === 'off' || CHAR.status === 'fallback') return; if (CHAR.status !== 'ready') { setTimeout(() => cityWalker(cb), 1500); return; }
+  const k = pickVis(false); if (!k) { setTimeout(() => cityWalker(cb), 1500); return; }
+  loadFull(k).then((g) => { if (!g) return; const look = { vm: k, tall: VIS[k].h / 1.75, wide: 1, male: VIS_MALE.has(k) }; const av = person(look, 'visitor'); if (!av.userData.p.glb) return;
+    av.traverse((m) => { if (m.isMesh) m.castShadow = false; }); av.userData.p.anim.set('walk', 1.15 / 2.3); cb(av); });
+}
 function buildCityDecor(kind) {
   if (cityScene === kind) { buildShell(kind); buildAnnexLot(kind); return; } cityScene = kind;
   if (world.cityG) scene.remove(world.cityG); const cg = new THREE.Group(); scene.add(cg); world.cityG = cg;
-  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, glb: kind === 'london' || kind === 'saopaulo' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
-  scene.background = new THREE.Color(res.bg); const L = CITY_LIGHT[kind] || CITY_LIGHT._;
-  world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
+  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, lively: kind === 'london', cityKit: kind === 'london' && PROPS_ON, walker: cityWalker, glb: kind === 'london' || kind === 'saopaulo' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
+  scene.background = new THREE.Color(kind === 'london' ? '#BCBFF6' : res.bg); const L = kind === 'london' ? { hemi: ['#FFFFFF', '#B9AE9E', 0.9], sun: ['#FFF4E2', 2.9], fill: ['#E9EEFF', 0.35] } : CITY_LIGHT[kind] || CITY_LIGHT._; // preview: London lit like the reference painting (clear, bright, lavender sky)
+  world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: kind === 'london' ? cobbleTex() : tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
+  canvas.style.filter = kind === 'london' ? 'saturate(1.28) contrast(1.05) brightness(1.03)' : ''; // preview: the toy-like punch of the London reference painting
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];
   scene.fog = L.fog ? new THREE.Fog(res.bg, L.fog[0], L.fog[1]) : null;
   if (GFX.batch) { const stop = new Set([...res.buildings.map((b) => b.o), ...res.movers.filter((m) => m.o).map((m) => m.o)]); cg.traverse((o) => { if (o.userData.swap) stop.add(o); }); for (const b of res.buildings) batchNode(b.o); batchNode(cg, stop); }
@@ -795,6 +839,7 @@ function buildAnnexLot(c) {
   plotOf(c).lots.forEach((L, i) => {
     const st = S && S.city === c ? lotSt(i) : 'locked', cx = (L[0] + L[1]) / 2, cz = (L[2] + L[3]) / 2;
     if (st === 'owned') return;
+    if (c === 'london') { lotGarden(L, i, g); if (st === 'pending') { for (let k = 0; k < 4; k++) put(cyl(0.05, 0.05, 2.4, '#E3B341'), L[0] + 1 + k * (L[1] - L[0] - 2) / 3, 0.95, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 2.0, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 1.2, L[2] + 1, g); } else { const s = grp(cx, cz, 0, g); put(cyl(0.05, 0.05, 1.6, '#8B6A45'), 0, 0.5, 0, s); put(rbox(1.4, 0.8, 0.08, '#FFD25E', 0.04), 0, 1.4, 0, s); } return; }
     put(rbox(L[1] - L[0] - 0.2, 0.3, L[3] - L[2] - 0.2, '#CBBFA9', 0.06), cx, -0.4, cz, g);
     // a vacant lot rather than bare sand: rough grass with a worn dirt patch, a few shrubs, a low wooden fence along the edges
     floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, mat('#A9C47F', { r: 1 }), -0.24, g);
@@ -809,7 +854,7 @@ function buildAnnexLot(c) {
     if (st === 'pending') { for (let k = 0; k < 4; k++) put(cyl(0.05, 0.05, 2.4, '#E3B341'), L[0] + 1 + k * (L[1] - L[0] - 2) / 3, 0.95, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 2.0, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 1.2, L[2] + 1, g); }
     else { const s = grp(cx, cz, 0, g); put(cyl(0.05, 0.05, 1.6, '#8B6A45'), 0, 0.5, 0, s); put(rbox(1.4, 0.8, 0.08, '#FFD25E', 0.04), 0, 1.4, 0, s); }
   });
-  if (GFX.batch) batchNode(g); // fences, shrubs and signs: a few draw calls instead of hundreds
+  if (GFX.batch) { const st = new Set(); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st); } // fences, shrubs and signs: a few draw calls instead of hundreds
 }
 function lotOwned(i) {
   setLot(i, 'owned'); setRent(); buildAnnexLot(); rebuildGrid();
