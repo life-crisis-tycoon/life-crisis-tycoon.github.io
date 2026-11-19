@@ -10,8 +10,9 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 export const CHAR = { status: 'none', man: null, A: { hair: {}, outfit: {}, full: {} }, active: new Set(), errors: [] };
 // logical state -> clip name in the GLB (manifest may override), and the state to fall back to if a clip is missing
 const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', sit: 'Sit', lie: 'Lie', work: 'StandWork', worksit: 'SitWork', phone: 'Phone', sitphone: 'SitPhone', cheer: 'Cheer', clean: 'Clean',
-  talk: 'TrTalk', talk2: 'TrTalk2', show: 'TrShow', listen: 'TrSitListen', answer: 'TrSitAnswer', clap: 'TrSitClap', thumb: 'TrSitThumb' }; // Tr*: training room (Meshy clips in the shared anims)
-const FALLBACK = { talk: 'idle', talk2: 'talk', show: 'talk', listen: 'sit', answer: 'listen', clap: 'listen', thumb: 'listen', sitphone: 'sit', lie: 'sit', worksit: 'sit', work: 'idle', phone: 'idle', cheer: 'idle', clean: 'work', sit: 'idle', walk: 'idle' };
+  talk: 'TrTalk', talk2: 'TrTalk2', show: 'TrShow', listen: 'TrSitListen', answer: 'TrSitAnswer', clap: 'TrSitClap', thumb: 'TrSitThumb',
+  drinksit: 'XSitDrink', drink: 'XStandDrink', till: 'XCheckout', pickup: 'XPickUp', lookwalk: 'XLookWalk', idle2: 'IdleBreath' }; // X*: everyday actions (Meshy), copied to every character // Tr*: training room (Meshy clips in the shared anims)
+const FALLBACK = { drinksit: 'sit', drink: 'idle', till: 'work', pickup: 'clean', lookwalk: 'walk', idle2: 'idle', talk: 'idle', talk2: 'talk', show: 'talk', listen: 'sit', answer: 'listen', clap: 'listen', thumb: 'listen', sitphone: 'sit', lie: 'sit', worksit: 'sit', work: 'idle', phone: 'idle', cheer: 'idle', clean: 'work', sit: 'idle', walk: 'idle' };
 const LOOP_ONCE = new Set(['cheer', 'clap', 'thumb']);
 
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
@@ -75,9 +76,13 @@ export function loadFull(key) {
 function hipsY(root) { let y = null; root.traverse((o) => { if (y == null && o.name === 'Hips') y = o.position.y; }); return y; }
 const KEEP_HEAD = new Set(['sp_safety']); // models whose head rest pose differs from the shared clips' skeleton: keep their own head/neck
 // the role characters (staff) carry their own clips; the training-room clips live in the shared visitor anims: copy them over once loaded
+const XCLIPS = /^(M_)?(Tr|X)[A-Z]|^(Phone|IdleBreath)$/;
 export function trainClips() {
-  return loadFull('anims').then((sh) => { if (!sh) return; const tr = { scene: sh.scene, animations: sh.animations.filter((c) => /^(M_)?Tr/.test(c.name)) }; if (!tr.animations.length) return;
-    for (const [k, g] of Object.entries(CHAR.A.full)) if (g && g !== sh && !g.userData.trClips && !(CHAR.man.visitors && CHAR.man.visitors[k])) { g.userData.trClips = true; adaptClips(g, tr, k); } });
+  return loadFull('anims').then((sh) => { if (!sh) return; const tr = { scene: sh.scene, animations: sh.animations.filter((c) => XCLIPS.test(c.name)) }; if (!tr.animations.length) return;
+    for (const [k, g] of Object.entries(CHAR.A.full)) if (g && g !== sh && !g.userData.trClips && !(CHAR.man.visitors && CHAR.man.visitors[k])) { g.userData.trClips = true; adaptClips(g, tr, k);
+      // standing clips copied late miss steadyIdle: pin pelvis and legs so they don't shuffle on the spot
+      for (const c of g.animations) { if (!/^(Phone|IdleBreath|XStandDrink|XCheckout)$/.test(c.name) || c.userData && c.userData.pinned) continue; c.userData = { pinned: true };
+        for (const t of c.tracks) { if (!/(^|[.:])(Hips\.(position|quaternion)|(Left|Right)(UpLeg|Leg|Foot|ToeBase)\.quaternion)$/.test(t.name)) continue; const v = t.values, n = t.getValueSize(); for (let i = n; i < v.length; i++) v[i] = v[i % n]; } } } });
 }
 function adaptClips(g, sh, key) {
   const ty = hipsY(g.scene), sy = hipsY(sh.scene); if (ty == null) return; const k = sy ? ty / sy : 1, have = new Set(g.animations.map((c) => c.name));

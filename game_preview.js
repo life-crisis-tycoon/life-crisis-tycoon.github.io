@@ -1662,8 +1662,17 @@ function staffAttend(rs, dt) {
   let want = base;
   if (v) { const dx = v.av.position.x - rs.av.position.x, dz = v.av.position.z - rs.av.position.z; if (dx * dx + dz * dz > 0.04) { const d = angW(Math.atan2(dx, dz) - base); want = base + (sit ? clamp(d, -0.7, 0.7) : d); } }
   turnTo(rs.av, want, dt, 5);
-  const busy = !!v && (v.state === 'treat' || v.state === 'checkin'); // talk only when someone is actually in front of them
-  if (busy !== rs.busyPose) { rs.busyPose = busy; if (busy) poseWork(p, sit); else if (sit) poseSit(p); else poseStand(p); }
+  const room = R.rooms[rs.at], rt = room && ROOMS[room.type];
+  let busy = !!v && (v.state === 'treat' || v.state === 'checkin'); // talk only when someone is actually in front of them
+  if (!busy && rt && (rt.shop || room.type === 'cafe')) { const u = R.visitors.find((x) => (x.state === 'cafe' && roomOfSpot(x.lspot) === room) || (x.state === 'shopping' && roomOfSpot(x.sspot) === room) || (x.state === 'line' && room.lineQ && room.lineQ[0] === x));
+    if (u) { busy = rt.shop ? 'till' : 'work'; const dx = u.av.position.x - rs.av.position.x, dz = u.av.position.z - rs.av.position.z; if (dx * dx + dz * dz > 0.04 && !sit) turnTo(rs.av, Math.atan2(dx, dz), dt, 4); } } // the barista serves, the cashier rings up
+  if (!busy && room && room.type === 'lab' && S.research && S.research.active) busy = 'work'; // researching: working at the bench
+  if (busy) rs.fid = null;
+  if (busy !== rs.busyPose) { rs.busyPose = busy; rs.fid = null; if (busy === 'till' && p.anim) p.anim.set('till'); else if (busy) poseWork(p, sit); else if (sit) poseSit(p); else poseStand(p); }
+  if (!busy && !sit && p.anim && !rs.lesPose && rs.at !== 'train') { // standing staff don't stand frozen: a breath, a look at the phone, then back
+    rs.fidT = (rs.fidT ?? 6 + RNG() * 14) - dt;
+    if (rs.fidT <= 0) { if (rs.fid) { rs.fid = null; poseStand(p); rs.fidT = 10 + RNG() * 16; } else { rs.fid = RNG() < 0.5 ? 'phone' : 'idle2'; p.anim.set(rs.fid); rs.fidT = 4 + RNG() * 3; } }
+  }
   if (!sit && !busy) p.body.position.y = Math.sin(performance.now() / 400 + rs.data.id) * 0.015;
 }
 function goStaff(rs, spot) { rs.target = spot; rs.path = findPath(rs.av.position, spot); rs.mode = 'walk'; poseStand(rs.av.userData.p); }
@@ -1708,8 +1717,10 @@ function maintUpdate(rs, dt) {
   if (rs.task) {
     const p = rs.av.userData.p, ch = rs.task.kind === 'chore';
     rs.work -= dt * boost() * energyF(rs);
-    if (p.anim) p.anim.set(ch ? (rs.task.what === 'patrol' ? 'idle' : 'work') : 'clean');
-    if (!ch && !rs.broom) { rs.broom = new THREE.Sprite(iconTex({ rat: '🪤', room: '🧽', fix: '🔧' }[rs.task.kind] || '🧹')); rs.broom.scale.set(0.45, 0.45, 1); rs.broom.renderOrder = 10; scene.add(rs.broom); }
+    const kk = rs.task.kind, lit = kk === 'litter' && rs.task.obj && !rs.task.obj.heavy && !rs.task.obj.vomit;
+    if (p.anim) p.anim.set(ch ? (rs.task.what === 'patrol' ? 'idle' : 'work') : kk === 'fix' ? 'work' : lit ? 'pickup' : 'clean'); // picks up rubbish, sweeps puddles / vomit / dirty rooms, works on repairs
+    holdBroom(rs.av, !ch && kk !== 'fix' && !lit);
+    if (!ch && !rs.broom && (kk === 'rat' || kk === 'fix')) { rs.broom = new THREE.Sprite(iconTex({ rat: '🪤', fix: '🔧' }[rs.task.kind])); rs.broom.scale.set(0.45, 0.45, 1); rs.broom.renderOrder = 10; scene.add(rs.broom); }
     if (rs.broom) rs.broom.position.set(rs.av.position.x, 2.2 + Math.sin(performance.now() / 120) * 0.05, rs.av.position.z);
     if (!p.anim) { rs.ph += dt * 10; p.arms[1].rotation.x = -1 + Math.sin(rs.ph) * 0.5; }
     if (ch && mess && rs.task.what !== 'router' && !rs.task.dec) rs.work = 0; // drop the watering can, there's a mess
@@ -1724,7 +1735,7 @@ function maintUpdate(rs, dt) {
         if (rs.task.kind === 'rat' && Math.random() < 0.5) chat(rs.data.name + ' · ' + roleN('maint'), t('maint.chat'), '🧹', { fun: true });
       }
       if (!ch) floatAt(rs.av.position, '✨'); if (rs.broom) { scene.remove(rs.broom); rs.broom = null; }
-      rs.task = null; poseStand(rs.av.userData.p); rs.mode = 'free';
+      rs.task = null; holdBroom(rs.av, false); poseStand(rs.av.userData.p); rs.mode = 'free';
     }
     return;
   }
@@ -2044,9 +2055,18 @@ function lessonTick(dt) {
     } else if (tr.av.userData.p.anim && tr.av.userData.p.anim.state !== tr.lesPose && !/talk|show/.test(String(tr.av.userData.p.anim.state))) lessonPose(tr, tr.lesPose);
   }
 }
+// ---- hand props for the everyday clips: a cup (café, break) and a broom (maintenance)
+function handBone(av) { let h = null; av.traverse((o) => { if (!h && o.isBone && o.name === 'RightHand') h = o; }); return h; }
+function holdProp(av, key, on, make) {
+  const ud = av.userData; if (!on) { if (ud[key]) { ud[key].parent && ud[key].parent.remove(ud[key]); ud[key] = null; } return; }
+  if (ud[key] || !av.userData.p || !av.userData.p.glb) return; const h = handBone(av); if (!h) return;
+  av.updateMatrixWorld(true); const ws = h.getWorldScale(new THREE.Vector3()), g = new THREE.Group(); make(g); g.scale.set(1 / ws.x, 1 / ws.y, 1 / ws.z); h.add(g); ud[key] = g;
+}
+function holdCup(av, on) { holdProp(av, 'cup', on, (g) => { const c = put(cyl(0.04, 0.032, 0.1, '#F4EFE6'), 0, 0.09, 0.03, g); put(cyl(0.036, 0.036, 0.01, '#6B4226'), 0, 0.135, 0.03, g); c.castShadow = false; }); }
+function holdBroom(av, on) { holdProp(av, 'broom', on, (g) => { const b = new THREE.Group(); g.add(b); b.position.set(0, 0.05, 0.02);
+  put(cyl(0.014, 0.014, 1.25, '#B5793A'), 0, -0.45, 0, b); put(rbox(0.32, 0.12, 0.07, '#E3B341', 0.02), 0, -1.1, 0, b); }); }
 function leaveTraining(rs) { if (rs.seat) rs.seat.busy = null; rs.seat = null; rs.lesPose = null; rs.gradT = 0; if (rs.at === 'train') { rs.at = null; assignStaff(); } }
 function trainTick(dt) {
-  if (!trainAsked && trainRooms().length) { trainAsked = true; trainClips(); } // the Meshy class clips (talk, show the board, listen, answer, clap)
   lessonTick(dt);
   for (const rs of R.staff) {
     if (rs.gradT > 0) { rs.gradT -= dt; if (rs.gradT <= 0) leaveTraining(rs); continue; }
@@ -2388,17 +2408,17 @@ function visitorUpdate(v, dt) {
       }
       break; }
     case 'toWait': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.spot); posePhone(p); v.state = 'wait'; } break;
-    case 'toShop': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.sspot); posePhone(v.av.userData.p); v.state = 'shopping'; v.prog = 0; } break;
+    case 'toShop': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.sspot); poseStand(v.av.userData.p); v.state = 'shopping'; v.prog = 0; } break; // looks at the shelves, not at the phone
     case 'shopping': {
       v.prog += dt / 2.5;
       if (v.prog >= 1) { const spend = Math.round((12 + RNG() * 26) * (S.price || 1) * (done('oat') ? 1.15 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; AU.sfx('cash'); floatAt(v.av.position, '🛍️ +' + money(spend)); { const sr = roomOfSpot(v.sspot); if (sr) roomEarn(sr.id, spend); } v.sspot.busy = null; v.sspot = null; if (v.cured) { setPath(v, exitPath(v)); v.state = 'exit'; } else { v.pat = Math.min(1, v.pat + 0.1); seatVisitor(v); } }
       break; }
     case 'toLoo': if (stepWalker(v, dt, walkSpeed * (v.urgent ? 1.7 : 1))) { settle(v, v.lspot); v.state = 'loo'; v.prog = 0; } break;
-    case 'toCafe': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.lspot); v.state = 'cafe'; v.prog = 0; } break;
+    case 'toCafe': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.lspot); v.state = 'cafe'; v.prog = 0; if (p.anim) p.anim.set(v.lspot && v.lspot.sit ? 'drinksit' : 'drink'); holdCup(v.av, true); } break;
     case 'cafe': {
       v.prog += dt / 3;
       if (v.prog >= 1) { const spend = Math.round((7 + RNG() * 6) * (S.price || 1) * (done('oat') ? 1.2 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.25); incCnt('matcha'); { const cr = roomOfSpot(v.lspot); if (cr) { roomEarn(cr.id, spend); addDirt(cr, 0.03); } } if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 1, null, 0.5);
-        AU.sfx('cash'); floatAt(v.av.position, '🍵 +' + money(spend)); v.lspot.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
+        AU.sfx('cash'); floatAt(v.av.position, '🍵 +' + money(spend)); holdCup(v.av, false); v.lspot.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
         const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
@@ -2497,8 +2517,10 @@ function visitorUpdate(v, dt) {
         if (shop && RNG() < 0.75) { shop.busy = v; v.sspot = shop; setPath(v, findPath(v.av.position, shop)); v.state = 'toShop'; }
         else if (!shop && shopR.length && RNG() < 0.6 && joinLine(v, shopR[0], 'shop')) { /* lines up for the till */ }
         else { setPath(v, exitPath(v)); v.state = 'exit'; }
+        if (p.anim && !v.em && room.type !== 'nap' && RNG() < 0.7) { v.after = v.state; v.state = 'cheer'; v.cheerT = 1.8; p.anim.set('cheer'); } // a little joy before leaving
       }
       break; }
+    case 'cheer': v.cheerT -= dt; if (v.cheerT <= 0) { v.state = v.after || 'exit'; poseStand(p); } break;
     case 'exit': case 'angry': if (stepWalker(v, dt, walkSpeed)) removeVisitor(v); break;
     case 'evac': stepWalker(v, dt, walkSpeed * 1.3); break;
   }
@@ -2638,8 +2660,10 @@ function spawnInspector(force) {
 }
 function inspectorUpdate(dt) {
   const I = R.inspector; if (!I) return;
-  if (I.stage === 0) { if (stepWalker(I, dt, 1.4)) { I.stage = 1; I.wait = 3.5; poseStand(I.av.userData.p); } }
-  else if (I.stage === 1) { I.wait -= dt; I.av.rotation.y += dt * 1.2; if (I.wait <= 0) { verdict(I.kind || 'health'); I.stage = 2; I.path = [{ x: 3.2, z: 7.5 }, { x: 3, z: 13 }]; } }
+  if (I.stage === 0) { if (stepWalker(I, dt, 1.4)) { I.stage = 1; I.wait = 6; const rs0 = Object.values(R.rooms); const d1 = rs0.length ? doorPt(rnd(rs0).def, 0.9) : { x: 3.5, z: 4 }, d2 = rs0.length ? doorPt(rnd(rs0).def, 0.9) : { x: 2, z: 3 }; I.tour = findPath(I.av.position, d1).concat(findPath(d1, d2)); // around the floor, along the walkways const pa = I.av.userData.p; if (pa.anim) pa.anim.set('lookwalk'); } }
+  else if (I.stage === 1) { I.wait -= dt; const pa = I.av.userData.p, q = I.tour && I.tour[0]; // walks slowly between two rooms, looking around and taking notes
+    if (q) { const dx = q.x - I.av.position.x, dz = q.z - I.av.position.z, d = Math.hypot(dx, dz); if (d < 0.15) { I.tour.shift(); if (!I.tour.length && pa.anim) pa.anim.set('idle'); } else { const st = Math.min(d, dt * 0.75); I.av.position.x += dx / d * st; I.av.position.z += dz / d * st; turnTo(I.av, Math.atan2(dx, dz), dt, 5); if (pa.anim && pa.anim.state !== 'lookwalk') pa.anim.set('lookwalk'); } }
+    if (I.wait <= 0 && (!I.tour || !I.tour.length || I.wait < -8)) { verdict(I.kind || 'health'); I.stage = 2; I.path = [{ x: 3.2, z: 7.5 }, { x: 3, z: 13 }]; } }
   else if (stepWalker(I, dt, 1.8)) { scene.remove(I.av); R.inspector = null; }
 }
 function inspScore(kind) {
@@ -3426,7 +3450,7 @@ function staffedRooms() { const now = performance.now(); if (now - flowCache.t >
 const flowMul = () => (S.mode === 'career' ? Math.min(1.8, 1 + 0.06 * Math.max(0, staffedRooms() - 3)) : 1);
 const visCap = () => (S.mode === 'career' ? Math.min(36, 18 + Math.round(1.5 * Math.max(0, staffedRooms() - 3))) : 18);
 function step(dt, now = performance.now(), rdt = dt) {
-  dayTick(dt); if (!inGame) return; probIntroTick(rdt); behTick(dt); laterTick(dt); caseTick(); tempTick(dt); quakeTick(dt); doomers = beh('slowdoom') ? R.visitors.filter((u) => DOOM.has(u.prob) && !u.cured && u.path && u.path.length) : [];
+  dayTick(dt); if (!inGame) return; if (!trainAsked && CHAR.status === 'ready') { trainAsked = true; trainClips(); } // extra Meshy clips (class, drink, till, pick up…) for every character probIntroTick(rdt); behTick(dt); laterTick(dt); caseTick(); tempTick(dt); quakeTick(dt); doomers = beh('slowdoom') ? R.visitors.filter((u) => DOOM.has(u.prob) && !u.cured && u.path && u.path.length) : [];
   spawnT -= dt; if (S.epi && S.epi.quar) spawnT = Math.max(spawnT, 1.5); // quarantine: the front desk turns new people away
   if (spawnT <= 0 && S.mode === 'career' && cityOf().groups && cityOf().groups.kind === 'families' && RNG() < cityOf().groups.chance && R.visitors.length < 15) { const kp = ['toddler', 'schoolrun', 'tablet', 'homework', 'sugar']; famNext = true; const pr = spawnVisitor(unlocked('parent') ? rnd(kp) : undefined); famNext = false; const gid = S.nextId++; S.gs = S.gs || {}; S.gs[gid] = 1; pr.gid = gid; spawnT = 9; }
   else if (spawnT <= 0 && S.mode === 'career' && cityOf().groups && cityOf().groups.kind !== 'families' && RNG() < cityOf().groups.chance && R.visitors.length < 15) { const pr = spawnVisitor(); const gid = S.nextId++; S.gs = S.gs || {}; const n = 2 + (RNG() < 0.4 ? 1 : 0); S.gs[gid] = n; pr.gid = gid; for (let i = 1; i < n; i++) { const o = spawnVisitor(pr.prob); o.gid = gid; } spawnT = 9; }
@@ -3701,7 +3725,7 @@ function staffEnergy(rs, dt) {
     return;
   }
   if (rs.onBreak) {
-    if (rs.mode === 'break') { d.energy = Math.min(1, d.energy + dt / 22); if (d.energy >= 1) { rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
+    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink/.test(pa.anim.state || '')) { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } d.energy = Math.min(1, d.energy + dt / 22); if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
   } else if (rs.mode === 'there' || rs.task) {
     if (rs.at !== 'idle' && rs.at !== 'train' && rs.at !== 'heal') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (185 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
     if (d.energy < 0.25) {
