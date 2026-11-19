@@ -606,6 +606,7 @@ export function buildCity(kind, cg, H, box) {
           if (DENSE && row >= (H.low ? 1 : 2)) denseBld(depthAxis + row + ':' + Math.floor(u / 22), x, z, bw, bd, h, 0, row > 1);
           else if (kt && row >= 1 && R() < 0.2) { strip(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2, '#7CC653', GY + 0.04); tree(x - bw * 0.2, z, 'plane', 1); tree(x + bw * 0.25, z + (R() - 0.5) * bd * 0.4, 'plane', 0.85); } // kit: pocket gardens between the terraces
           else if (kt) kitModel(x, z, kt, rot);
+          else if (H.grade && !CK && row >= 1 && R() < 0.14) { strip(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2, kind === 'cairo' ? '#E2CDA2' : '#76BC52', GY + 0.04); tree(x - bw * 0.2, z, RC.trees, 1); tree(x + bw * 0.25, z + (R() - 0.5) * bd * 0.4, RC.trees, 0.85); } // preview: pocket gardens between the blocks of every city
           else bld(x, z, swap ? bd : bw, swap ? bw : bd, h, { ...o, rot, row });
           reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2);
         }

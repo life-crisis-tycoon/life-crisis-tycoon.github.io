@@ -307,6 +307,34 @@ function canvasTex(w, h, draw, rep) {
   return tx;
 }
 const woodTex = (a, b, rep) => canvasTex(128, 128, (g, w) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? a : b; g.fillRect(0, i * 16, w, 16); g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, i * 16, w, 1); } }, rep);
+// the real pavement of each city (preview): drawn once per city, tiled over the whole ground
+function groundTex(kind) {
+  let sd = 11; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; }; const pick = (a) => a[Math.floor(rr() * a.length)];
+  const rect = (g, x, y, w, h, c, r = 3) => { g.fillStyle = c; g.beginPath(); g.roundRect(x, y, w, h, r); g.fill(); };
+  const speck = (g, n, a) => { for (let k = 0; k < n; k++) { g.fillStyle = `rgba(${rr() < 0.5 ? '0,0,0' : '255,255,255'},${a})`; g.fillRect(rr() * 256, rr() * 256, 2, 2); } };
+  if (kind === 'london') return cobbleTex();
+  if (kind === 'newyork') return canvasTex(256, 256, (g) => { // big poured-concrete squares with tooled joints
+    g.fillStyle = '#C9C7C1'; g.fillRect(0, 0, 256, 256); for (const [x, y] of [[0, 0], [128, 0], [0, 128], [128, 128]]) rect(g, x + 2, y + 2, 124, 124, pick(['#D2D0CA', '#CBC9C3', '#D6D4CF', '#C6C4BE']), 2); speck(g, 500, 0.06); }, [22, 22]);
+  if (kind === 'saopaulo') return canvasTex(256, 256, (g) => { // calçada portuguesa: white and black stone mosaic in waves
+    g.fillStyle = '#8F8A84'; g.fillRect(0, 0, 256, 256);
+    for (let y = 0; y < 256; y += 8) for (let x = 0; x < 256; x += 8) { const w = Math.sin((x / 256) * Math.PI * 2) * 34 + 128, band = Math.abs(((y - w + 512) % 128) - 64) < 22;
+      rect(g, x + 1 + rr(), y + 1 + rr(), 6, 6, band ? pick(['#3A3836', '#2F2D2C', '#45423F']) : pick(['#F2EEE6', '#E9E4DA', '#F7F4EE']), 1.5); } }, [20, 20]);
+  if (kind === 'mexico') return canvasTex(256, 256, (g) => { // dark volcanic stone slabs (recinto) of the historic centre
+    g.fillStyle = '#5F5A56'; g.fillRect(0, 0, 256, 256);
+    for (let row = 0; row < 4; row++) for (let i = -1; i < 3; i++) rect(g, i * 128 + (row % 2 ? 64 : 0) + 2, row * 64 + 2, 124, 60, pick(['#8A847E', '#7F7973', '#938D86', '#857F78']), 3);
+    speck(g, 900, 0.08); }, [22, 22]);
+  if (kind === 'seoul') return canvasTex(256, 256, (g) => { // small interlocking bricks, grey with warm and red ones mixed in
+    g.fillStyle = '#9C9690'; g.fillRect(0, 0, 256, 256);
+    for (let row = 0; row < 16; row++) for (let i = -1; i < 9; i++) rect(g, i * 32 + (row % 2 ? 16 : 0) + 1, row * 16 + 1, 30, 14, pick(['#C9C4BD', '#C2BCB4', '#D1CCC5', '#BFB2A3', '#B57A66', '#C9C4BD']), 2); }, [24, 24]);
+  if (kind === 'lagos' || kind === 'mumbai') return canvasTex(256, 256, (g) => { // concrete interlocking pavers (I-shape), Lagos with red ones in the pattern
+    g.fillStyle = kind === 'lagos' ? '#8E877D' : '#8C877F'; g.fillRect(0, 0, 256, 256);
+    const C = kind === 'lagos' ? ['#BDB5A8', '#B5AD9F', '#C4BCAF', '#A65B44'] : ['#BDB8AF', '#B4AFA6', '#C5C0B8', '#ABA59B'];
+    for (let row = 0; row < 8; row++) for (let i = -1; i < 6; i++) { const x = i * 48 + (row % 2 ? 24 : 0) + 2, y = row * 32 + 2, c = row % 4 === 1 && kind === 'lagos' && i % 2 ? C[3] : pick(C.slice(0, 3));
+      rect(g, x, y, 44, 28, c, 4); g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(x + 20, y, 4, 7); g.fillRect(x + 20, y + 21, 4, 7); } speck(g, 400, 0.05); }, [24, 24]);
+  if (kind === 'cairo') return canvasTex(256, 256, (g) => { // sand-coloured square tiles
+    g.fillStyle = '#B9A47F'; g.fillRect(0, 0, 256, 256); for (let y = 0; y < 256; y += 42.67) for (let x = 0; x < 256; x += 42.67) rect(g, x + 1.5, y + 1.5, 39.7, 39.7, pick(['#E2CFA8', '#DCC79E', '#E8D7B4', '#D6C095']), 2); speck(g, 600, 0.06); }, [24, 24]);
+  return null;
+}
 const cobbleTex = () => canvasTex(256, 256, (g) => { // warm cobbles like the reference painting, offset rows of rounded stones
   g.fillStyle = '#A6978A'; g.fillRect(0, 0, 256, 256); let sd = 7; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
   const cols = ['#C9C0B4', '#C0B6A9', '#D2C9BD', '#BAAF A1'.replace(' ', ''), '#CCC3B8', '#C4BAAE'];
@@ -638,11 +666,23 @@ function floorMat(kind, w, d) { // one material per (kind, size) so the pattern 
 // flower beds in the corners, a gravel path, a round tree and a bench
 const LAWN_TEX = (rep) => canvasTex(128, 128, (g) => { g.fillStyle = '#6CAF48'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#79BB53'; g.fillRect(0, 0, 64, 128);
   for (let k = 0; k < 220; k++) { g.fillStyle = k % 2 ? 'rgba(40,110,30,0.16)' : 'rgba(255,255,200,0.14)'; g.fillRect((k * 37) % 128, (k * 59) % 128, 2, 4); } }, rep);
-function lotGarden(L, i, g) {
+const GARDEN = { // lawn, hedge greens, flowers, tree model and its stand-in colour; dry = gravel garden with a small lawn
+  london: { tree: 'lon_tree_round', tc: '#4FAE44', fl: ['#FF6F91', '#FFD25E', '#FF4F5E', '#FFFFFF', '#B57BE8', '#FF9F43', '#FF8FC8'] },
+  newyork: { tree: 'tree', tc: '#5FA05A', fl: ['#FF4F5E', '#FFD25E', '#FFFFFF', '#FF8FC8', '#FF9F43'] },
+  saopaulo: { tree: 'sp_ipe_y', tc: '#F2C230', fl: ['#FFD25E', '#FF6F91', '#FFFFFF', '#FF9F43', '#B57BE8'] },
+  mexico: { tree: 'sp_ipe_p', tc: '#9B7FD6', fl: ['#E83E8C', '#FF9F43', '#FFD25E', '#C2185B', '#FFFFFF'] },
+  seoul: { tree: 'sp_ipe_p', tc: '#F4A7C3', fl: ['#FF8FC8', '#FF6F91', '#FFFFFF', '#FFD25E', '#E2C2FF'] },
+  lagos: { tree: 'sp_palm', tc: '#4E9E58', fl: ['#FF3B3B', '#FF9F43', '#FFD25E', '#E83E8C', '#FFFFFF'], lush: 1 },
+  mumbai: { tree: 'sp_palm', tc: '#4E9E58', fl: ['#FF9F43', '#FFD25E', '#FF3B3B', '#E83E8C', '#FFFFFF'], lush: 1 },
+  cairo: { tree: 'sp_palm', tc: '#4E9E58', fl: ['#E83E8C', '#C2185B', '#FF9F43', '#FFFFFF', '#FFD25E'], dry: 1 },
+};
+function lotGarden(L, i, g, c = 'london') {
+  const GD = GARDEN[c] || GARDEN.london;
   const w = L[1] - L[0], d = L[3] - L[2], cx = (L[0] + L[1]) / 2, cz = (L[2] + L[3]) / 2; let sd = i * 7 + 3; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
   put(rbox(w - 0.2, 0.3, d - 0.2, '#8C6B4E', 0.06), cx, -0.4, cz, g); // soil edge
   const lm = mat('#FFFFFF', { r: 0.95, map: LAWN_TEX([Math.max(1, w / 3), Math.max(1, d / 3)]), mapK: 'lawn' + i + '|' + w + '|' + d });
-  floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, lm, -0.24, g);
+  if (GD.dry) { floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, mat('#E6D3AC', { r: 1 }), -0.24, g); floorPlane(cx - w * 0.3, cx + w * 0.3, cz - d * 0.3, cz + d * 0.05, lm, -0.235, g); } // dry climate: raked gravel garden, a small watered lawn
+  else floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, lm, -0.24, g);
   // hedge border: a rounded clipped box with soft bumps in three greens, gaps for the path
   const HG = ['#3F9A3A', '#4FAE44', '#5DBB4E'], hy = -0.24, hh = 0.62, ht = 0.5, gate = [cx - 0.9, cx + 0.9];
   const hedge = (x0, z0, x1, z1) => { const len = Math.hypot(x1 - x0, z1 - z0); if (len < 0.4) return; const ax = x0 === x1 ? 'z' : 'x';
@@ -654,13 +694,14 @@ function lotGarden(L, i, g) {
   const pm = mat('#EAD9B5', { r: 1 }); floorPlane(gate[0] + 0.15, gate[1] - 0.15, cz, L[3] - 0.1, pm, -0.22, g);
   const pl = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.04, 28), pm); pl.position.set(cx, -0.21, cz); pl.receiveShadow = true; g.add(pl);
   // flower beds in the corners: dark soil heaped with clay blooms
-  const FL = ['#FF6F91', '#FFD25E', '#FF4F5E', '#FFFFFF', '#B57BE8', '#FF9F43', '#FF8FC8'];
+  const FL = GD.fl;
   for (const [fx, fz] of [[L[0] + 1.5, L[2] + 1.5], [L[1] - 1.5, L[2] + 1.5], [L[0] + 1.5, L[3] - 1.6], [L[1] - 1.5, L[3] - 1.6]]) {
     const bed = sph(0.95, '#6B4A33', { r: 1 }); bed.scale.set(1, 0.22, 0.8); put(bed, fx, -0.22, fz, g);
     for (let k = 0; k < 16; k++) { const a = rr() * Math.PI * 2, r = Math.sqrt(rr()) * 0.78, lf = sph(0.13, k % 3 ? '#4FAE44' : '#3F9A3A', { r: 0.9 }); put(lf, fx + Math.cos(a) * r, -0.1, fz + Math.sin(a) * r * 0.8, g);
       const f = sph(0.1 + rr() * 0.04, FL[Math.floor(rr() * FL.length)], { r: 0.7 }); put(f, fx + Math.cos(a) * r, 0.02 + rr() * 0.06, fz + Math.sin(a) * r * 0.8, g); } }
   // round clay tree and a bench by the plaza
-  const tg = grp(cx + (i % 2 ? -1 : 1) * Math.min(3.2, w / 2 - 1.8), cz - Math.min(2.2, d / 2 - 1.8), 0, g); put(sph(1.2, '#4FAE44'), 0, 2.2, 0, tg); glbSwap(tg, 'lon_tree_round', { h: 4.2, y: -0.24 });
+  const tg = grp(cx + (i % 2 ? -1 : 1) * Math.min(3.2, w / 2 - 1.8), cz - Math.min(2.2, d / 2 - 1.8), 0, g); put(sph(1.2, GD.tc), 0, 2.2, 0, tg); glbSwap(tg, GD.tree, { h: GD.tree === 'sp_palm' ? 5.2 : 4.2, y: -0.24 });
+  if (GD.lush) { const t2 = grp(cx - (i % 2 ? -1 : 1) * Math.min(3.4, w / 2 - 1.6), cz + Math.min(1.6, d / 2 - 2.2), 0, g); put(sph(1.0, GD.tc), 0, 2, 0, t2); glbSwap(t2, GD.tree, { h: 4.4, y: -0.24 }); } // tropical: a second palm
   const bg = grp(cx, cz - 1.9, 0, g); put(rbox(1.5, 0.08, 0.42, '#B5793A', 0.03), 0, 0.2, 0, bg); glbSwap(bg, 'bench', { len: 1.5, y: -0.24 });
 }
 function floorPlane(x0, x1, z0, z1, m, y = 0.1, parent = scene) {
@@ -820,6 +861,17 @@ function buildShell(c) {
   updateCutaway();
 }
 // per-city light. London: rainy late-afternoon — lavender sky, warm low sun, wet glossy pavement, lit windows (step 6 of the London look)
+// preview: every city bright and toy-like (clear sky of its own, more light, a colour grade), each in its own climate
+const CITY_GRADE = {
+  london: { sky: '#BCBFF6', light: { hemi: ['#FFFFFF', '#B9AE9E', 0.9], sun: ['#FFF4E2', 2.9], fill: ['#E9EEFF', 0.35] }, filter: 'saturate(1.28) contrast(1.05) brightness(1.03)' },
+  newyork: { sky: '#AFCBF2', light: { hemi: ['#F4F7FF', '#A39C8E', 0.86], sun: ['#FFF0DA', 3.0], fill: ['#DCE6FF', 0.38] }, filter: 'saturate(1.22) contrast(1.05) brightness(1.03)' },
+  saopaulo: { sky: '#B3D2F0', light: { hemi: ['#FFFFFF', '#A89C8A', 0.86], sun: ['#FFF2DC', 3.0], fill: ['#E2ECFF', 0.35] }, filter: 'saturate(1.22) contrast(1.05) brightness(1.03)' },
+  mexico: { sky: '#C2C6F5', light: { hemi: ['#FFF8EE', '#A8957C', 0.86], sun: ['#FFE9C6', 3.2], fill: ['#E8EEFF', 0.32] }, filter: 'saturate(1.25) contrast(1.05) brightness(1.03)' },
+  seoul: { sky: '#B6D3F7', light: { hemi: ['#F7FAFF', '#A6A196', 0.86], sun: ['#FFF4E4', 2.9], fill: ['#E2EAFF', 0.38] }, filter: 'saturate(1.22) contrast(1.05) brightness(1.04)' },
+  lagos: { sky: '#A9D6F2', light: { hemi: ['#FFF6E8', '#B09A7C', 0.84], sun: ['#FFE6BE', 3.3], fill: ['#E6F0FF', 0.3] }, filter: 'saturate(1.24) contrast(1.05) brightness(1.03)' },
+  mumbai: { sky: '#B0D8F0', light: { hemi: ['#FFF6EA', '#B09C80', 0.84], sun: ['#FFE6C0', 3.2], fill: ['#E6F0FF', 0.3] }, filter: 'saturate(1.24) contrast(1.05) brightness(1.03)' },
+  cairo: { sky: '#BCDDF2', light: { hemi: ['#FFF4E2', '#BC9C70', 0.84], sun: ['#FFE2B4', 3.3], fill: ['#FFEEDA', 0.3] }, filter: 'saturate(1.2) contrast(1.05) brightness(1.03)' },
+};
 const CITY_LIGHT = {
   _: { hemi: ['#FFE9D2', '#B39C82', 0.62], sun: ['#FFD9AC', 3.1], fill: ['#E6ECFF', 0.3] },
   newyork: { hemi: ['#E3E9F5', '#8A8578', 0.64], sun: ['#FFE6C4', 2.9], fill: ['#D7E2FF', 0.38], fog: [80, 170] },
@@ -837,10 +889,10 @@ function cityWalker(cb) {
 function buildCityDecor(kind) {
   if (cityScene === kind) { buildShell(kind); buildAnnexLot(kind); return; } cityScene = kind;
   if (world.cityG) scene.remove(world.cityG); const cg = new THREE.Group(); scene.add(cg); world.cityG = cg;
-  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, lively: kind === 'london', cityKit: kind === 'london' && PROPS_ON, walker: cityWalker, glb: kind === 'london' || kind === 'saopaulo' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
-  scene.background = new THREE.Color(kind === 'london' ? '#BCBFF6' : res.bg); const L = kind === 'london' ? { hemi: ['#FFFFFF', '#B9AE9E', 0.9], sun: ['#FFF4E2', 2.9], fill: ['#E9EEFF', 0.35] } : CITY_LIGHT[kind] || CITY_LIGHT._; // preview: London lit like the reference painting (clear, bright, lavender sky)
-  world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: kind === 'london' ? cobbleTex() : tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
-  canvas.style.filter = kind === 'london' ? 'saturate(1.28) contrast(1.05) brightness(1.03)' : ''; // preview: the toy-like punch of the London reference painting
+  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, lively: kind === 'london', cityKit: kind === 'london' && PROPS_ON, grade: true, walker: cityWalker, glb: kind === 'london' || kind === 'saopaulo' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
+  const GR = CITY_GRADE[kind]; scene.background = new THREE.Color(GR ? GR.sky : res.bg); const L = GR ? GR.light : CITY_LIGHT[kind] || CITY_LIGHT._; // preview: London lit like the reference painting (clear, bright, lavender sky)
+  world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: groundTex(kind) || tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
+  canvas.style.filter = GR ? GR.filter : ''; // preview: the toy-like punch of the London reference painting
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];
   scene.fog = L.fog ? new THREE.Fog(res.bg, L.fog[0], L.fog[1]) : null;
   if (GFX.batch) { const stop = new Set([...res.buildings.map((b) => b.o), ...res.movers.filter((m) => m.o).map((m) => m.o)]); cg.traverse((o) => { if (o.userData.swap) stop.add(o); }); for (const b of res.buildings) batchNode(b.o); batchNode(cg, stop); }
@@ -877,7 +929,7 @@ function buildAnnexLot(c) {
   plotOf(c).lots.forEach((L, i) => {
     const st = S && S.city === c ? lotSt(i) : 'locked', cx = (L[0] + L[1]) / 2, cz = (L[2] + L[3]) / 2;
     if (st === 'owned') return;
-    if (c === 'london') { lotGarden(L, i, g); if (st === 'pending') { for (let k = 0; k < 4; k++) put(cyl(0.05, 0.05, 2.4, '#E3B341'), L[0] + 1 + k * (L[1] - L[0] - 2) / 3, 0.95, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 2.0, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 1.2, L[2] + 1, g); } else { const s = grp(cx, cz, 0, g); put(cyl(0.05, 0.05, 1.6, '#8B6A45'), 0, 0.5, 0, s); put(rbox(1.4, 0.8, 0.08, '#FFD25E', 0.04), 0, 1.4, 0, s); } return; }
+    if (CITY_GRADE[c]) { lotGarden(L, i, g, c); if (st === 'pending') { for (let k = 0; k < 4; k++) put(cyl(0.05, 0.05, 2.4, '#E3B341'), L[0] + 1 + k * (L[1] - L[0] - 2) / 3, 0.95, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 2.0, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 1.2, L[2] + 1, g); } else { const s = grp(cx, cz, 0, g); put(cyl(0.05, 0.05, 1.6, '#8B6A45'), 0, 0.5, 0, s); put(rbox(1.4, 0.8, 0.08, '#FFD25E', 0.04), 0, 1.4, 0, s); } return; }
     put(rbox(L[1] - L[0] - 0.2, 0.3, L[3] - L[2] - 0.2, '#CBBFA9', 0.06), cx, -0.4, cz, g);
     // a vacant lot rather than bare sand: rough grass with a worn dirt patch, a few shrubs, a low wooden fence along the edges
     floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, mat('#A9C47F', { r: 1 }), -0.24, g);
