@@ -524,7 +524,7 @@ export function buildCity(kind, cg, H, box) {
     for (const [px, pz, ps] of [[cx - 30, zN - 44, 9], [cx - 18, zN - 47, 7], [cx - 41, zN - 41, 5]]) pyramid(px, pz, ps);
     mosque(xE + 11, zS + 9); for (let i = 0; i < 8; i++) tree(-38 + i * 11, zN - 10.5, 'palm', 1.1);
   } else if (kind === 'saopaulo') {
-    water(-44, 50, zN - 21, zN - 13, '#7E9A8A'); const eg = estaiada(cx + 4, zN - 24); if (H.glb) H.glb(eg, 'sp_lm_bridge', { len: 22, y: -0.5 }); reserve(cx - 8, cx + 16, zN - 36, zN - 12);
+    water(SPK ? -27 : -44, 50, zN - 21, zN - 13, '#7E9A8A'); const eg = estaiada(cx + 4, zN - 24); if (H.glb) H.glb(eg, 'sp_lm_bridge', { len: 22, y: -0.5 }); reserve(cx - 8, cx + 16, zN - 36, zN - 12);
     masp(cx - 4, zS + 6, 0); copan(xE + 12, zN + 6);
     // Meshy landmarks (sheet Nov 2026); a plain block stands in until each model loads
     const spLM = (x, z, r, n, o, fh, fw = 3) => { const g = C(x, z, r); g.position.y = GY; put(rbox(fw, fh, fw, '#E9E1D3', 0.1), 0, fh / 2, 0, g); if (H.glb) H.glb(g, n, o); return lm(g, x, z, fh, fw); };
@@ -621,11 +621,11 @@ export function buildCity(kind, cg, H, box) {
     });
   }
   function spHill(x0, x1, z0, z1) { // terraced green hillside facing the street, stacked colourful houses on every step, palms between
-    reserve(x0, x1, z0, z1); const steps = 3, sd = (z1 - z0) / steps;
-    for (let k = 0; k < steps; k++) { const hz0 = z0 + k * sd, top = 1.3 + k * 1.5;
+    reserve(x0, x1, z0, z1); const steps = 2, sd = (z1 - z0) / steps;
+    for (let k = 0; k < steps; k++) { const hz0 = z1 - (k + 1) * sd, top = 0.9 + k * 2.2; // first step by the street, each next one higher and further back
       put(rbox(x1 - x0, top, sd + 0.2, '#B07A4E', 0.25), (x0 + x1) / 2, GY + top / 2, hz0 + sd / 2, cg); put(rbox(x1 - x0 - 0.2, 0.18, sd, '#78B04F', 0.08), (x0 + x1) / 2, GY + top, hz0 + sd / 2, cg);
       for (let x = x0 + 0.6; x < x1 - 3;) { const n = R() < 0.5 ? 'sp2_favela_a' : 'sp2_favela_b', h = 6 + R() * 1.4, w = SP_M[n][0] * h;
-        if (x + w > x1 - 0.4) break; const g = spModel(x + w / 2, hz0 + sd / 2 + (R() - 0.5) * 0.6, n, h, (R() - 0.5) * 0.35); g.position.y = GY + top;
+        if (x + w > x1 - 0.4) break; const g = spModel(x + w / 2, hz0 + sd / 2 + (R() - 0.5) * 0.4, n, Math.min(h, sd / SP_M[n][1]), Math.PI + (R() - 0.5) * 0.35); g.position.y = GY + top;
         x += w + 0.2; if (R() < 0.45 && x < x1 - 2) { const t = grp(x + 0.6, hz0 + sd * (0.2 + R() * 0.6), 0, cg); t.position.y = GY + top; put(sph(0.8, '#4E9E58'), 0, 2.2, 0, t); H.glb(t, 'sp2_palm', { h: 4.6 + R() }); x += 1.4; } } }
   }
   function band(ax, bx, az, bz, depthAxis) {
@@ -660,7 +660,7 @@ export function buildCity(kind, cg, H, box) {
       }
     }
   }
-  if (SPK) spHill(-29, -3, zS + 13.5, zS + 42); // the hillside community, behind the shops across the south street
+  if (SPK) { reserve(-27, 56, zN - 21.5, zN - 12.5); spHill(-50, -27, zN - 18, zN - 2.6); } // the river stays clear; the hillside community faces the north street, in view of the default camera
   if (DENSE) { band(-74, 76, zN - 2.2, 0, 'z-'); band(-74, 76, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); denseFlush(); }
   else { band(-44, 50, zN - 2.2, 0, 'z-'); band(-44, 50, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); }
   // street trees & lamps along the inner sidewalks

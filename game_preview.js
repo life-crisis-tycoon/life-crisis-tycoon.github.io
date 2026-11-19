@@ -318,7 +318,7 @@ function groundTex(kind) {
   if (kind === 'saopaulo') return canvasTex(256, 256, (g) => { // calçada portuguesa: white and black stone mosaic in waves
     g.fillStyle = '#8F8A84'; g.fillRect(0, 0, 256, 256);
     for (let y = 0; y < 256; y += 8) for (let x = 0; x < 256; x += 8) { const w = Math.sin((x / 256) * Math.PI * 2) * 34 + 128, band = Math.abs(((y - w + 512) % 128) - 64) < 22;
-      rect(g, x + 1 + rr(), y + 1 + rr(), 6, 6, band ? pick(['#3A3836', '#2F2D2C', '#45423F']) : pick(['#F2EEE6', '#E9E4DA', '#F7F4EE']), 1.5); } }, [32, 32]);
+      rect(g, x + 1 + rr(), y + 1 + rr(), 6, 6, band ? pick(['#3A3836', '#2F2D2C', '#45423F']) : pick(['#F2EEE6', '#E9E4DA', '#F7F4EE']), 1.5); } }, [34, 34]);
   if (kind === 'mexico') return canvasTex(256, 256, (g) => { // dark volcanic stone slabs (recinto) of the historic centre
     g.fillStyle = '#5F5A56'; g.fillRect(0, 0, 256, 256);
     for (let row = 0; row < 4; row++) for (let i = -1; i < 3; i++) rect(g, i * 128 + (row % 2 ? 64 : 0) + 2, row * 64 + 2, 124, 60, pick(['#8A847E', '#7F7973', '#938D86', '#857F78']), 3);
