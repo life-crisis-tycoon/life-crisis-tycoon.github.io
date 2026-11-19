@@ -207,12 +207,31 @@ function fitSun() { // close up the shadow map covers just what you see, so shad
   else { Object.assign(sc, { left: -20, right: 22, top: 20, bottom: -20 }); sun.target.position.set(-1, 0, 2); sun.position.set(16, 24, 10); }
   sc.updateProjectionMatrix(); sun.target.updateMatrixWorld();
 }
+// ---- test (preview only): London as a painted backdrop. The picture is a plane far behind the plot, facing the camera;
+// the camera angle is locked to the picture's (no rotation, fixed tilt, limited zoom), the 3D city and the big ground are hidden.
+const BG_Q = new URLSearchParams(location.search), BG_ON = BG_Q.get('bg') !== '0', BG_PITCH = +(BG_Q.get('bgp') || 0.62), BG_W = +(BG_Q.get('bgw') || 120), BG_DX = +(BG_Q.get('bgx') || 0), BG_DY = +(BG_Q.get('bgy') || 14);
+const bgMode = () => BG_ON && S && (S.city || 'london') === 'london';
+function placeBackdrop(on) {
+  if (world.bg) { world.bg.parent && world.bg.parent.remove(world.bg); world.bg = null; }
+  if (world.cityG) world.cityG.visible = !on; if (world.ground) world.ground.visible = !on;
+  if (!on) return;
+  const tex = new THREE.TextureLoader().load('assets/bg/london.jpg?v=1'); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const H2 = BG_W * 768 / 1376, m = new THREE.Mesh(new THREE.PlaneGeometry(BG_W, H2), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, fog: false, depthWrite: false }));
+  m.renderOrder = -10; scene.add(m); world.bg = m; scene.background = new THREE.Color('#BCBFF6'); scene.fog = null; world.bgFit = true;
+}
+function fitBackdrop() { // keep the picture square to the (locked) camera, far behind the plot centre, shifted by BG_DX / BG_DY (screen metres)
+  const m = world.bg; if (!m) return; const P = plotBox(S.city || 'london'), c = new THREE.Vector3((P[0] + P[1]) / 2, 0, (P[2] + P[3]) / 2);
+  const fw = new THREE.Vector3(); cam.getWorldDirection(fw); const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion), rt = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+  m.quaternion.copy(cam.quaternion); m.position.copy(c).addScaledVector(fw, 140).addScaledVector(up, BG_DY).addScaledVector(rt, BG_DX);
+}
 function placeCam() {
   closePR(); fitSun();
+  if (bgMode()) { view.yaw = Math.PI / 4; view.pitch = BG_PITCH; view.yawT = view.pitchT = null; view.half = clamp(view.half, 8, 26); }
   const a = innerWidth / innerHeight;
   cam.left = -view.half * a; cam.right = view.half * a; cam.top = view.half; cam.bottom = -view.half; cam.updateProjectionMatrix();
-  const D = 65, ep = camPitch(), cp = Math.cos(ep);
+  const D = 65, ep = bgMode() ? BG_PITCH : camPitch(), cp = Math.cos(ep);
   cam.position.set(view.tx + Math.sin(view.yaw) * cp * D, Math.sin(ep) * D, view.tz + Math.cos(view.yaw) * cp * D); cam.lookAt(view.tx, 0, view.tz); cam.updateMatrixWorld();
+  if (world.bg) fitBackdrop();
   updateCutaway();
 }
 const GHOST = new Map();
@@ -790,7 +809,7 @@ function buildCityDecor(kind) {
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];
   scene.fog = L.fog ? new THREE.Fog(res.bg, L.fog[0], L.fog[1]) : null;
   if (GFX.batch) { const stop = new Set([...res.buildings.map((b) => b.o), ...res.movers.filter((m) => m.o).map((m) => m.o)]); cg.traverse((o) => { if (o.userData.swap) stop.add(o); }); for (const b of res.buildings) batchNode(b.o); batchNode(cg, stop); }
-  world.cityB = res.buildings; world.movers = res.movers; moveCity(world.movers, 0); updateCutaway();
+  world.cityB = res.buildings; world.movers = res.movers; moveCity(world.movers, 0); updateCutaway(); placeBackdrop(BG_ON && kind === 'london');
   buildShell(kind); buildAnnexLot(kind);
 }
 function buildAnnexLot(c) {
@@ -3422,13 +3441,13 @@ canvas.addEventListener('pointerup', (e) => {
   selectVisitor(null);
 });
 canvas.addEventListener('wheel', (e) => { view.half = clamp(view.half * (e.deltaY > 0 ? 1.08 : 0.93), 5, 22); placeCam(); }, { passive: true });
-function camRot(dir) { view.yawT = (view.yawT ?? view.yaw) + dir * Math.PI / 2; }
+function camRot(dir) { if (bgMode()) { toast('🖼️ Aperçu décor peint : rotation bloquée', 1600); return; } view.yawT = (view.yawT ?? view.yaw) + dir * Math.PI / 2; }
 // Diorama view: frames one room close up, ~32° above the ground, so you see furniture height, wall depth and details (the management view is unchanged)
 function dioramaView(id) { const r = S.rooms.find((o) => o.id === id); if (!r) return; const q = roomRect(r), W = q.x1 - q.x0, D = q.z1 - q.z0, a = innerWidth / innerHeight;
   const yaw = view.yawT ?? view.yaw, cx = Math.sin(yaw), cz = Math.cos(yaw), hw = (Math.abs(cz) * W + Math.abs(cx) * D) / 2 + 0.6, depth = (Math.abs(cx) * W + Math.abs(cz) * D) / 2;
   const vh = depth * Math.sin(DIO_PITCH) + 1.3 * Math.cos(DIO_PITCH) + 0.4; // footprint seen at this tilt plus the back walls
   view.tx = (q.x0 + q.x1) / 2; view.tz = (q.z0 + q.z1) / 2; view.half = clamp(Math.max(hw / a, vh) * 1.04, 3.2, CLOSE_HALF); placeCam(); }
-function camTilt() { const L = [0.3, 0.53, 0.72, 0.9, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
+function camTilt() { if (bgMode()) return; const L = [0.3, 0.53, 0.72, 0.9, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
 function camAnim(rdt) {
   let ch = false;
   if (view.yawT != null) { const d = view.yawT - view.yaw; if (Math.abs(d) < 0.01) { view.yaw = view.yawT; view.yawT = null; } else view.yaw += d * Math.min(1, rdt * 7); ch = true; }
