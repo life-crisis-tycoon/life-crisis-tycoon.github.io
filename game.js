@@ -4555,25 +4555,24 @@ function renderMap() {
 }
 function showMap() { const l = profile().last; if (l && CITIES[l] && cityUnlocked(l)) mapCity = l; renderMap(); show('map'); mzInit(); requestAnimationFrame(() => { MZ.s = 1; const P = CITIES[mapCity].pin; mzCenter(P[0], P[1], false); }); }
 function openBrief() {
-  const C = CITIES[mapCity], s = load(mapCity);
-  buildCityDecor(mapCity); view.tx = 19; view.tz = 18; view.half = 24; placeCam();
+  const C = CITIES[mapCity];
+  buildCityDecor(mapCity);
+  { // the empty lot of this city, framed in the picture strip at the top (the sheet covers the bottom of the screen)
+    const M = plotOf(mapCity).main, px = (Math.min(...M.map((r) => r[0])) + Math.max(...M.map((r) => r[1]))) / 2, pz = (Math.min(...M.map((r) => r[2])) + Math.max(...M.map((r) => r[3]))) / 2;
+    view.yaw = Math.PI / 4; view.yawT = null; view.pitch = 0.72; view.pitchT = null; view.half = innerWidth < innerHeight ? 40 : 20;
+    const k = 0.72 * view.half / Math.sin(0.72); view.tx = px + Math.sin(view.yaw) * k; view.tz = pz + Math.cos(view.yaw) * k; placeCam(); }
   GOALS = mkGoals(C.goals);
   const lp = Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].city === mapCity), lv = CITIES[mapCity].lvl || 0, nb = Object.keys(BEH).filter((k) => BEH[k] === lv);
-  const box = (rows) => `<div class="w" style="border-radius:16px;padding:6px 12px">${rows}</div>`;
-  const item = (title, desc) => `<div style="font-size:13px;margin:3px 0"><b>${title}</b><div style="color:#4A5568;font-weight:700">${desc}</div></div>`;
-  // one screen, no scrolling: rules sit side by side, extra sections share a two-column grid, the start button stays visible
+  const li = (e, txt) => `<li><span class="be">${e}</span><span>${txt}</span></li>`;
+  const goal = (G, i) => `<div class="bgoal"><span class="stars">${'★'.repeat(i + 1)}</span><ul>${G.parts.map(([m, v]) => `<li>${t('gp.' + m, { n: m === 'cash' || m === 'value' ? money(v) : v })}</li>`).join('')}</ul></div>`;
+  // one simple read: the local rules (budget and rent first), the goals of this city; plain bullet lists, no boxes
   $('briefBody').innerHTML = `<div><h1 class="f" style="margin:0">${t('city.' + mapCity)}</h1><div style="font-weight:700;color:#2D3748;font-size:14px">${t(C.brief)}</div></div>
-    <div class="lbl">${t('brief.rules')}</div><div class="rules">${C.rules.map(([e, k]) => `<div class="rule w">${e} <span>${t(k)}</span></div>`).join('')}</div>
-    <div class="bgrid">
-      <div><div class="lbl">${t('brief.goals')}</div>${box(GOALS.map((g, i) => `<div class="goal"><span><span class="stars">${'★'.repeat(i + 1)}</span> ${goalText(g)}</span><span style="color:${s && s.stars > i ? '#1E8A3A' : 'var(--muted)'}">${s && s.stars > i ? t('goals.done') : ''}</span></div>`).join(''))}</div>
-      ${lp.length ? `<div><div class="lbl">${t('br.probs')}</div>${box(lp.map((k) => item(`${PROBLEMS[k].e} ${t('p.' + k)}</b> → <b>${ROOMS[PROBLEMS[k].room].e} ${rn(PROBLEMS[k].room)}`, t('pd.' + k))).join(''))}</div>` : ''}
-      ${nb.length ? `<div><div class="lbl">${t('br.new')}</div>${box(nb.map((k) => item(`${BEH_E[k]} ${t('bh.' + k)}`, t('bh.' + k + '.d'))).join(''))}</div>` : ''}
-    </div>
-    <div class="bfoot"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;color:#2D3748"><span>${t('brief.budgetC', { m: money(C.cash) })}</span><span>${t('brief.rentC', { m: money(Math.round(C.rent * BILL_K / 50) * 50) })}</span></div>
-    <button class="btn g" id="bOpen" style="font-size:21px">${t('brief.open')}</button></div>`;
-  // a finished example centre in its city (only London has one so far); other cities keep the live view of their empty lot
-  { const bi = document.querySelector('#brief .bimg'), img = { london: 'assets/brief_london.jpg' }[mapCity];
-    bi.style.background = img ? `#E9E1D3 url(${img}) center 45% / cover no-repeat` : ''; }
+    <div class="lbl">${t('brief.rules')}</div><ul class="blist">${li('💰', `<b>${t('brief.budgetC', { m: money(C.cash) })}</b>`)}${li('🏠', `<b>${t('brief.rentC', { m: money(Math.round(C.rent * BILL_K / 50) * 50) })}</b>`)}${C.rules.map(([e, k]) => li(e, t(k))).join('')}</ul>
+    ${lp.length ? `<div class="lbl">${t('br.probs')}</div><ul class="blist">${lp.map((k) => li(PROBLEMS[k].e, `<b>${t('p.' + k)}</b> → ${ROOMS[PROBLEMS[k].room].e} ${rn(PROBLEMS[k].room)}`)).join('')}</ul>` : ''}
+    ${nb.length ? `<div class="lbl">${t('br.new')}</div><ul class="blist">${nb.map((k) => li(BEH_E[k], `<b>${t('bh.' + k)}</b>`)).join('')}</ul>` : ''}
+    <div class="lbl">${t('brief.goals')}</div><div class="bgoals">${GOALS.map((G, i) => goal(G, i)).join('')}</div>
+    <div class="bfoot"><button class="btn g" id="bOpen" style="font-size:21px">${t('brief.open')}</button></div>`;
+  { const bi = document.querySelector('#brief .bimg'); bi.style.background = ''; } // live view of the city's empty lot for every city (no old screenshot)
   $('briefTag').textContent = t(C.tag);
   $('bOpen').onclick = () => { const sv = load(mapCity); if (sv) { RNG = Math.random; S = sv; S.city = S.city || mapCity; startGame(); } else startNew(mapCity); };
   show('brief');
