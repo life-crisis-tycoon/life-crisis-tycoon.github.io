@@ -979,7 +979,7 @@ ROOM_STYLE.wedding = { v2: true, model: 'wedding_kit', kit: true, wall: '#F0A12C
 ROOM_STYLE.therapy = { v2: true, model: 'therapy_kit', kit: true, winSide: '-1,0', winOuter: true, wood: ['#F4F0E9', '#EAE4DA'], wall: '#5C3A26', inBase: '#3F2719', floor: '#F4F0E9', door: '#C8644E', panel: '#C8644E', pop: '#E3A23B', posts: true, h: ROOM_H };
 ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0', winOuter: true, floorMap: () => TERRAZZO(), wall: '#EFA7AE', inBase: '#D9858F', floor: '#F2C2C4', door: '#E98C98', panel: '#E98C98', pop: '#E7B04A', posts: true, h: ROOM_H };
 ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', floorM: () => mat('#FFFFFF', { map: CHECKER_M(), mapK: 'cafeM', r: 0.6 }), model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER_SOFT(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
-ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
+ROOM_STYLE.budget = { v2: true, model: 'budget_kit', kit: true, wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 // diorama look (validated on the café) for every room built from Tripo/Meshy pieces: rounded walls and floor, sage plinth, soft contact shadows, pieces ×1.1
 // the older rooms (code-built furniture, interiors not redone yet) get the same walls and floors: their pastel tint inside, cream outside, arched door
@@ -1506,6 +1506,22 @@ function napKit(g, cx, cz, room) {
 const TRAIN_DIMS = {"k_board":[0.9538,0.998,0.4711],"k_chair":[0.6579,0.998,0.6337],"k_table":[0.998,0.6348,0.6582],"k_shelf":[0.6621,0.998,0.3457],"k_sink":[0.6348,0.998,0.5723]};
 // Training room from the Tripo pieces (layout = the training room painting): whiteboard on wheels at the back with the trainer beside it,
 // yellow tablet chairs facing it (S 2 · M 4 · L 6), sink + soap and the binder shelf on the left wall, the first-aid / CPR table on the right, a ficus in the corner
+const BUDGET_DIMS = {"k_easel":[0.7207,0.998,0.1699],"k_armchair":[0.9512,0.998,0.9629],"k_bookcase":[0.4785,0.998,0.2559],"k_chair":[0.8418,0.998,0.7598],"k_table":[0.998,0.3887,0.998],"k_desk":[0.998,0.6543,0.5215]};
+// Budget Booth from the Tripo pieces (layout = the budget booth painting): green desk (piggy bank, laptop, coin jar) with the coach's coral chair behind it and the client's in front,
+// round rug under them, arched green bookcase on the back wall, chart easel on the right wall, a reading corner (green armchair + round table) by the front, a plant in the back corner
+function budgetKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, two = (room.nst || 1) > 1, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, bz = -D / 2, H = Math.PI / 2;
+  const dx = two ? 0.2 : S ? 0.15 : 0, dz = bz + (S ? 1.45 : 1.75), sc = S ? 0.9 : 1; // desk centre; the coach sits between it and the back wall
+  const coach = { x: dx, z: dz - 0.85 * sc }, client = { x: dx, z: dz + 0.9 * sc };
+  const L = [{ p: '@rug', len: S ? 1.9 : 2.3, x: dx, z: dz + 0.25, solid: false }, { p: 'k_desk', len: 1.6 * sc, x: dx, z: dz, rot: 0 },
+    { p: 'k_chair', h: 1.0, x: coach.x, z: coach.z, rot: 0, solid: false }, { p: 'k_chair', h: 1.0, x: client.x, z: client.z, rot: Math.PI, solid: false }];
+  if (first) L.push({ p: 'k_bookcase', h: S ? 1.75 : 1.95, wall: 'back', u: 'L' });
+  if (last) { L.push({ p: '@plant', s: 1.5, wall: 'back', u: 'R' }); L.push({ p: 'k_easel', h: S ? 1.3 : 1.5, wall: 'right', u: S ? 0.35 : 0.1 }); }
+  if (!S && first) L.push({ p: 'k_armchair', h: 0.95, x: -w / 2 + 0.6, z: D / 2 - 1.15, rot: H * 0.6 }, { p: 'k_table', len: 0.62, x: -w / 2 + 1.45, z: D / 2 - 0.6, rot: 0 });
+  kitRoom(g, cx, cz, room, ROOM_STYLE.budget.model, L, BUDGET_DIMS);
+  room.staffSpot = { x: cx + coach.x, z: cz + coach.z, rot: 0, sit: true, y: 0.02 };
+  room.spots.push({ x: cx + client.x, z: cz + client.z, rot: Math.PI, sit: true, y: 0.02, busy: null });
+}
 function trainingKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, sz = room.sz || 'm', bz = -D / 2;
   const n = { s: 2, m: 4, l: 6 }[sz], cols = n === 6 ? 3 : 2, dx = cols === 3 ? 1.35 : sz === 's' ? 1.3 : 1.5, z0 = bz + (sz === 's' ? 1.6 : 1.8), dz = 1.25;
@@ -1560,6 +1576,7 @@ function weddingKit(g, cx, cz, room) {
 }
 const furniture = {
   budget(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.budget.kit && PROPS_ON) { budgetKit(g, cx, cz, room); return; }
     if (ROOM_STYLE.budget.model && PROPS_ON) { // 2026 room: the whole interior is one model made from the room painting; walls, arched door and window stay in code
       const L = Math.min(room.w || 6, SIZES[room.sz || 'm'].D) - 0.24, k = L / 1.64, m = grp(cx, cz, 0, g);
       put(rbox(L * 0.9, 0.04, L * 0.9, '#167A42', 0.01), 0, 0.12, 0, m); glbSwap(m, ROOM_STYLE.budget.model, { len: L, y: 0.115, crease: 0.6 });
