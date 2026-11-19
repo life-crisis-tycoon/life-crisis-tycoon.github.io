@@ -82,12 +82,12 @@ export function buildCity(kind, cg, H, box) {
         M.compose(new THREE.Vector3(axis === 0 ? (fr === 0 ? u : -u) : off + Math.sign(off) * 0.004, top, axis === 0 ? off + Math.sign(off) * 0.004 : (fr > 0 ? -u : u)), Q, new THREE.Vector3(bw / 2.0, 1, 1)); parts.push([capK, M.clone()]);
       }
     }
-    if (st === 'brick') { // pitched slate roof with brick gables and two chimney stacks
+    if (st === 'brick' || (H.lively && st === 'plain' && row < 2)) { // pitched slate roof with brick gables and two chimney stacks
       const rh = Math.min(2.2, d * 0.42), ov = 0.18, geo = new THREE.BufferGeometry(), hw = w / 2 + ov, hd = d / 2 + ov;
       const v = [-hw, 0, hd, hw, 0, hd, hw, rh, 0, -hw, rh, 0, hw, 0, -hd, -hw, 0, -hd, -hw, rh, 0, hw, rh, 0];
       geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); geo.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
       geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, w, 0, w, hd * 1.2, 0, hd * 1.2, 0, 0, w, 0, w, hd * 1.2, 0, hd * 1.2].map((a) => a / 1.4), 2)); geo.computeVertexNormals();
-      const roof = new THREE.Mesh(geo, kitMat(slateTex(), 1, 1)); roof.position.y = top; roof.castShadow = true; g.add(roof);
+      const roof = new THREE.Mesh(geo, kitMat(slateTex(), 1, 1, H.lively ? pick(['#FFFFFF', '#FFFFFF', '#E9A07E', '#C98C8C', '#9FB7C9', '#B8C9A2']) : '#FFFFFF')); roof.position.y = top; roof.castShadow = true; g.add(roof);
       const gy = rh * (d / 2) / hd, gab = new THREE.BufferGeometry(); gab.setAttribute('position', new THREE.Float32BufferAttribute([w / 2, 0, d / 2, w / 2, 0, -d / 2, w / 2, gy, 0, -w / 2, 0, -d / 2, -w / 2, 0, d / 2, -w / 2, gy, 0], 3));
       gab.setAttribute('uv', new THREE.Float32BufferAttribute([d / 2, 0, -d / 2, 0, 0, gy, -d / 2, 0, d / 2, 0, 0, gy].map((a, i) => (i % 2 ? (a + h) : a + 50) / 2.0), 2)); gab.computeVertexNormals();
       const gm = new THREE.Mesh(gab, wallMat); gm.material.side = THREE.DoubleSide; gm.position.y = top; gm.castShadow = true; g.add(gm);
@@ -472,10 +472,10 @@ export function buildCity(kind, cg, H, box) {
     if (H.lively) {
       const FL = ['#E5484D', '#FFFFFF', '#2F6FD6', '#FFD25E', '#2E9E5B', '#FF5FA2'];
       const bunting = (ax, az, bx, bz, y, n) => { const g = new THREE.Group(); cg.add(g); const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz), ry = Math.atan2(dx, dz);
-        for (let i = 0; i <= n; i++) { const t = i / n, sag = Math.sin(t * Math.PI) * 0.5, f = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.32, 3), mat(FL[i % FL.length], { r: 0.8 })); f.rotation.set(Math.PI, ry, 0); f.position.set(ax + dx * t, y - sag - 0.16, az + dz * t); g.add(f); }
-        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, L), mat('#F4EFE6')); rope.rotation.set(Math.PI / 2, 0, 0); const rg = new THREE.Group(); rg.add(rope); rg.position.set((ax + bx) / 2, y - 0.25, (az + bz) / 2); rg.rotation.y = ry; g.add(rg); return g; };
-      for (let x = -38; x < 48; x += 8) bunting(x, zS - 1.85, x + 4, zS + 1.9, GY + 3.0, 9); // flags across the high street, lamp to lamp
-      for (let z = zN + 6; z < zS - 4; z += 7) { bunting(xW - 1.9, z, xW + 1.9, z + 3.5, GY + 3.0, 8); bunting(xE + 1.9, z, xE - 1.9, z + 3.5, GY + 3.0, 8); }
+        for (let i = 0; i <= n; i++) { const t = i / n, sag = Math.sin(t * Math.PI) * 0.5, f = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 3), mat(FL[i % FL.length], { r: 0.8 })); f.rotation.set(Math.PI, ry, 0); f.position.set(ax + dx * t, y - sag - 0.3, az + dz * t); g.add(f); }
+        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, L), mat('#F4EFE6')); rope.rotation.set(Math.PI / 2, 0, 0); const rg = new THREE.Group(); rg.add(rope); rg.position.set((ax + bx) / 2, y - 0.25, (az + bz) / 2); rg.rotation.y = ry; g.add(rg); return g; };
+      for (let x = -38; x < 48; x += 8) bunting(x, zS - 1.85, x + 4, zS + 1.9, GY + 3.4, 7); // flags across the high street, lamp to lamp
+      for (let z = zN + 6; z < zS - 4; z += 7) { bunting(xW - 1.9, z, xW + 1.9, z + 3.5, GY + 3.4, 6); bunting(xE + 1.9, z, xE - 1.9, z + 3.5, GY + 3.4, 6); }
       { const px = xW - 11, pz = 6.5, g = C(px, pz); g.position.y = GY; // park bandstand under bunting
         put(cyl(1.7, 1.8, 0.35, '#F4EFE6'), 0, 0.18, 0, g); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; put(cyl(0.06, 0.06, 2.0, '#2E6B4A'), Math.cos(a) * 1.5, 1.35, Math.sin(a) * 1.5, g); }
         const rf = new THREE.Mesh(new THREE.ConeGeometry(2.0, 1.1, 8), mat('#D9342B', { r: 0.7 })); put(rf, 0, 2.9, 0, g); put(sph(0.14, '#E3B341', { m: 0.6, r: 0.3 }), 0, 3.5, 0, g);
