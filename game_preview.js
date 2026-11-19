@@ -1222,7 +1222,7 @@ function ambience(dt) {
   else if (Math.random() < 0.15) { const w = R.visitors.filter((v) => v.state === 'wait'); if (w.length) { const v = rnd(w); AU.sfx('yawn', hearVol(v.av.position) * 0.6); } }
 }
 // people on a bed lie flat on their back, head to the pillow, under a duvet (feet to chest); back upright when they get up
-const LIE_V = new THREE.Vector3(), DUVET_C = ['#F4E3C8', '#CFE3F2', '#F6D3DC', '#D8EBCF'];
+const LIE_V = new THREE.Vector3(), DUVET_C = ['#F2D7B6', '#BFD8EE', '#F3C3D0', '#C9E2BC'];
 function lieUpdate() {
   const who = []; for (const v of R.visitors) who.push([v, v.state === 'treat' && v.rspot]); for (const rs of R.staff) who.push([rs, rs.mode === 'break' && rs.onBreak]);
   for (const [o, sp] of who) { const av = o.av; if (!av) continue; const on = !!(sp && sp.lie && !(o.path && o.path.length) && Math.hypot(av.position.x - sp.x, av.position.z - sp.z) < 1.2);
@@ -1231,8 +1231,8 @@ function lieUpdate() {
       const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
-      let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.66, 0.24, 1, rnd(DUVET_C), 0.1); dv.castShadow = true; dv.userData.swap = true; }
-      if (!dv.parent) scene.add(dv); const len = L * 0.74; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.25; dv.position.set(sp.x + s * (L * 0.5 - len / 2 - 0.04), base + 0.17, sp.z + c * (L * 0.5 - len / 2 - 0.04)); dv.visible = av.visible !== false; }
+      let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.76, 0.24, 1, rnd(DUVET_C), 0.11); dv.castShadow = true; dv.userData.swap = true; }
+      if (!dv.parent) scene.add(dv); const len = L * 0.8; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.45; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
     else { if (av.rotation.x) av.rotation.x = 0; const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
 }
 function doorsUpdate(dt) {
