@@ -3426,11 +3426,11 @@ function step(dt, now = performance.now(), rdt = dt) {
   adUpdate(dt);
   for (const v of R.visitors.slice()) visitorUpdate(v, dt);
   for (const rs of R.staff) {
-    if (rs.mode === 'walk') { if (stepWalker(rs, dt, 2.6)) { rs.mode = rs.onBreak ? 'break' : rs.data.role === 'maint' ? 'free' : 'there'; settle(rs, rs.target); rs.busyPose = null; } }
+    if (rs.mode === 'walk') { if (stepWalker(rs, dt, 2.6)) { rs.mode = rs.onBreak ? 'break' : rs.data.role === 'maint' && rs.at !== 'train' && rs.at !== 'heal' ? 'free' : 'there'; settle(rs, rs.target); rs.busyPose = null; } }
     else if (rs.mode === 'there') staffAttend(rs, dt);
     else if (rs.target && !rs.target.sit) rs.av.userData.p.body.position.y = Math.sin(now / 400 + rs.data.id) * 0.015;
     staffEnergy(rs, dt);
-    if (rs.data.role === 'maint' && !rs.onBreak) maintUpdate(rs, dt);
+    if (rs.data.role === 'maint' && !rs.onBreak && rs.at !== 'train' && rs.at !== 'heal') maintUpdate(rs, dt);
   }
   doorsUpdate(dt); staffCover(dt); mgrUpdate(dt); if (S.pepT > 0) S.pepT -= dt; if (S.pepCd > 0) S.pepCd -= dt;
   pestUpdate(dt); vibeTick(dt); marksTick(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); decorUpdate(dt); checkGoals(); epiTick(dt);
