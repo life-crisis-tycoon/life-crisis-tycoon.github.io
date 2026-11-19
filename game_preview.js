@@ -309,7 +309,7 @@ function canvasTex(w, h, draw, rep) {
 const woodTex = (a, b, rep) => canvasTex(128, 128, (g, w) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? a : b; g.fillRect(0, i * 16, w, 16); g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, i * 16, w, 1); } }, rep);
 const cobbleTex = () => canvasTex(256, 256, (g) => { // warm cobbles like the reference painting, offset rows of rounded stones
   g.fillStyle = '#A6978A'; g.fillRect(0, 0, 256, 256); let sd = 7; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
-  const cols = ['#CDBFAE', '#C4B5A2', '#D6C9B8', '#BFAF9B', '#D0C2B4', '#C9B9A9'];
+  const cols = ['#C9C0B4', '#C0B6A9', '#D2C9BD', '#BAAF A1'.replace(' ', ''), '#CCC3B8', '#C4BAAE'];
   for (let row = 0; row < 10; row++) for (let i = -1; i < 10; i++) { const w = 25.6, x = i * w + (row % 2 ? w / 2 : 0) + 1.5, y = row * 25.6 + 1.5;
     g.fillStyle = cols[Math.floor(rr() * cols.length)]; g.beginPath(); g.roundRect(x, y, w - 3, 22.6, 7); g.fill();
     g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.roundRect(x + 3, y + 2, w - 10, 6, 3); g.fill(); }
@@ -636,7 +636,7 @@ function floorMat(kind, w, d) { // one material per (kind, size) so the pattern 
 }
 // preview, London: a lot you can buy is a lush little garden like the reference painting: striped lawn, clipped hedge border,
 // flower beds in the corners, a gravel path, a round tree and a bench
-const LAWN_TEX = (rep) => canvasTex(128, 128, (g) => { g.fillStyle = '#74C24E'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#86D05C'; g.fillRect(0, 0, 64, 128);
+const LAWN_TEX = (rep) => canvasTex(128, 128, (g) => { g.fillStyle = '#6CAF48'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#79BB53'; g.fillRect(0, 0, 64, 128);
   for (let k = 0; k < 220; k++) { g.fillStyle = k % 2 ? 'rgba(40,110,30,0.16)' : 'rgba(255,255,200,0.14)'; g.fillRect((k * 37) % 128, (k * 59) % 128, 2, 4); } }, rep);
 function lotGarden(L, i, g) {
   const w = L[1] - L[0], d = L[3] - L[2], cx = (L[0] + L[1]) / 2, cz = (L[2] + L[3]) / 2; let sd = i * 7 + 3; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
@@ -870,7 +870,7 @@ function buildAnnexLot(c) {
     if (st === 'pending') { for (let k = 0; k < 4; k++) put(cyl(0.05, 0.05, 2.4, '#E3B341'), L[0] + 1 + k * (L[1] - L[0] - 2) / 3, 0.95, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 2.0, L[2] + 1, g); put(rbox(L[1] - L[0] - 2, 0.1, 0.1, '#E3B341', 0.02), cx, 1.2, L[2] + 1, g); }
     else { const s = grp(cx, cz, 0, g); put(cyl(0.05, 0.05, 1.6, '#8B6A45'), 0, 0.5, 0, s); put(rbox(1.4, 0.8, 0.08, '#FFD25E', 0.04), 0, 1.4, 0, s); }
   });
-  if (GFX.batch) batchNode(g); // fences, shrubs and signs: a few draw calls instead of hundreds
+  if (GFX.batch) { const st = new Set(); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st); } // fences, shrubs and signs: a few draw calls instead of hundreds
 }
 function lotOwned(i) {
   setLot(i, 'owned'); setRent(); buildAnnexLot(); rebuildGrid();

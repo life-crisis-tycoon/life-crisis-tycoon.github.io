@@ -570,13 +570,18 @@ export function buildCity(kind, cg, H, box) {
     const hh = KITS[k][1] * (0.92 + R() * 0.16); return { k, h: hh, w: KITS[k][0] * hh, d: KITS[k][2] * hh, tint: k === 'house_pastel' ? pick(TINTS) : null }; }
   function kitModel(x, z, t, rot) {
     const g = grp(x, z, rot, cg); g.position.y = GY; const ph = put(rbox(t.w * 0.95, t.h * 0.9, t.w * 0.6, t.tint || '#E9DCCB', 0.1), 0, t.h * 0.45, 0, g); // stand-in until the model loads
-    // cutaway: a house between the camera and the plot is cut open at the ground floor (doors and shop fronts stay) with a dark section on top
-    const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e4), CUT = 2.1; let cap = null, cut = false;
-    const apply = () => { plane.constant = cut ? g.getWorldPosition(new THREE.Vector3()).y + CUT : 1e4; if (cap) cap.visible = cut; };
-    H.glb(g, 'lon_' + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}), onModel: (m) => {
-      m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.clippingPlanes = [plane]; c.material.clipShadows = true; } });
-      cap = put(rbox(t.w * 0.9, 0.08, t.d * 0.85, '#5E4B47', 0.03), 0, CUT - 0.04, 0, g); apply(); } });
-    B.push({ o: g, x, z, h: t.h, r: t.w / 2 + 1, clip: (on) => { cut = on; apply(); } }); return g;
+    // cutaway: a house between the camera and the plot shows its back to the camera (plain wall) and hides the plot, so it steps aside
+    // and leaves its little back garden: lawn, clipped hedge, a few flowers (built the first time it is needed)
+    let yard = null, model = null;
+    const mkYard = () => { yard = new THREE.Group(); g.add(yard); const W = t.w * 0.98, D = t.d * 1.0;
+      const lawn = put(rbox(W, 0.1, D, '#74B84F', 0.04), 0, 0.05, 0, yard); lawn.castShadow = false;
+      put(rbox(W, 0.55, 0.32, '#4AA343', 0.15), 0, 0.3, D / 2 - 0.16, yard); put(rbox(0.32, 0.55, D, '#4AA343', 0.15), -W / 2 + 0.16, 0.3, 0, yard);
+      put(rbox(W * 0.5, 0.06, 0.7, '#E6D3AE', 0.03), W * 0.12, 0.11, -D / 2 + 0.6, yard);
+      const FL = ['#FF6F91', '#FFD25E', '#FFFFFF', '#B57BE8', '#FF4F5E'];
+      for (let k = 0; k < 7; k++) { const fx = -W / 2 + 0.6 + R() * (W - 1.2), fz = D / 2 - 0.55 - R() * 0.3; put(sph(0.16, '#4FAE44'), fx, 0.18, fz, yard); put(sph(0.11, FL[k % FL.length]), fx, 0.32, fz, yard); }
+      if (W > 3.2) { const b = put(sph(0.7, '#5DBB4E'), W * 0.22, 0.6, 0.2, yard); b.scale.y = 0.8; } };
+    H.glb(g, 'lon_' + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}), keep: (c) => c === yard, onModel: (m) => { model = m; m.visible = !g.userData.cut; } });
+    B.push({ o: g, x, z, h: t.h, r: t.w / 2 + 1, clip: (on) => { g.userData.cut = on; if (on && !yard) mkYard(); if (yard) yard.visible = on; if (model) model.visible = !on; g.children.forEach((c) => { if (c !== yard && c !== model) c.visible = !on; }); } }); return g;
   }
   function band(ax, bx, az, bz, depthAxis) {
     // depthAxis: 'z-' grows away north, 'z+' south, 'x-' west, 'x+' east
