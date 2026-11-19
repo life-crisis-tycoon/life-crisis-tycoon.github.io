@@ -1832,11 +1832,16 @@ const furniture = {
     const bag = (x, z, rot, c) => { const b = grp(x, z, rot, g); const bb = sph(0.48, c); bb.scale.set(1, 0.6, 1); put(bb, 0, 0.3, 0, b); glbSwap(b, 'beanbag', { len: 0.95, y: 0.1 }); seat(x, z, rot, 0); };
     const table = (x, z) => { const tb = grp(x, z, 0, g); put(cyl(0.45, 0.45, 0.06, '#FFFFFF'), 0, 0.45, 0, tb); put(cyl(0.06, 0.06, 0.4, '#7A8088'), 0, 0.23, 0, tb); put(cyl(0.07, 0.06, 0.14, '#E9785F'), 0.1, 0.55, 0, tb); glbSwap(tb, 'sidetable', { h: 0.55, y: 0.1 }); };
     const H = Math.PI / 2, half = room.nst === 2 && room.st === 1;
-    if (half) { // games corner: foosball table, two beanbags and an armchair around it
-      const fb = grp(cx, cz - 0.9 * K, 0, g); put(rbox(1.5, 0.12, 0.8, '#2E8B57', 0.04), 0, 0.85, 0, fb); put(rbox(1.6, 0.25, 0.9, '#8A5A35', 0.05), 0, 0.72, 0, fb);
+    if (half) { // rest corner: a bunk bed against the back wall (2 beds: a nap restores energy twice as fast), a foosball table and an armchair
+      { const bx = cx - 0.7 * K, bz = cz - 2.0 * K, bk = grp(bx, bz, H, g), wood = '#C98F5A';
+        for (const px of [-0.95, 0.95]) for (const pz of [-0.45, 0.45]) put(rbox(0.1, 2.0, 0.1, wood, 0.03), px, 1.0, pz, bk);
+        for (const y of [0.32, 1.32]) { put(rbox(2.0, 0.12, 0.95, wood, 0.03), 0, y, 0, bk); put(rbox(1.9, 0.14, 0.88, '#F4EFE6', 0.05), 0, y + 0.13, 0, bk); put(rbox(0.36, 0.1, 0.62, '#FFFFFF', 0.05), -0.72, y + 0.25, 0, bk); put(rbox(1.2, 0.06, 0.9, y > 1 ? '#7FB6E0' : '#9DB38C', 0.03), 0.3, y + 0.22, 0, bk); }
+        put(rbox(0.1, 0.06, 0.95, wood, 0.02), -0.95, 1.85, 0, bk); for (let i = 0; i < 4; i++) put(rbox(0.06, 0.06, 0.5, wood, 0.02), 0.95, 0.55 + i * 0.3, 0.5, bk).rotation.x = 0; // rails and ladder rungs
+        for (const y of [0.4, 1.4]) room.spots.push({ x: bx, z: bz, rot: H, sit: true, lie: true, bed: true, y, busy: null }); }
+      const fb = grp(cx + 0.6 * K, cz + 0.5 * K, 0, g); put(rbox(1.5, 0.12, 0.8, '#2E8B57', 0.04), 0, 0.85, 0, fb); put(rbox(1.6, 0.25, 0.9, '#8A5A35', 0.05), 0, 0.72, 0, fb);
       for (const sx of [-0.65, 0.65]) for (const sz of [-0.35, 0.35]) put(rbox(0.08, 0.7, 0.08, '#6B4426', 0.02), sx, 0.35, sz, fb);
       for (let i = -2; i <= 2; i++) put(cyl(0.015, 0.015, 1.15, '#C9CED6'), i * 0.28, 0.95, 0, fb).rotation.x = H;
-      bag(cx - 1.0 * K, cz + 1.2 * K, Math.PI * 0.85, '#FF8FAB'); bag(cx + 1.0 * K, cz + 1.3 * K, -Math.PI * 0.85, '#5AB8F0'); arm(cx + 1.3 * K, cz - 2.2 * K, Math.PI * 0.1);
+      arm(cx + 1.3 * K, cz - 2.0 * K, Math.PI * 0.1);
       return; }
     sofa(cx - 0.4 * K, cz - 1.8 * K); table(cx - 0.4 * K, cz - 0.6 * K);
     const n = seatsN(room) - 2; // armchairs facing the sofa across the coffee table
@@ -4015,11 +4020,11 @@ function staffEnergy(rs, dt) {
     return;
   }
   if (rs.onBreak) {
-    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink/.test(pa.anim.state || '')) { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } d.energy = Math.min(1, d.energy + dt / 22); if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
+    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'lie') pa.anim.set('lie'); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : 22)); if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
   } else if (rs.mode === 'there' || rs.task) {
     if (rs.at !== 'idle' && rs.at !== 'train' && rs.at !== 'heal') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (185 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
     if (d.energy < 0.25) {
-      const spot = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).map((r) => r.spots.find((s) => !s.busy)).find(Boolean);
+      const free = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).flatMap((r) => r.spots.filter((s) => !s.busy)), spot = free.find((s) => s.bed) || free[0]; // a free bunk first: napping is faster
       if (spot && !rs.task && !patientOf(rs)) { spot.busy = rs; rs.onBreak = spot; /* never walk out mid-session */ rs.goingTo = null; goStaff(rs, spot); tip('break'); }
       else if (!hasRoom('staffroom')) tip('tired');
       // at most one "we're exhausted" message for the whole team every 2 days (it names how many are worn out)
