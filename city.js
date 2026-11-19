@@ -537,6 +537,9 @@ export function buildCity(kind, cg, H, box) {
       spLM(px0 + 3.5, (pz0 + pz1) / 2 - 7, 0, 'sp_pond', { len: 6 }, 0.3, 4);
       for (let i = 0; i < 12; i++) tree(i % 2 ? px0 + 1.2 : px1 - 1.2, pz0 + 2 + i * 3.4, i % 4 === 1 ? 'ipe' : 'green', 0.95);
       for (const [tx, tz] of [[px0 + 4, pz1 - 2.5], [px1 - 4, pz0 + 15], [px0 + 4.5, pz0 + 15]]) tree(tx, tz, 'green', 1.05);
+      if (SPK) { const keep = [[pm, pz0 + 7, 6.5], [pm + 1, (pz0 + pz1) / 2 + 0.5, 4.5], [pm, pz1 - 6, 5.5], [px0 + 3.5, (pz0 + pz1) / 2 - 7, 3.5]]; // a real wooded park: trees everywhere but on the landmarks
+        for (let tz = pz0 + 1.8; tz < pz1 - 1; tz += 2.9) for (let tx = px0 + 1.8; tx < px1 - 1; tx += 3.1) { const jx = tx + (R() - 0.5) * 1.4, jz = tz + (R() - 0.5) * 1.4;
+          if (keep.some(([kx, kz, kr]) => Math.hypot(jx - kx, jz - kz) < kr) || R() < 0.25) continue; tree(jx, jz, R() < 0.62 ? 'green' : R() < 0.5 ? 'ipe' : 'jacaranda', 0.85 + R() * 0.3); } }
     }
     spLM(xE + 12, zN + 21, 0, 'sp_lm_luz', { len: 15 }, 8, 10); reserve(xE + 4, xE + 20, zN + 14, zN + 28);
     spLM(xE + 11, zN + 35, 0, 'sp_lm_pinacoteca', { len: 10 }, 7, 8); reserve(xE + 5, xE + 17, zN + 30, zN + 40);
