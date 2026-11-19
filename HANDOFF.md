@@ -116,3 +116,8 @@ Read this first. The user (French or English; answer in the language she writes 
 - `models/props/budget_kit.js` (k_desk, k_chair, k_bookcase, k_easel, k_armchair, k_table; spec `tools/gltfx/budget_spec.json`, packed with `packmulti.mjs`), `budgetKit()`; `ROOM_STYLE.budget.model = 'budget_kit', kit: true` replaces the fused `budget_in` model.
 - Layout: desk mid-back with coach chair behind and client chair in front on a round rug; bookcase back-left (first station), easel + plant back-right (last station), armchair + round table on the left wall (M/L). Layout report clean in S/M/L.
 - Staff room L: bunk bed (2 `bed` spots, nap energy x2) is live.
+
+## Walking around furniture, lying in bed (2026-11-19, live)
+- `roomObs(room)`: code pieces measured once before batching (`room.obs0`), 3D-model pieces (swap groups) re-measured each time one loads (`roomObsLater` from `glbSwap`), rugs (`glb` name with rug/carpet) skipped.
+- `findPath(from, to, loose)`: furniture cells crossable only within 2 cells of the start/target (getting up from a seat), cost 12; falls back to the old loose rules only when no path exists. `los` shortcuts check both shoulders for furniture too.
+- `lieUpdate()` (from `doorsUpdate`): visitors treated on a `lie` spot and staff napping on a `bed` spot lie flat (idle clip, avatar pitched -90°, hips set on the mattress) under a pastel duvet (`av.userData.duvet`); poseSit(lie) now plays idle (Meshy's Lie clip is a half-sit).
