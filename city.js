@@ -614,7 +614,7 @@ export function buildCity(kind, cg, H, box) {
         const w = M[0] * h, d = M[1] * h, dc = off + d / 2; let x, z, bw, bd;
         if (dA === 'z-') { x = u + w / 2; z = az - dc; bw = w; bd = d; } else if (dA === 'z+') { x = u + w / 2; z = az + dc; bw = w; bd = d; }
         else if (dA === 'x-') { x = ax - dc; z = u + w / 2; bw = d; bd = w; } else { x = ax + dc; z = u + w / 2; bw = d; bd = w; }
-        if (free(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2) && Math.abs(x) < 80 && Math.abs(z - 3) < 80) { spModel(x, z, m[0], h, rot); reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2); u += w + 0.35 + R() * 0.7; }
+        if (free(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2) && Math.abs(x - 3) < 78 && Math.abs(z - 3) < 78) { spModel(x, z, m[0], h, rot); reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2); u += w + 0.35 + R() * 0.7; }
         else u += 1.5;
       }
       off += RW.D + 1.4;
