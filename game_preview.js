@@ -2192,7 +2192,7 @@ function staffEpiRow(st) {
   else if (st.train) h += `<span style="font-size:12.5px;font-weight:900;color:#5B6CC9">${st.train.kind === 'lvl' ? '⭐ ' + t('trn.lvlProg', { n: st.skill + 1, p: Math.min(100, Math.round((st.train.t / trainDur(st.train)) * 100)) }) : '📘 ' + t('trn.prog', { p: Math.min(100, Math.round((st.train.t / trainDur(st.train)) * 100)) })}</span>`;
   else {
     h += !(st.cert >= 2) ? b('course', '🎓 ' + t('trn.btn', { m: money(st.cert === 1 ? Math.round(COURSE_COST() / 20) * 10 : COURSE_COST()) }), 'g') : `<span style="font-size:12.5px;font-weight:900;color:#5B6CC9">🎓 ${t('trn.immune')}</span>`;
-    h += st.skill < 5 ? b('lvl', '⭐ ' + t('trn.lvlBtn', { n: st.skill + 1, m: money(LVL_COST(st)) }), 'y') : `<span style="font-size:12.5px;font-weight:900;color:#B7791F">⭐ ${t('trn.lvlMax')}</span>`;
+    h += st.skill < 5 ? b('lvl', t('trn.lvlBtn', { n: st.skill + 1, m: money(LVL_COST(st)) }), 'y') : `<span style="font-size:12.5px;font-weight:900;color:#B7791F">⭐ ${t('trn.lvlMax')}</span>`;
   }
   return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">${h}</div>${!st.train && st.skill < 5 ? `<div style="font-size:12px;font-weight:800;color:var(--muted);margin-top:4px">⭐ ${t('trn.lvlInfo', { w: money(Math.round(LVL_WAGE(st) * WAGE_K)) })}</div>` : ''}${st.cert === 1 && !st.train ? `<div style="font-size:12px;font-weight:800;color:#5B6CC9;margin-top:4px">📘 ${t('trn.halfInfo')}</div>` : ''}`;
 }
