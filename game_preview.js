@@ -647,6 +647,9 @@ function propModel(name) {
     const b64 = (await import('./models/props/' + name + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js'); // the Meshy props are meshopt-compressed
     const gl = await new Promise((res, rej) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(bin.buffer, '', res, rej)); slimTextures(gl.scene);
+    if (/^plant_/.test(name)) gl.scene.traverse((m) => { // potted plants: crisper leaves (faceted shading, more contrast between the soft vertex-colour shades, shadows between leaves)
+      if (!m.isMesh || !/leaf/i.test(m.material.name || '')) return; const col = m.geometry.attributes.color; m.material = m.material.clone(); m.material.flatShading = true; m.material.roughness = 0.55; m.material.needsUpdate = true; m.castShadow = m.receiveShadow = true;
+      if (col) { const c = new THREE.Color(), hsl = {}; for (let i = 0; i < col.count; i++) { c.fromBufferAttribute(col, i); c.getHSL(hsl); const l = Math.pow(hsl.l, 1.25) * 0.97; c.setHSL(hsl.h, Math.min(1, hsl.s * 1.18), l); col.setXYZ(i, c.r, c.g, c.b); } col.needsUpdate = true; } });
     { const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js'); gl.scene.updateMatrixWorld(true); const groups = new Map();
       gl.scene.traverse((m) => { if (m.isMesh && !m.isSkinnedMesh) { const k = m.material.uuid + '|' + Object.keys(m.geometry.attributes).sort().join(','); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); } });
       if ([...groups.values()].some((l) => l.length > 1)) { const root = new THREE.Group();
