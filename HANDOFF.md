@@ -91,3 +91,9 @@ Read this first. The user (French or English; answer in the language she writes 
 - Café layout: pieces ×1.15 (`K`), counter/queue spots scaled with it, chalk menu board, wall shelf, two frames, round rug (`DECO` decor built in code, usable in any kit layout as '@menu', '@shelf', '@frame', '@rug').
 
 - Cost on the test scene: about +30 draw calls vs the live game (280 -> 310).
+
+## Training room, epidemics, everyday animations (2026-11-19, live)
+- Training room (`training`, Tripo kit `models/props/training_kit.js`, `trainingKit()`), trainer role, 🎓 sanitary course and ⭐ level course (`startCourse`, `trainTick`, `lessonTick`), epidemics (`epiDay`, `epiTick`, epidemic inspector `epiVerdict`), strings in `i18n_epi.js`. Career mode from Mumbai (city lvl ≥ 2).
+- Extra Meshy clips live in the shared `models/vis/anims.js`: `Tr*` (class) and `X*` (XSitDrink, XStandDrink, XCheckout, XPickUp, XLookWalk). `chars.js` `trainClips()` copies them (+ Phone, IdleBreath) to the staff characters; avatars create actions lazily, so clips loaded later still play. States: talk, talk2, show, listen, answer, clap, thumb, drinksit, drink, till, pickup, lookwalk, idle2.
+- Hand props in code: `holdCup`, `holdBroom` (attached to the RightHand bone).
+- Note for the diorama work: game.js is now updated by applying only the training/animation commits; the café diorama slice (7eb5988) had leaked into game.js through a full copy at 11:26 and was taken back out of game.js. It stays in game_preview.js only.
