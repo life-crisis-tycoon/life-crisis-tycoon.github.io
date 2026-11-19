@@ -77,3 +77,10 @@ Read this first. The user (French or English; answer in the language she writes 
 - Lowest tilt is now `PITCH_MIN` = 0.26 rad (~15°), was 0.42. The tilt button cycles 0.3 → 0.53 → 0.72 → 0.9 → 1.1.
 - Close up, the automatic look-down (`camPitch`) fades out when the player deliberately tilts below ~0.5, so low tilts work zoomed in too.
 - City buildings: `updateCutaway` squashes any building whose roof would hide the HQ or its plaza (`reach` = how far the HQ extends toward the camera, capped by the screen bottom) instead of a fixed 9 m margin, and the side band follows the screen width. Needed because roofs hide much more at low tilts. Same change applied to game_preview.js.
+
+## Diorama look — vertical slice (2026-11-19, preview only: game_preview.js)
+- Café only, via `ROOM_STYLE.cafe` flags `chunky`, `ao`, `plinth`: thick fully rounded cream rim (own `keepY` group so the hip cutaway doesn't flatten it), tall sage plinth outside, round end columns, soft floor shadow strip along inner walls (`aoStrip`), soft blob under each kit piece (`aoBlob`), softer checker (`CHECKER_SOFT`).
+- Global in preview: `fitSun()` tightens the shadow box to the view when zoomed in (snapped to whole metres), so close-up shadows are ~1.6x sharper.
+- Lighting tried: brighter hemi / NeutralToneMapping looked washed out or too orange; kept ACES as is.
+- Cost on the test scene: +19 draw calls (222 -> 241), +1.7k triangles.
+- To roll out: add `chunky: true, ao: true` to other room styles once approved, then copy to game.js.

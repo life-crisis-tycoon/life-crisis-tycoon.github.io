@@ -200,8 +200,14 @@ let PR_BASE = null; // pixel ratio chosen by the graphics level / speed watcher;
 function closePR() { if (PR_BASE == null) PR_BASE = renderer.getPixelRatio(); const dpr = window.devicePixelRatio || 1;
   const want = view.half < CLOSE_HALF - 0.4 ? Math.max(PR_BASE, Math.min(dpr, GFX.low ? 2 : 3)) : view.half > CLOSE_HALF + 0.4 ? PR_BASE : null;
   if (want != null && Math.abs(renderer.getPixelRatio() - want) > 0.01) { renderer.setPixelRatio(want); renderer.setSize(innerWidth, innerHeight, false); } }
+function fitSun() { // close up the shadow map covers just what you see, so shadows stay crisp; further out it covers the whole HQ as before
+  const sc = sun.shadow.camera, close = view.half < 9;
+  if (close) { const r = Math.ceil(view.half * 1.9 + 3), qx = Math.round(view.tx), qz = Math.round(view.tz); Object.assign(sc, { left: -r, right: r, top: r, bottom: -r }); sun.target.position.set(qx, 0, qz); sun.position.set(qx + 17, 24, qz + 8); } // snapped to whole metres so shadows don't shimmer while panning
+  else { Object.assign(sc, { left: -20, right: 22, top: 20, bottom: -20 }); sun.target.position.set(-1, 0, 2); sun.position.set(16, 24, 10); }
+  sc.updateProjectionMatrix(); sun.target.updateMatrixWorld();
+}
 function placeCam() {
-  closePR();
+  closePR(); fitSun();
   const a = innerWidth / innerHeight;
   cam.left = -view.half * a; cam.right = view.half * a; cam.top = view.half; cam.bottom = -view.half; cam.updateProjectionMatrix();
   const D = 65, ep = camPitch(), cp = Math.cos(ep);
@@ -232,7 +238,7 @@ function updateCutaway() {
   const up = WALLS_UP, cut = (n, p) => { if (close && fr(p)) return true; if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
   const tv = new THREE.Vector3(), wp2 = (o) => { o.getWorldPosition(tv); return [tv.x, tv.z]; };
   for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = (!up || close) && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
-  for (const w of world.roomCut || []) w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1;
+  for (const w of world.roomCut || []) { w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
   for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
   for (const d of world.doors || []) { d.g.scale.y = 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = true; d.cut = false; }
   const ep = camPitch(), tan = Math.tan(ep);
@@ -822,7 +828,7 @@ ROOM_STYLE.career = { v2: true, model: 'career_kit', kit: true, winOuter: true, 
 ROOM_STYLE.pharmacy = { v2: true, model: 'pharmacy_kit', kit: true, floorMap: () => PHARMA_FLOOR(), wall: '#CFE6D4', inBase: '#A9D3B6', floor: '#F6F3EC', door: '#8FC7A0', panel: '#8FC7A0', pop: '#5BB37A', posts: true, h: ROOM_H };
 ROOM_STYLE.therapy = { v2: true, model: 'therapy_kit', kit: true, winSide: '-1,0', winOuter: true, wood: ['#F4F0E9', '#EAE4DA'], wall: '#5C3A26', inBase: '#3F2719', floor: '#F4F0E9', door: '#C8644E', panel: '#C8644E', pop: '#E3A23B', posts: true, h: ROOM_H };
 ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0', winOuter: true, floorMap: () => TERRAZZO(), wall: '#EFA7AE', inBase: '#D9858F', floor: '#F2C2C4', door: '#E98C98', panel: '#E98C98', pop: '#E7B04A', posts: true, h: ROOM_H };
-ROOM_STYLE.cafe = { v2: true, model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
+ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER_SOFT(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
@@ -834,6 +840,24 @@ function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
 // Every room builds only on its own side of the wall line (plus a thin cream skin outside, thinner than any neighbour's own
 // lining), so two rooms sharing a wall never overlap or flicker and each shows its own colour inside. Against the building's
 // outer wall (userData.outer) the lining sits just proud of that wall instead of being skipped.
+// ---- diorama look (vertical slice: rooms whose style has chunky / ao) ----
+// soft grounding: a gradient strip on the floor along each inner wall, and a blurred blob under each piece of furniture
+const AO_STRIP = () => GC.aoStrip || (GC.aoStrip = canvasTex(4, 64, (c, W, H) => { const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(60,45,30,0.55)'); gr.addColorStop(0.3, 'rgba(60,45,30,0.22)'); gr.addColorStop(1, 'rgba(60,45,30,0)'); c.fillStyle = gr; c.fillRect(0, 0, W, H); }));
+const AO_BLOB = () => GC.aoBlob || (GC.aoBlob = canvasTex(64, 64, (c, W, H) => { const gr = c.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W / 2); gr.addColorStop(0, 'rgba(55,40,28,0.7)'); gr.addColorStop(0.5, 'rgba(55,40,28,0.4)'); gr.addColorStop(1, 'rgba(55,40,28,0)'); c.fillStyle = gr; c.fillRect(0, 0, W, H); }));
+const aoMat = (k, tex) => MC[k] || (MC[k] = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, toneMapped: false }));
+function aoStrip(parent, cx, cz, len, n, inset, w = 0.6) { // n points out of the room; the dark edge sits against the wall face
+  const m = new THREE.Mesh(GC.aoPlane || (GC.aoPlane = new THREE.PlaneGeometry(1, 1)), aoMat('aoStrip', AO_STRIP()));
+  m.scale.set(len, w, 1); m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2, Math.atan2(-n[0], -n[1]), 0);
+  m.position.set(cx - n[0] * (inset + w / 2), 0.134, cz - n[1] * (inset + w / 2)); m.renderOrder = 1; m.userData.swap = true; parent.add(m); return m;
+}
+function aoBlob(parent, x, z, w, d, rot = 0) {
+  const m = new THREE.Mesh(GC.aoPlane || (GC.aoPlane = new THREE.PlaneGeometry(1, 1)), aoMat('aoBlob', AO_BLOB()));
+  m.scale.set(w, d, 1); m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2, rot, 0); m.position.set(x, 0.135, z); m.renderOrder = 1; m.userData.swap = true; parent.add(m); return m;
+}
+// softer café checker: half-metre tiles with grout lines and a faint bevel on each tile, lower contrast than the old one
+const CHECKER_SOFT = () => GC.checkerSoft || (GC.checkerSoft = canvasTex(256, 256, (c, W) => { const t = W / 2; c.fillStyle = '#D9D0BA'; c.fillRect(0, 0, W, W);
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const x = i * t + 3, y = j * t + 3, s = t - 6, base = (i + j) % 2 ? '#B7C69C' : '#F3EDDF';
+    c.fillStyle = base; c.fillRect(x, y, s, s); const gr = c.createLinearGradient(x, y, x + s, y + s); gr.addColorStop(0, 'rgba(255,255,255,0.22)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(70,60,40,0.10)'); c.fillStyle = gr; c.fillRect(x, y, s, s); } }, [6, 6]));
 function wallSegV2(x0, z0, x1, z1, S, parent) {
   const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (len < 0.05) return;
@@ -841,10 +865,23 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
   const run = (a, b, hh, y, c, r, o, ex = 0) => wbox(parent, alongX, cx, cz, 1, n, -len / 2 - ex, len / 2 + ex, a, b, hh, y, c, r, o);
   run(-IN, 0, h, h / 2 + 0.1, parent.userData.wall || S.wall, 0.05, { r: 0.95 });
   if (OUT) run(0, OUT, h, h / 2 + 0.1, OUT_WALL, 0.03, { r: 0.95 });
+  if (S.chunky) { // diorama wall: a thick, fully rounded cream rim and a tall sage plinth outside (kept within 8.5 cm so a neighbour's lining still hides it)
+    // the rim lives in its own group that keeps its shape when the cutaway squashes the wall to hip height
+    const rim = new THREE.Group(); rim.position.y = h + 0.17; rim.userData.keepY = true; parent.add(rim);
+    wbox(rim, alongX, cx, cz, 1, n, -len / 2 - 0.03, len / 2 + 0.03, -IN - 0.12, OUT + (ow ? 0 : 0.1), 0.22, 0, OUT_CAP, 0.11, { r: 0.8 });
+    parent.userData.rim = rim;
+    if (OUT) { const base = new THREE.Group(); base.userData.keepY = true; parent.add(base); wbox(base, alongX, cx, cz, 1, n, -len / 2 - 0.005, len / 2 + 0.005, OUT - 0.005, OUT + 0.025, 0.46, 0.33, S.plinth || OUT_BASE, 0.03, { r: 0.9 }); }
+    if (S.ao && parent.parent) aoStrip(parent.parent, cx, cz, len, n, IN);
+  } else {
   run(-IN - 0.04, OUT + (ow ? 0 : 0.04), 0.1, h + 0.15, OUT_CAP, 0.045, { r: 0.85 }, 0.02); // soft rounded rim
   if (OUT) run(OUT - 0.005, OUT + 0.045, 0.22, 0.21, OUT_BASE, 0.02, { r: 0.9 }, 0.005); // sage skirting outside
+  }
   run(-IN - 0.035, -IN + 0.005, 0.14, 0.17, S.inBase, 0.02, { r: 0.9 }, 0.005);
-  if (S.posts && !ow) { const ds = Math.sign(alongX ? x1 - x0 : z1 - z0) || 1;
+  if (S.posts && !ow && S.chunky) { const ds = Math.sign(alongX ? x1 - x0 : z1 - z0) || 1, bm = (OUT - IN) / 2; // rounded column at each end of the run, centred in the wall's thickness
+    for (const [px, pz, d] of [[x0, z0, ds], [x1, z1, -ds]]) { const ax = px + (alongX ? d * 0.07 : 0) + n[0] * bm, az = pz + (alongX ? 0 : d * 0.07) + n[1] * bm;
+      const rim = parent.userData.rim || parent; put(cyl(0.135, 0.135, h, OUT_WALL, { r: 0.95 }), ax, h / 2 + 0.1, az, parent);
+      put(cyl(0.2, 0.2, 0.22, OUT_CAP, { r: 0.8 }), ax, rim === parent ? h + 0.17 : 0, az, rim); put(sph(0.2, OUT_CAP, { r: 0.8 }), ax, (rim === parent ? h + 0.17 : 0) + 0.11, az, rim).scale.y = 0.4; } }
+  else if (S.posts && !ow) { const ds = Math.sign(alongX ? x1 - x0 : z1 - z0) || 1;
     for (const [px, pz, d] of [[x0, z0, ds], [x1, z1, -ds]]) { wbox(parent, alongX, px, pz, d, n, -0.02, 0.2, -IN - 0.02, OUT + 0.02, h, h / 2 + 0.1, OUT_WALL, 0.05, { r: 0.95 }); wbox(parent, alongX, px, pz, d, n, -0.04, 0.23, -IN - 0.05, OUT + 0.03, 0.1, h + 0.16, OUT_CAP, 0.04, { r: 0.85 }); } }
   if (S.stars && len > 1) { let sd = Math.round((x0 * 7 + z0 * 13) * 10); const rr = () => ((sd = (sd * 16807 + 11) % 2147483647) / 2147483647);
     for (let u = 0.3; u < len - 0.2; u += 0.32) { const px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u, y = h - 0.15 - rr() * 0.55;
@@ -929,7 +966,7 @@ function buildRoom(r) {
   { g.updateMatrixWorld(true); const skip = new Set([...wallG, door.g]), bx = new THREE.Box3(), obs = [];
     const walk = (o) => { for (const c of o.children) { if (skip.has(c)) continue; if (c.isMesh) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) obs.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); } walk(c); } };
     walk(g); room.obs = obs; }
-  if (GFX.batch) { for (const w of wallG) batchNode(w, new Set(), { userData: { roomId: r.id } }); batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
+  if (GFX.batch) { for (const w of wallG) { const keep = w.children.filter((c) => c.userData.keepY); batchNode(w, new Set(keep), { userData: { roomId: r.id } }); for (const k of keep) batchNode(k, new Set(), { userData: { roomId: r.id } }); } batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
   { const ca = Math.cos(r.a), sa = Math.sin(r.a), hs = []; g.traverse((o) => { if (o.userData.whang) hs.push({ o, n: o.userData.whang }); else if (o.userData.hang) { const [lx, lz] = o.userData.hang; hs.push({ o, n: [Math.round(lx * ca + lz * sa), Math.round(-lx * sa + lz * ca)] }); } });
     world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
   world.roomCut = (world.roomCut || []).filter((w) => w.parent && w.parent.parent).concat(wallG); updateCutaway();
@@ -1143,7 +1180,8 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     box.at = { x: P.x, z: P.z, rot: R, pw, pd };
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p); box.g = p; continue; } // the game's own potted plants
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
-    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len } : { h: it.h }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p; }
+    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len } : { h: it.h }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p;
+    if (!it.hang && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
 }
