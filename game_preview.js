@@ -4587,7 +4587,7 @@ function openBrief() {
   GOALS = mkGoals(C.goals);
   const lp = Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].city === mapCity), lv = CITIES[mapCity].lvl || 0, nb = Object.keys(BEH).filter((k) => BEH[k] === lv);
   const li = (e, txt) => `<li><span class="be">${e}</span><span>${txt}</span></li>`;
-  const goal = (G, i) => `<div class="bgoal"><span class="stars">${'★'.repeat(i + 1)}</span><ul>${G.parts.map(([m, v]) => `<li>${t('gp.' + m, { n: m === 'cash' || m === 'value' ? money(v) : v })}</li>`).join('')}</ul></div>`;
+  const goal = (G, i) => `<div class="bgoal g${i + 1}"><span class="rib">${'★'.repeat(i + 1)}</span><div class="chips">${G.parts.map(([m, v]) => `<span>${t('gp.' + m, { n: m === 'cash' || m === 'value' ? money(v) : v })}</span>`).join('')}</div></div>`; // one ribbon per star level, its conditions as chips
   // one simple read: the local rules (budget and rent first), the goals of this city; plain bullet lists, no boxes
   $('briefBody').innerHTML = `<div><h1 class="f" style="margin:0">${t('city.' + mapCity)}</h1><div style="font-weight:700;color:#2D3748;font-size:14px">${t(C.brief)}</div></div>
     <div class="lbl">${t('brief.rules')}</div><ul class="blist">${li('💰', `<b>${t('brief.budgetC', { m: money(C.cash) })}</b>`)}${li('🏠', `<b>${t('brief.rentC', { m: money(Math.round(C.rent * BILL_K / 50) * 50) })}</b>`)}${C.rules.map(([e, k]) => li(e, t(k))).join('')}</ul>
