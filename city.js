@@ -8,6 +8,7 @@ export function buildCity(kind, cg, H, box) {
   const [x0, x1, z0, z1] = box;
   const xW = x0 - 4.2, xE = x1 + 4.6, zN = z0 - 4.2, zS = 15.6, GY = -0.52;
   const B = [], movers = [], reserved = [];
+  const SPK = !!(H.grade && H.glb && kind === 'saopaulo'); // preview São Paulo rebuild (see spBand)
   const reserve = (a, b, c, d) => reserved.push([a, b, c, d]);
   const free = (a, b, c, d) => !reserved.some((r) => a < r[1] && b > r[0] && c < r[3] && d > r[2]);
 
@@ -161,6 +162,10 @@ export function buildCity(kind, cg, H, box) {
   function tree(x, z, type, s = 1) {
     if (H.low && kind === 'saopaulo' && (tree.n = (tree.n || 0) + 1) % 2) return; // low graphics: half the trees
     const g = grp(x, z, R() * 6, cg); g.position.y = GY;
+    if (SPK) { // preview São Paulo: finer Meshy ipês and palms; leafy green trees use the plane-tree model
+      const n = type === 'palm' ? 'sp2_palm' : type === 'ipe' ? 'sp2_ipe_y' : type === 'green' ? 'lon_plane' : 'sp2_ipe_p', c = { sp2_palm: '#4E9E58', sp2_ipe_y: '#F2C230', lon_plane: '#5FA05A', sp2_ipe_p: '#D77BC8' }[n];
+      put(cyl(0.16, 0.22, 1.6 * s, '#7A5A3A'), 0, 0.8 * s, 0, g); put(sph(1.0 * s, c, { r: 0.85 }), 0, 2.2 * s, 0, g);
+      H.glb(g, n, { h: (n === 'sp2_palm' ? 5.4 : n === 'lon_plane' ? 4.6 : 4.2) * s * (0.9 + R() * 0.2) }); return; }
     if (type === 'palm') { for (let i = 0; i < 6; i++) put(cyl(0.15 - i * 0.012, 0.17 - i * 0.012, 0.7 * s, '#A0794E'), Math.sin(i * 0.4) * 0.15, (i + 0.5) * 0.7 * s, 0, g); for (let k = 0; k < 7; k++) { const lf = rbox(0.25, 0.06, 1.7, k % 2 ? '#4E9E58' : '#3F8A4D', 0.03); lf.position.set(Math.cos(k * 0.9) * 0.75, 4.2 * s, Math.sin(k * 0.9) * 0.75); lf.rotation.y = -k * 0.9 + Math.PI / 2; lf.rotation.x = 0.35; g.add(lf); } if (H.glb && kind === 'saopaulo') H.glb(g, 'sp_palm', { h: 4.6 * s }); return; }
     if (type === 'cone') { put(cyl(0.14, 0.18, 1.2, '#7A5A3A'), 0, 0.6, 0, g); put(new THREE.Mesh(new THREE.ConeGeometry(0.9 * s, 2.6 * s, 8), mat('#3F7A4D')), 0, 2.2 * s, 0, g); return; }
     const c = { round: '#5FA05A', plane: '#6DAA5A', cherry: '#F4A7C3', jacaranda: '#9B7FD6', ipe: '#F2C230', ginkgo: '#E8C547', banyan: '#3F8A4D' }[type] || '#5FA05A';
@@ -583,7 +588,48 @@ export function buildCity(kind, cg, H, box) {
     H.glb(g, 'lon_' + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}), keep: (c) => c === yard, onModel: (m) => { model = m; m.visible = !g.userData.cut; } });
     B.push({ o: g, x, z, h: t.h, r: t.w / 2 + 1, clip: (on) => { g.userData.cut = on; if (on && !yard) mkYard(); if (yard) yard.visible = on; if (model) model.visible = !on; g.children.forEach((c) => { if (c !== yard && c !== model) c.visible = !on; }); } }); return g;
   }
+  // ---------- preview São Paulo, after the reference painting: dense rows that grow from low shops by the plot to towers at the back,
+  // a hillside community of stacked colourful houses, every building its real size (rows are sized so nothing hides the plot, no squashing)
+  const SP_M = { // name: [width/height, depth/height, base height, model faces -X (old kit) or +Z (new pieces)]
+    sp2_padaria: [0.76, 0.81, 6, 'x'], sp2_boteco: [1.09, 1.35, 4.8, 'x'], sp2_shops: [1.36, 1.65, 4.2, 'x'], sp2_houses: [1.09, 1.16, 5.2, 'x'], sp2_mural: [0.78, 1.0, 6.8, 'x'],
+    sp2_depot: [1.66, 1.44, 4.2, 'x'], sp2_selfbuilt: [0.63, 0.73, 7.5, 'x'], sp2_liberdade: [0.99, 0.88, 6, 'x'], sp2_pixo: [0.6, 0.72, 12, 'x'], sp2_tower: [0.6, 0.77, 13, 'x'], sp2_glass: [0.66, 0.72, 16, 'x'],
+    sp2_wave: [0.48, 0.41, 20, 'z'], sp2_res_beige: [0.51, 0.44, 19, 'z'], sp2_res_brick: [0.51, 0.43, 15, 'z'], sp2_heli: [0.48, 0.47, 21, 'z'], sp2_favela_a: [1.23, 1.06, 6.5, 'z'], sp2_favela_b: [1.21, 1.26, 6.5, 'z'] };
+  const SP_ROWS = [ // depth of the row, the mix (name, weight, height factor)
+    { D: 7, mix: [['sp2_padaria', 3, 1], ['sp2_boteco', 3, 1], ['sp2_shops', 3, 1], ['sp2_houses', 3, 1], ['sp2_mural', 2, 0.9], ['sp2_depot', 1, 1], ['sp2_selfbuilt', 2, 0.85]] },
+    { D: 9, mix: [['sp2_pixo', 3, 1], ['sp2_tower', 2, 0.95], ['sp2_res_brick', 3, 0.85], ['sp2_selfbuilt', 1, 1.2], ['sp2_mural', 1, 1.35]] },
+    { D: 10.5, mix: [['sp2_res_beige', 4, 1], ['sp2_res_brick', 3, 1.1], ['sp2_heli', 2, 1], ['sp2_glass', 2, 1], ['sp2_wave', 1, 1], ['sp2_tower', 2, 1.3]] },
+    { D: 12, mix: [['sp2_res_beige', 4, 1.25], ['sp2_res_brick', 3, 1.35], ['sp2_heli', 2, 1.2], ['sp2_glass', 2, 1.3], ['sp2_wave', 1, 1.2]] },
+    { D: 13, mix: [['sp2_res_beige', 4, 1.4], ['sp2_heli', 2, 1.35], ['sp2_res_brick', 3, 1.5], ['sp2_glass', 2, 1.5]] } ];
+  function spPick(mix) { let t = mix.reduce((a, m) => a + m[1], 0) * R(); for (const m of mix) { t -= m[1]; if (t <= 0) return m; } return mix[0]; }
+  function spModel(x, z, name, h, rot) { // one building at its real size; a plain block until the model loads, then an instanced Meshy model
+    const M = SP_M[name], g = grp(x, z, rot, cg); g.position.y = GY; const w = M[0] * h, d = M[1] * h;
+    put(rbox(w * 0.9, h * 0.9, d * 0.9, '#E3DDD2', 0.1), 0, h * 0.45, 0, g);
+    H.glb(g, name, { h, rot: M[3] === 'x' ? -Math.PI / 2 : Math.PI }); return g; }
+  function spBand(ax, bx, az, bz, dA) {
+    const rot = dA === 'z-' ? Math.PI : dA === 'x-' ? -Math.PI / 2 : dA === 'x+' ? Math.PI / 2 : 0, u0 = dA[0] === 'z' ? ax : az, u1 = dA[0] === 'z' ? bx : bz;
+    let off = 2.6;
+    SP_ROWS.slice(0, H.low ? 3 : 5).forEach((RW) => {
+      for (let u = u0 + R() * 1.5; u < u1;) {
+        const m = spPick(RW.mix), M = SP_M[m[0]]; let h = M[2] * m[2] * (0.92 + R() * 0.16); h = Math.min(h, RW.D / M[1]);
+        const w = M[0] * h, d = M[1] * h, dc = off + d / 2; let x, z, bw, bd;
+        if (dA === 'z-') { x = u + w / 2; z = az - dc; bw = w; bd = d; } else if (dA === 'z+') { x = u + w / 2; z = az + dc; bw = w; bd = d; }
+        else if (dA === 'x-') { x = ax - dc; z = u + w / 2; bw = d; bd = w; } else { x = ax + dc; z = u + w / 2; bw = d; bd = w; }
+        if (free(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2) && Math.abs(x) < 80 && Math.abs(z - 3) < 80) { spModel(x, z, m[0], h, rot); reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2); u += w + 0.35 + R() * 0.7; }
+        else u += 1.5;
+      }
+      off += RW.D + 1.4;
+    });
+  }
+  function spHill(x0, x1, z0, z1) { // terraced green hillside facing the street, stacked colourful houses on every step, palms between
+    reserve(x0, x1, z0, z1); const steps = 3, sd = (z1 - z0) / steps;
+    for (let k = 0; k < steps; k++) { const hz0 = z0 + k * sd, top = 1.3 + k * 1.5;
+      put(rbox(x1 - x0, top, sd + 0.2, '#B07A4E', 0.25), (x0 + x1) / 2, GY + top / 2, hz0 + sd / 2, cg); put(rbox(x1 - x0 - 0.2, 0.18, sd, '#78B04F', 0.08), (x0 + x1) / 2, GY + top, hz0 + sd / 2, cg);
+      for (let x = x0 + 0.6; x < x1 - 3;) { const n = R() < 0.5 ? 'sp2_favela_a' : 'sp2_favela_b', h = 6 + R() * 1.4, w = SP_M[n][0] * h;
+        if (x + w > x1 - 0.4) break; const g = spModel(x + w / 2, hz0 + sd / 2 + (R() - 0.5) * 0.6, n, h, (R() - 0.5) * 0.35); g.position.y = GY + top;
+        x += w + 0.2; if (R() < 0.45 && x < x1 - 2) { const t = grp(x + 0.6, hz0 + sd * (0.2 + R() * 0.6), 0, cg); t.position.y = GY + top; put(sph(0.8, '#4E9E58'), 0, 2.2, 0, t); H.glb(t, 'sp2_palm', { h: 4.6 + R() }); x += 1.4; } } }
+  }
   function band(ax, bx, az, bz, depthAxis) {
+    if (SPK) return spBand(ax, bx, az, bz, depthAxis);
     // depthAxis: 'z-' grows away north, 'z+' south, 'x-' west, 'x+' east
     const rows = DENSE ? (H.low ? 4 : 6) : H.low ? 2 : 3, lim = DENSE ? 74 : 46;
     for (let row = 0; row < rows; row++) {
@@ -614,6 +660,7 @@ export function buildCity(kind, cg, H, box) {
       }
     }
   }
+  if (SPK) spHill(-29, -3, zS + 13.5, zS + 42); // the hillside community, behind the shops across the south street
   if (DENSE) { band(-74, 76, zN - 2.2, 0, 'z-'); band(-74, 76, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); denseFlush(); }
   else { band(-44, 50, zN - 2.2, 0, 'z-'); band(-44, 50, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); }
   // street trees & lamps along the inner sidewalks

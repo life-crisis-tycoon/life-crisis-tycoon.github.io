@@ -318,7 +318,7 @@ function groundTex(kind) {
   if (kind === 'saopaulo') return canvasTex(256, 256, (g) => { // calçada portuguesa: white and black stone mosaic in waves
     g.fillStyle = '#8F8A84'; g.fillRect(0, 0, 256, 256);
     for (let y = 0; y < 256; y += 8) for (let x = 0; x < 256; x += 8) { const w = Math.sin((x / 256) * Math.PI * 2) * 34 + 128, band = Math.abs(((y - w + 512) % 128) - 64) < 22;
-      rect(g, x + 1 + rr(), y + 1 + rr(), 6, 6, band ? pick(['#3A3836', '#2F2D2C', '#45423F']) : pick(['#F2EEE6', '#E9E4DA', '#F7F4EE']), 1.5); } }, [20, 20]);
+      rect(g, x + 1 + rr(), y + 1 + rr(), 6, 6, band ? pick(['#3A3836', '#2F2D2C', '#45423F']) : pick(['#F2EEE6', '#E9E4DA', '#F7F4EE']), 1.5); } }, [32, 32]);
   if (kind === 'mexico') return canvasTex(256, 256, (g) => { // dark volcanic stone slabs (recinto) of the historic centre
     g.fillStyle = '#5F5A56'; g.fillRect(0, 0, 256, 256);
     for (let row = 0; row < 4; row++) for (let i = -1; i < 3; i++) rect(g, i * 128 + (row % 2 ? 64 : 0) + 2, row * 64 + 2, 124, 60, pick(['#8A847E', '#7F7973', '#938D86', '#857F78']), 3);
@@ -763,7 +763,7 @@ function propModel(name) {
     return gl.scene;
   })());
 }
-const INST = {}, INST_NAMES = new Set(['lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
+const INST = {}, INST_NAMES = new Set([...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true;
   let rec = INST[name]; if (!rec || rec.done) { rec = INST[name] = { list: [], done: false }; const R0 = rec; propModel(name).then((src) => { R0.done = true; buildInst(src, R0.list); }).catch((e) => console.warn('[props]', name, e.message)); }
