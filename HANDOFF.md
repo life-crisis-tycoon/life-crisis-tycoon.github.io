@@ -84,3 +84,10 @@ Read this first. The user (French or English; answer in the language she writes 
 - Lighting tried: brighter hemi / NeutralToneMapping looked washed out or too orange; kept ACES as is.
 - Cost on the test scene: +19 draw calls (222 -> 241), +1.7k triangles.
 - To roll out: add `chunky: true, ao: true` to other room styles once approved, then copy to game.js.
+
+## Diorama look — round 2 (2026-11-19, preview only)
+- Room panel button "🔍 Diorama view" (`dioramaView(id)`): frames the room at `DIO_PITCH` 0.56 rad (~32°), close; `view.dio` bypasses the close-up look-down and ends when you zoom out past CLOSE_HALF + 1 or press tilt.
+- Café walls: rounded room corners (`dioCorner`, `ringQ`, radius `DIO_RC` 0.38, own cutaway group judged by its diagonal), straight runs trimmed at corners, rounded floor (`RS.floorM`, metre UVs, `CHECKER_M` 0.4 m low-contrast tiles), stuck-on columns removed.
+- Café layout: pieces ×1.15 (`K`), counter/queue spots scaled with it, chalk menu board, wall shelf, two frames, round rug (`DECO` decor built in code, usable in any kit layout as '@menu', '@shelf', '@frame', '@rug').
+
+- Cost on the test scene: about +30 draw calls vs the live game (280 -> 310).
