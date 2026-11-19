@@ -581,9 +581,12 @@ function makeGrid(rooms) {
 }
 function rebuildGrid() { gridBlk = makeGrid(S.rooms); }
 // furniture footprints become obstacles for the walk grid (people go around sofas, desks, poufs, beds…): every mesh between knee and chest height
-function roomObs(room) { const g = room.g; g.updateMatrixWorld(true); const skip = new Set([...(room.wallG || []), room.door && room.door.g]), bx = new THREE.Box3(), obs = [];
-  const walk = (o) => { for (const c of o.children) { if (skip.has(c)) continue; if (c.isMesh) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) obs.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); } walk(c); } };
-  walk(g); room.obs = obs; }
+// built-in-code pieces are measured once, before batching merges them into one big mesh; the 3D-model pieces (swap groups, never batched) every time one loads; rugs are walked on
+function roomObs(room) { const g = room.g; g.updateMatrixWorld(true); const skip = new Set([...(room.wallG || []), room.door && room.door.g]), bx = new THREE.Box3(), first = !room.obs0, st = [], sw = [];
+  const walk = (o, inSw) => { for (const c of o.children) { if (skip.has(c) || /rug|carpet/i.test(c.userData.glb || '')) continue; const s2 = inSw || !!c.userData.swap;
+    if (c.isMesh && (s2 || first)) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) (s2 ? sw : st).push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); }
+    if (s2 || first) walk(c, s2); else if (c.children.length) walk(c, false); } };
+  walk(g, false); if (first) room.obs0 = st; room.obs = room.obs0.concat(sw); }
 // the Tripo/Meshy pieces load after the room is built: once they are in, measure the room again so people walk around the real furniture
 let obsT = null; const obsDirty = new Set();
 function roomObsLater(rid) { obsDirty.add(rid); clearTimeout(obsT); obsT = setTimeout(() => { let any = false; for (const id of obsDirty) { const rm = R.rooms && R.rooms[id]; if (rm && rm.g && rm.g.parent) { roomObs(rm); any = true; } } obsDirty.clear(); if (any && S && S.rooms) rebuildGrid(); }, 120); }
