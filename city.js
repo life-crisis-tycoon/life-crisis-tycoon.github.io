@@ -462,7 +462,7 @@ export function buildCity(kind, cg, H, box) {
   const cx = (x0 + x1) / 2;
   if (kind === 'london') {
     water(-44, 50, zN - 26, zN - 16, '#6C9AAE'); towerBridge(cx + 14, zN - 21); bigBen(x0 + 1, zN - 9); londonEye(xE + 9, zN - 9, Math.PI / 2); shard(xW - 13, zS + 14);
-    const park = strip(xW - 18, xW - 4, 2, 11, '#8DBF6A', GY + 0.05); reserve(xW - 18, xW - 4, 2, 11); for (let i = 0; i < 7; i++) tree(xW - 16 + R() * 10, 3 + R() * 7, 'plane', 1.1);
+    const park = strip(xW - 18, xW - 4, 2, 11, H.cityKit ? '#7CC653' : '#8DBF6A', GY + 0.05); reserve(xW - 18, xW - 4, 2, 11); for (let i = 0; i < 7; i++) { let tx = xW - 16 + R() * 10, tz = 3 + R() * 7; if (H.cityKit && Math.hypot(tx - (xW - 11), tz - 6.5) < 3) tx += tx < xW - 11 ? -3 : 3; tree(tx, tz, 'plane', 1.1); } // kit: keep the bandstand clear
     phoneBox(x1 + 1.6, 12, Math.PI); phoneBox(x0 - 2.0, 12.2, 0); phoneBox(xE - 2.4, zS + 3, 0);
     // street furniture: Victorian lamps, benches, pillar boxes (modelled; primitives until the models load)
     const lampL = (x, z) => { const g = C(x, z); g.position.y = GY; put(cyl(0.06, 0.09, 3, '#2F3A44'), 0, 1.5, 0, g); put(sph(0.2, '#FFE7A8', { e: '#FFD98A', ei: 1.2 }), 0, 3.1, 0, g); if (H.glb) H.glb(g, 'lamp', { h: 3.2 }); };
@@ -564,14 +564,19 @@ export function buildCity(kind, cg, H, box) {
   // London building kit (Meshy, from the reference painting): each street building is one of 8 modelled pieces, scaled to a height,
   // the pastel house tinted per instance. Front of every model faces +Z; the street side of a band building is its local -z, hence rot π.
   const CK = !!(H.lively && H.cityKit && H.glb && kind === 'london');
-  const KITS = { house_pastel: [0.42, 9], house_brick: [0.72, 7.5], shop_corner: [0.76, 6.5], cafe_bakery: [0.70, 7], townhouse_tall: [0.60, 11], flats_block: [0.64, 14] };
+  const KITS = { house_pastel: [0.42, 9, 0.48], house_brick: [0.72, 7.5, 0.56], shop_corner: [0.76, 6.5, 0.64], cafe_bakery: [0.70, 7, 0.56], townhouse_tall: [0.60, 11, 0.44], flats_block: [0.64, 14, 0.68] }; // [width/height, height, depth/height]
   const TINTS = ['#FFB7C5', '#B9EBD3', '#FFE79A', '#B9D3FF', '#E2C2FF', '#FFC9A3', '#FFFFFF'];
   function pickKit(row) { const r = R(), k = row === 0 ? (r < 0.35 ? 'house_pastel' : r < 0.55 ? 'house_brick' : r < 0.7 ? 'shop_corner' : r < 0.85 ? 'cafe_bakery' : 'townhouse_tall') : row === 1 ? (r < 0.4 ? 'house_pastel' : r < 0.65 ? 'house_brick' : 'townhouse_tall') : (r < 0.5 ? 'flats_block' : 'townhouse_tall');
-    const hh = KITS[k][1] * (0.92 + R() * 0.16); return { k, h: hh, w: KITS[k][0] * hh, tint: k === 'house_pastel' ? pick(TINTS) : null }; }
+    const hh = KITS[k][1] * (0.92 + R() * 0.16); return { k, h: hh, w: KITS[k][0] * hh, d: KITS[k][2] * hh, tint: k === 'house_pastel' ? pick(TINTS) : null }; }
   function kitModel(x, z, t, rot) {
     const g = grp(x, z, rot, cg); g.position.y = GY; const ph = put(rbox(t.w * 0.95, t.h * 0.9, t.w * 0.6, t.tint || '#E9DCCB', 0.1), 0, t.h * 0.45, 0, g); // stand-in until the model loads
-    H.glb(g, 'lon_' + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}) });
-    B.push({ o: g, x, z, h: t.h, r: t.w / 2 + 1 }); return g;
+    // cutaway: a house between the camera and the plot is cut open at the ground floor (doors and shop fronts stay) with a dark section on top
+    const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e4), CUT = 2.1; let cap = null, cut = false;
+    const apply = () => { plane.constant = cut ? g.getWorldPosition(new THREE.Vector3()).y + CUT : 1e4; if (cap) cap.visible = cut; };
+    H.glb(g, 'lon_' + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}), onModel: (m) => {
+      m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.clippingPlanes = [plane]; c.material.clipShadows = true; } });
+      cap = put(rbox(t.w * 0.9, 0.08, t.d * 0.85, '#5E4B47', 0.03), 0, CUT - 0.04, 0, g); apply(); } });
+    B.push({ o: g, x, z, h: t.h, r: t.w / 2 + 1, clip: (on) => { cut = on; apply(); } }); return g;
   }
   function band(ax, bx, az, bz, depthAxis) {
     // depthAxis: 'z-' grows away north, 'z+' south, 'x-' west, 'x+' east
@@ -594,6 +599,7 @@ export function buildCity(kind, cg, H, box) {
           const rot = depthAxis === 'z-' ? Math.PI : depthAxis === 'x-' ? -Math.PI / 2 : depthAxis === 'x+' ? Math.PI / 2 : 0;
           const swap = rot === Math.PI / 2 || rot === -Math.PI / 2;
           if (DENSE && row >= (H.low ? 1 : 2)) denseBld(depthAxis + row + ':' + Math.floor(u / 22), x, z, bw, bd, h, 0, row > 1);
+          else if (kt && row >= 1 && R() < 0.2) { strip(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2, '#7CC653', GY + 0.04); tree(x - bw * 0.2, z, 'plane', 1); tree(x + bw * 0.25, z + (R() - 0.5) * bd * 0.4, 'plane', 0.85); } // kit: pocket gardens between the terraces
           else if (kt) kitModel(x, z, kt, rot);
           else bld(x, z, swap ? bd : bw, swap ? bw : bd, h, { ...o, rot, row });
           reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2);
