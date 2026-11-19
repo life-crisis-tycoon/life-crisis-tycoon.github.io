@@ -1516,7 +1516,7 @@ function budgetKit(g, cx, cz, room) {
   const L = [{ p: '@rug', len: S ? 1.9 : 2.3, x: dx, z: dz + 0.25, solid: false }, { p: 'k_desk', len: 1.85 * sc, x: dx, z: dz, rot: 0 },
     { p: 'k_chair', h: 1.05, x: coach.x, z: coach.z, rot: 0, solid: false }, { p: 'k_chair', h: 1.05, x: client.x, z: client.z, rot: Math.PI, solid: false }];
   if (first) L.push({ p: 'k_bookcase', h: S ? 1.75 : 1.95, wall: 'back', u: 'L' });
-  if (last) { L.push({ p: '@plant', s: 1.5, wall: 'back', u: 'R' }); L.push({ p: 'k_easel', h: S ? 1.3 : 1.55, wall: 'back', u: S ? 0.75 : two ? 0.95 : 1.35 }); }
+  if (last) { L.push({ p: '@plant', s: 1.5, wall: 'back', u: 'R' }); L.push({ p: 'k_easel', h: S ? 1.3 : 1.55, wall: 'back', u: S ? 0.75 : two ? 0.7 : 1.35 }); }
   if (!S && first) L.push({ p: 'k_armchair', h: 1.0, x: -w / 2 + 0.62, z: 0.55, rot: H * 0.75 }, { p: 'k_table', len: 0.7, x: -w / 2 + 0.75, z: 1.55, rot: 0 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.budget.model, L, BUDGET_DIMS);
   room.staffSpot = { x: cx + coach.x, z: cz + coach.z, rot: 0, sit: true, y: 0.02 };
