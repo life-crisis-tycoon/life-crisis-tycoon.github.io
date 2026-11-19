@@ -1693,13 +1693,16 @@ const furniture = {
     room.staffSpot = { x: cx + 0.2 * K, z: cz + 1.4 * K, rot: Math.PI / 4, sit: false, y: 0 };
   },
 
-  detox(g, cx, cz, room, K = 1) {
-    const lock = grp(cx + 1.8 * K, cz - 2.6 * K, 0, g); put(rbox(1.6, 1.6, 0.6, '#5AB8F0', 0.08), 0, 0.9, 0, lock);
+  detox(g, cx, cz, room, K = 1) { // phone locker + bookcase on the back wall, the client on a beanbag on a round rug, plants; the guide beside them
+    const D = SIZES[room.sz || 'm'].D, w = room.w || 6, bz = cz - D / 2, bx = cx - 0.35 * K, bzb = cz + 0.15 * K;
+    const lock = grp(cx + w / 2 - 1.1, bz + 0.42, 0, g); put(rbox(1.6, 1.6, 0.6, '#5AB8F0', 0.08), 0, 0.9, 0, lock);
     for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) put(rbox(0.32, 0.38, 0.03, '#E6F3FC', 0.02), -0.55 + i * 0.37, 0.4 + r * 0.48, 0.31, lock); glbSwap(lock, 'locker', { h: 1.8, y: 0.1 });
-    const bean = sph(0.55, '#FFB067'); bean.scale.set(1, 0.6, 1); const bg = grp(cx - 0.9 * K, cz - 0.4 * K, Math.PI / 4, g); put(bean, 0, 0.38, 0, bg); glbSwap(bg, 'beanbag', { h: 0.72, y: 0.1 });
-    const tent = new THREE.Mesh(new THREE.ConeGeometry(1.1 * K, 1.8 * K, 4), mat('#F4EFE6')); tent.rotation.y = Math.PI / 4; put(tent, cx - 2.0 * K, 0.1 + 0.9 * K, cz - 2.2 * K, g);
-    room.spots.push({ x: cx - 0.9 * K, z: cz - 0.4 * K, rot: Math.PI / 4, sit: true, y: 0.0, busy: null });
-    room.staffSpot = { x: cx + 0.35 * K, z: cz - 1.35 * K, rot: Math.atan2(-1.25, 0.95), sit: false, y: 0 }; // beside the beanbag, not between the camera and the client
+    const bc = grp(cx - w / 2 + 0.75, bz + 0.3, 0, g); put(rbox(1.0, 1.6, 0.4, '#E6D3B3', 0.06), 0, 0.9, 0, bc); glbSwap(bc, 'nap_bookcase', { h: 1.7, y: 0.1 });
+    { const rug = cyl(1.0 * K, 1.0 * K, 0.03, '#E7D9F6'); rug.receiveShadow = true; put(rug, bx, 0.125, bzb, g); }
+    const bean = sph(0.55, '#FFB067'); bean.scale.set(1, 0.6, 1); const bg = grp(bx, bzb, Math.PI / 4, g); put(bean, 0, 0.38, 0, bg); glbSwap(bg, 'beanbag', { h: 0.72, y: 0.1 });
+    plant(cx - w / 2 + 0.5, cz + D / 2 - 0.7, 1.25, '#E9785F', g); plant(cx + w / 2 - 0.45, cz + 0.2 * K, 1.0, '#C9B6F2', g);
+    room.spots.push({ x: bx, z: bzb, rot: Math.PI / 4, sit: true, y: 0.0, busy: null });
+    const sx = bx + 1.05, sz = bzb - 0.75; room.staffSpot = { x: sx, z: sz, rot: Math.atan2(bx - sx, bzb - sz), sit: false, y: 0 }; // beside the beanbag, not between the camera and the client
   },
   cafe(g, cx, cz, room, K = 1) {
     if (ROOM_STYLE.cafe && ROOM_STYLE.cafe.kit && PROPS_ON) { cafeKit(g, cx, cz, room); return; }
