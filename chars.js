@@ -9,9 +9,10 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 export const CHAR = { status: 'none', man: null, A: { hair: {}, outfit: {}, full: {} }, active: new Set(), errors: [] };
 // logical state -> clip name in the GLB (manifest may override), and the state to fall back to if a clip is missing
-const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', sit: 'Sit', lie: 'Lie', work: 'StandWork', worksit: 'SitWork', phone: 'Phone', sitphone: 'SitPhone', cheer: 'Cheer', clean: 'Clean' };
-const FALLBACK = { sitphone: 'sit', lie: 'sit', worksit: 'sit', work: 'idle', phone: 'idle', cheer: 'idle', clean: 'work', sit: 'idle', walk: 'idle' };
-const LOOP_ONCE = new Set(['cheer']);
+const DEFAULT_CLIPS = { idle: 'Idle', walk: 'Walk', sit: 'Sit', lie: 'Lie', work: 'StandWork', worksit: 'SitWork', phone: 'Phone', sitphone: 'SitPhone', cheer: 'Cheer', clean: 'Clean',
+  talk: 'TrTalk', talk2: 'TrTalk2', show: 'TrShow', listen: 'TrSitListen', answer: 'TrSitAnswer', clap: 'TrSitClap', thumb: 'TrSitThumb' }; // Tr*: training room (Meshy clips in the shared anims)
+const FALLBACK = { talk: 'idle', talk2: 'talk', show: 'talk', listen: 'sit', answer: 'listen', clap: 'listen', thumb: 'listen', sitphone: 'sit', lie: 'sit', worksit: 'sit', work: 'idle', phone: 'idle', cheer: 'idle', clean: 'work', sit: 'idle', walk: 'idle' };
+const LOOP_ONCE = new Set(['cheer', 'clap', 'thumb']);
 
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 // Phones (iPhone above all) have a small GPU memory budget: when it runs out, textures silently fail and models render
@@ -73,6 +74,11 @@ export function loadFull(key) {
 // shared visitor clips are authored on one skeleton: copy them onto this character, hips height rescaled to its size
 function hipsY(root) { let y = null; root.traverse((o) => { if (y == null && o.name === 'Hips') y = o.position.y; }); return y; }
 const KEEP_HEAD = new Set(['sp_safety']); // models whose head rest pose differs from the shared clips' skeleton: keep their own head/neck
+// the role characters (staff) carry their own clips; the training-room clips live in the shared visitor anims: copy them over once loaded
+export function trainClips() {
+  return loadFull('anims').then((sh) => { if (!sh) return; const tr = { scene: sh.scene, animations: sh.animations.filter((c) => /^(M_)?Tr/.test(c.name)) }; if (!tr.animations.length) return;
+    for (const [k, g] of Object.entries(CHAR.A.full)) if (g && g !== sh && !g.userData.trClips && !(CHAR.man.visitors && CHAR.man.visitors[k])) { g.userData.trClips = true; adaptClips(g, tr, k); } });
+}
 function adaptClips(g, sh, key) {
   const ty = hipsY(g.scene), sy = hipsY(sh.scene); if (ty == null) return; const k = sy ? ty / sy : 1, have = new Set(g.animations.map((c) => c.name));
   for (const c of sh.animations) { if (have.has(c.name)) continue; const cc = c.clone(); if (KEEP_HEAD.has(key)) cc.tracks = cc.tracks.filter((tr) => !/(Head|Neck)\.quaternion$/.test(tr.name)); for (const tr of cc.tracks) if (/Hips\.position$/.test(tr.name)) for (let i = 0; i < tr.values.length; i++) tr.values[i] *= k; g.animations.push(cc); }
@@ -193,11 +199,12 @@ function fullAvatar(root, gltf, look, man) {
   const bones = boneMap(body), head = bones[man.headBone || 'Head'];
   const mixer = new THREE.AnimationMixer(body), clipName = Object.assign({}, DEFAULT_CLIPS, man.clips || {}), acts = {};
   const has = (n) => gltf.animations.some((x) => x.name === n);
-  if (look && look.male) for (const st of ['idle', 'sit', 'phone', 'cheer']) if (has('M_' + clipName[st])) clipName[st] = 'M_' + clipName[st];
+  if (look && look.male) for (const st of ['idle', 'sit', 'phone', 'cheer', 'listen']) if (has('M_' + clipName[st])) clipName[st] = 'M_' + clipName[st];
   for (const st of Object.keys(DEFAULT_CLIPS)) { const c = gltf.animations.find((x) => x.name === clipName[st]); if (c) { const a = mixer.clipAction(c); if (LOOP_ONCE.has(st)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; } acts[st] = a; } }
   // style variants (e.g. walk -> WalkTired) picked by the game per character
   const alias = {}; for (const [st, n] of Object.entries((look && look.style2) || {})) { const c = gltf.animations.find((x) => x.name === n); if (c) { acts['~' + st] = mixer.clipAction(c); alias[st] = '~' + st; } }
-  const resolve = (st) => { if (alias[st]) return alias[st]; let s2 = st, n = 0; while (!acts[s2] && n++ < 5) s2 = FALLBACK[s2] || 'idle'; return alias[s2] || (acts[s2] ? s2 : null); };
+  const lazy = (st) => { if (acts[st] || !clipName[st]) return; let n = clipName[st]; if (look && look.male && has('M_' + n)) n = 'M_' + n; const c = gltf.animations.find((x) => x.name === n); if (!c) return; const a = mixer.clipAction(c); if (LOOP_ONCE.has(st)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; } acts[st] = a; };
+  const resolve = (st) => { if (alias[st]) return alias[st]; lazy(st); let s2 = st, n = 0; while (!acts[s2] && n++ < 5 && (s2 = FALLBACK[s2] || 'idle')) lazy(s2); s2 = st; n = 0; while (!acts[s2] && n++ < 5) s2 = FALLBACK[s2] || 'idle'; return alias[s2] || (acts[s2] ? s2 : null); };
   const nat = {}; for (const k of ['walk', '~walk']) if (acts[k]) { const n = natWalk(root, mixer, acts[k], bones); if (n) nat[k] = n; }
   const anim = {
     root, mixer, state: null, speed: 1,
