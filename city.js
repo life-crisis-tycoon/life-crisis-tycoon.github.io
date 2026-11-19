@@ -243,12 +243,12 @@ export function buildCity(kind, cg, H, box) {
     lm(g, x, z, 15, 4); reserve(x - 4, x + 4, z - 3, z + 3); if (H.glb) H.glb(g, 'londoneye', { h: 15.5 });
     movers.push({ spin: ring, sp: 0.02 });
   }
-  function towerBridge(x, z) {
-    const g = C(x, z); g.position.y = GY;
+  function towerBridge(x, z, rot = 0) {
+    const g = C(x, z, rot); g.position.y = GY;
     for (const sx of [-4, 4]) { put(rbox(2.4, 8, 2.4, '#CDB98A', 0.05), sx, 4, 0, g); for (const a of [-1, 1]) for (const b of [-1, 1]) { put(rbox(0.5, 9, 0.5, '#BBA67A', 0.04), sx + a * 1.05, 4.5, b * 1.05, g); put(new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.4, 4), mat('#4C5A55')), sx + a * 1.05, 9.6, b * 1.05, g); } const r = new THREE.Mesh(new THREE.ConeGeometry(1.8, 2.6, 4), mat('#4C5A55')); r.rotation.y = Math.PI / 4; put(r, sx, 9.3, 0, g); }
     put(rbox(18, 0.5, 2.6, '#5B86B8', 0.05), 0, 1.4, 0, g); put(rbox(6, 0.8, 1.2, '#5B86B8', 0.05), 0, 7.2, 0, g);
     for (const sx of [-1, 1]) { const c = cyl(0.08, 0.08, 6.5, '#5B86B8'); c.position.set(sx * 7, 4.8, 0); c.rotation.z = sx * 0.75; g.add(c); }
-    lm(g, x, z, 10, 6); if (H.glb) H.glb(g, 'towerbridge', { len: 18 });
+    lm(g, x, z, 10, 6); if (rot) reserve(x - 3.5, x + 3.5, z - 9.5, z + 9.5); if (H.glb) H.glb(g, 'towerbridge', { len: 18 });
   }
   function shard(x, z) { const g = C(x, z, Math.PI / 4); g.position.y = GY; const s = new THREE.Mesh(new THREE.ConeGeometry(4.2, 30, 4), new THREE.MeshStandardMaterial({ color: H.lively ? '#D6E8F2' : '#B9D3E2', roughness: H.lively ? 0.35 : 0.15, metalness: H.lively ? 0.1 : 0.5 })); s.position.y = 15; s.castShadow = true; g.add(s); for (let y = 2; y < 26; y += 2) put(rbox((30 - y) / 30 * 5.8, 0.05, 0.05, '#E9EEF2', 0.01), 0, y, (30 - y) / 30 * 2.95, g); lm(g, x, z, 30, 3); reserve(x - 4, x + 4, z - 4, z + 4); }
   function phoneBox(x, z, r = 0) { const g = C(x, z, r); g.position.y = GY; put(rbox(0.9, 2.3, 0.9, '#D9342B', 0.08), 0, 1.15, 0, g); put(rbox(0.7, 1.2, 0.92, '#BFE6F6', 0.03), 0, 1.25, 0, g); put(rbox(1.0, 0.25, 1.0, '#C02A22', 0.08), 0, 2.4, 0, g);  if (H.glb) H.glb(g, 'phonebox', { h: 2.55 }); }
@@ -461,7 +461,7 @@ export function buildCity(kind, cg, H, box) {
   // landmarks & water first (they reserve space)
   const cx = (x0 + x1) / 2;
   if (kind === 'london') {
-    water(-44, 50, zN - 26, zN - 16, '#6C9AAE'); towerBridge(cx + 14, zN - 21); bigBen(x0 + 1, zN - 9); londonEye(xE + 9, zN - 9, Math.PI / 2); shard(xW - 13, zS + 14);
+    water(-44, 50, zN - 26, zN - 16, '#6C9AAE'); towerBridge(cx + 14, zN - 21, Math.PI / 2); /* spans the river bank to bank */ bigBen(x0 + 1, zN - 9); londonEye(xE + 9, zN - 9, Math.PI / 2); shard(xW - 13, zS + 14);
     const park = strip(xW - 18, xW - 4, 2, 11, H.cityKit ? '#7CC653' : '#8DBF6A', GY + 0.05); reserve(xW - 18, xW - 4, 2, 11); for (let i = 0; i < 7; i++) { let tx = xW - 16 + R() * 10, tz = 3 + R() * 7; if (H.cityKit && Math.hypot(tx - (xW - 11), tz - 6.5) < 3) tx += tx < xW - 11 ? -3 : 3; tree(tx, tz, 'plane', 1.1); } // kit: keep the bandstand clear
     phoneBox(x1 + 1.6, 12, Math.PI); phoneBox(x0 - 2.0, 12.2, 0); phoneBox(xE - 2.4, zS + 3, 0);
     // street furniture: Victorian lamps, benches, pillar boxes (modelled; primitives until the models load)

@@ -3670,7 +3670,7 @@ function loop(now) {
   }
   if (world.movers) moveCity(world.movers, rdt * (inGame ? Math.max(speedMul, 0.4) : 0.6));
   if (scMixer) scMixer.update(rdt);
-  if (CHAR.active.size) updateCharacters(rdt * (inGame ? (speedMul || 0) : 1), inGame && loop.held); // while the game is held (menu, build mode) walkers stop mid-stride instead of marching on the spot
+  if (CHAR.active.size) updateCharacters(inGame && loop.held ? rdt : rdt * (inGame ? (speedMul || 0) : 1), inGame && loop.held); /* held or paused: walkers freeze, everyone else keeps breathing / idling in real time */ // while the game is held (menu, build mode) walkers stop mid-stride instead of marching on the spot
   if (creating) renderPreview(now);
   renderer.render(scene, cam);
   requestAnimationFrame(loop);
