@@ -681,7 +681,7 @@ function propModel(name) {
     return gl.scene;
   })());
 }
-const INST = {}, INST_NAMES = new Set(['tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
+const INST = {}, INST_NAMES = new Set(['lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true;
   let rec = INST[name]; if (!rec || rec.done) { rec = INST[name] = { list: [], done: false }; const R0 = rec; propModel(name).then((src) => { R0.done = true; buildInst(src, R0.list); }).catch((e) => console.warn('[props]', name, e.message)); }
@@ -801,8 +801,8 @@ function cityWalker(cb) {
 function buildCityDecor(kind) {
   if (cityScene === kind) { buildShell(kind); buildAnnexLot(kind); return; } cityScene = kind;
   if (world.cityG) scene.remove(world.cityG); const cg = new THREE.Group(); scene.add(cg); world.cityG = cg;
-  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, lively: kind === 'london', walker: cityWalker, glb: kind === 'london' || kind === 'saopaulo' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
-  scene.background = new THREE.Color(res.bg); const L = CITY_LIGHT[kind] || CITY_LIGHT._;
+  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, lively: kind === 'london', cityKit: kind === 'london' && PROPS_ON, walker: cityWalker, glb: kind === 'london' || kind === 'saopaulo' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
+  scene.background = new THREE.Color(kind === 'london' ? '#BCBFF6' : res.bg); const L = kind === 'london' ? { hemi: ['#FFFFFF', '#B9AE9E', 0.9], sun: ['#FFF4E2', 2.9], fill: ['#E9EEFF', 0.35] } : CITY_LIGHT[kind] || CITY_LIGHT._; // preview: London lit like the reference painting (clear, bright, lavender sky)
   world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];
   scene.fog = L.fog ? new THREE.Fog(res.bg, L.fog[0], L.fog[1]) : null;

@@ -44,13 +44,14 @@ export function buildCity(kind, cg, H, box) {
   const stuccoTex = () => kitTex('stucco', 128, 128, (g) => { g.fillStyle = '#F2E9D6'; g.fillRect(0, 0, 128, 128); g.fillStyle = 'rgba(160,140,110,.10)'; for (let y = 0; y < 128; y += 32) g.fillRect(0, y, 128, 2); });
   const tileTex = () => kitTex('tile', 128, 128, (g) => { g.fillStyle = '#F4F0EA'; g.fillRect(0, 0, 128, 128); for (let row = 0; row < 8; row++) { g.fillStyle = 'rgba(0,0,0,.16)'; g.fillRect(0, row * 16 + 13, 128, 3); for (let i = 0; i < 9; i++) { g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(i * 16 + (row % 2 ? 8 : 0), row * 16, 2, 13); } } });
   const slateTex = () => kitTex('slate', 128, 128, (g) => { g.fillStyle = '#4C5260'; g.fillRect(0, 0, 128, 128); for (let row = 0; row < 8; row++) for (let i = -1; i < 5; i++) { g.fillStyle = ['#5A6170', '#535A68', '#606878'][(row * 3 + i + 9) % 3]; g.beginPath(); g.roundRect(i * 32 + (row % 2 ? 16 : 0) + 1, row * 16 + 1, 30, 14, 2); g.fill(); } });
+  const FLW2 = ['#FF5FA2', '#FFD25E', '#E5484D', '#B57BE8', '#FFFFFF'];
   const AWN = [['#E5484D', '#FFFFFF'], ['#2F6FD6', '#FFFFFF'], ['#2E9E5B', '#F4EFE6'], ['#F2C230', '#FFFFFF'], ['#B57BE8', '#FFFFFF']], FLW = ['#FF5FA2', '#FFD25E', '#E5484D', '#FFFFFF', '#B57BE8', '#5A9E4A'];
   const awningTex = (i) => kitTex('awn' + i, 64, 16, (g) => { for (let k = 0; k < 8; k++) { g.fillStyle = AWN[i][k % 2]; g.fillRect(k * 8, 0, 8, 16); } });
   const kitMat = (tex, rx, ry, c = '#FFFFFF') => { const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return new THREE.MeshStandardMaterial({ map: t, color: c, roughness: 0.85 }); };
   function kitBld(x, z, w, d, h, o) {
     const g = grp(x, z, o.rot || 0, cg), st = o.style, row = o.row || 0, top = GY + h;
     const nF = Math.max(1, Math.round(h / 2.3)), FH = h / nF, ky = FH / 2.3;
-    const wallMat = st === 'brick' ? kitMat(brickTex(), 1, 1) : st === 'plain' ? kitMat(stuccoTex(), 1, 1, H.lively && o.col ? o.col : '#FFFFFF') : mat('#5D7290', { r: 0.3 });
+    const wallMat = st === 'brick' ? kitMat(brickTex(), 1, 1) : st === 'plain' ? kitMat(stuccoTex(), 1, 1, H.lively && o.col ? o.col : '#FFFFFF') : mat(H.lively ? '#A9CBE3' : '#5D7290', { r: 0.3 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat); body.position.y = GY + h / 2; body.castShadow = body.receiveShadow = true; g.add(body);
     if (st !== 'glass') { // texture repeats per face size: brick courses stay the same size on every building
       const uv = body.geometry.attributes.uv, pos = body.geometry.attributes.position;
@@ -83,7 +84,7 @@ export function buildCity(kind, cg, H, box) {
         M.compose(new THREE.Vector3(axis === 0 ? (fr === 0 ? u : -u) : off + Math.sign(off) * 0.004, top, axis === 0 ? off + Math.sign(off) * 0.004 : (fr > 0 ? -u : u)), Q, new THREE.Vector3(bw / 2.0, 1, 1)); parts.push([capK, M.clone()]);
       }
     }
-    if (st === 'brick' || (H.lively && st === 'plain' && row < 2)) { // pitched slate roof with brick gables and two chimney stacks
+    if (st === 'brick' || (H.lively && st === 'plain' && row < 3)) { // pitched slate roof with brick gables and two chimney stacks
       const rh = Math.min(2.2, d * 0.42), ov = 0.18, geo = new THREE.BufferGeometry(), hw = w / 2 + ov, hd = d / 2 + ov;
       const v = [-hw, 0, hd, hw, 0, hd, hw, rh, 0, -hw, rh, 0, hw, 0, -hd, -hw, 0, -hd, -hw, rh, 0, hw, rh, 0];
       geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); geo.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
@@ -164,7 +165,7 @@ export function buildCity(kind, cg, H, box) {
     if (type === 'cone') { put(cyl(0.14, 0.18, 1.2, '#7A5A3A'), 0, 0.6, 0, g); put(new THREE.Mesh(new THREE.ConeGeometry(0.9 * s, 2.6 * s, 8), mat('#3F7A4D')), 0, 2.2 * s, 0, g); return; }
     const c = { round: '#5FA05A', plane: '#6DAA5A', cherry: '#F4A7C3', jacaranda: '#9B7FD6', ipe: '#F2C230', ginkgo: '#E8C547', banyan: '#3F8A4D' }[type] || '#5FA05A';
     put(cyl(0.18, 0.24, 1.8 * s, '#7A5A3A'), 0, 0.9 * s, 0, g); put(sph(1.15 * s, c, { r: 0.85 }), 0, 2.2 * s, 0, g); put(sph(0.8 * s, c, { r: 0.85 }), 0.65 * s, 1.85 * s, 0.35 * s, g); put(sph(0.75 * s, c, { r: 0.85 }), -0.6 * s, 1.9 * s, -0.3 * s, g);
-    if (H.glb && type === 'plane') H.glb(g, 'tree', { h: 3.9 * s });
+    if (H.glb && type === 'plane') H.glb(g, H.cityKit && kind === 'london' ? 'lon_tree_round' : 'tree', { h: (H.cityKit && kind === 'london' ? 4.6 : 3.9) * s });
     if (H.glb && kind === 'saopaulo') H.glb(g, type === 'ipe' ? 'sp_ipe_y' : type === 'green' ? 'sp_tree_g' : 'sp_ipe_p', { h: (type === 'green' ? 4.4 : 3.9) * s });
   }
   const lamp = (x, z, c = '#2F3A44') => { const g = grp(x, z, 0, cg); g.position.y = GY; put(cyl(0.06, 0.08, 3, c), 0, 1.5, 0, g); put(sph(0.2, '#FFE7A8', { e: '#FFD98A', ei: 1.2 }), 0, 3.1, 0, g); if (H.glb) H.glb(g, kind === 'saopaulo' ? 'sp_lamp' : 'lamp', { h: kind === 'saopaulo' ? 3.8 : 3.2 }); };
@@ -249,7 +250,7 @@ export function buildCity(kind, cg, H, box) {
     for (const sx of [-1, 1]) { const c = cyl(0.08, 0.08, 6.5, '#5B86B8'); c.position.set(sx * 7, 4.8, 0); c.rotation.z = sx * 0.75; g.add(c); }
     lm(g, x, z, 10, 6); if (H.glb) H.glb(g, 'towerbridge', { len: 18 });
   }
-  function shard(x, z) { const g = C(x, z, Math.PI / 4); g.position.y = GY; const s = new THREE.Mesh(new THREE.ConeGeometry(4.2, 30, 4), new THREE.MeshStandardMaterial({ color: '#B9D3E2', roughness: 0.15, metalness: 0.5 })); s.position.y = 15; s.castShadow = true; g.add(s); for (let y = 2; y < 26; y += 2) put(rbox((30 - y) / 30 * 5.8, 0.05, 0.05, '#E9EEF2', 0.01), 0, y, (30 - y) / 30 * 2.95, g); lm(g, x, z, 30, 3); reserve(x - 4, x + 4, z - 4, z + 4); }
+  function shard(x, z) { const g = C(x, z, Math.PI / 4); g.position.y = GY; const s = new THREE.Mesh(new THREE.ConeGeometry(4.2, 30, 4), new THREE.MeshStandardMaterial({ color: H.lively ? '#D6E8F2' : '#B9D3E2', roughness: H.lively ? 0.35 : 0.15, metalness: H.lively ? 0.1 : 0.5 })); s.position.y = 15; s.castShadow = true; g.add(s); for (let y = 2; y < 26; y += 2) put(rbox((30 - y) / 30 * 5.8, 0.05, 0.05, '#E9EEF2', 0.01), 0, y, (30 - y) / 30 * 2.95, g); lm(g, x, z, 30, 3); reserve(x - 4, x + 4, z - 4, z + 4); }
   function phoneBox(x, z, r = 0) { const g = C(x, z, r); g.position.y = GY; put(rbox(0.9, 2.3, 0.9, '#D9342B', 0.08), 0, 1.15, 0, g); put(rbox(0.7, 1.2, 0.92, '#BFE6F6', 0.03), 0, 1.25, 0, g); put(rbox(1.0, 0.25, 1.0, '#C02A22', 0.08), 0, 2.4, 0, g);  if (H.glb) H.glb(g, 'phonebox', { h: 2.55 }); }
 
   function lekkiBridge(x, z) {
@@ -453,7 +454,8 @@ export function buildCity(kind, cg, H, box) {
     cairo: { bg: '#F2DFC2', ground: ['#D9C29C', '#D1B992'], trees: 'palm', styles: [['balc', '#D9B98C', '#5A4632', { laundry: 1, ac: 1 }], ['plain', '#C9A27A', '#4A3A2A', { ac: 2 }], ['balc', '#E8D3B0', '#5A4632', { laundry: 1, tanks: 1 }], ['plain', '#B88A62', '#3E3226', { ac: 1 }], ['glass', '#9FB8C4', '#E3F2F8', {}]], h: [4, 9, 8, 14, 12, 22] },
     saopaulo: { bg: '#E3DFD8', ground: ['#C4BEB3', '#BCB6AA'], trees: 'jacaranda', styles: [['grid', '#B8B2A6', '#E3DDD2', { heli: 1 }], ['plain', '#E3DDD2', '#5E6B78', { ac: 2 }], ['grid', '#9C978D', '#D8D2C6', { heli: 1 }], ['glass', '#8FA3B3', '#DCE8EE', { heli: 1 }], ['plain', '#C9C3B6', '#5E6B78', { mural: 1 }]], h: [6, 12, 14, 24, 22, 34] },
   }[kind] || null;
-  if (P && H.lively && kind === 'london') P.styles = P.styles.concat([['plain', '#F7B9C6', '#FFD48A', { chim: 1 }], ['plain', '#BDE6D2', '#FFD48A', { chim: 1 }], ['plain', '#FFE3A3', '#FFCF85', { chim: 1 }], ['plain', '#C7D8F4', '#FFD48A', { chim: 1 }], ['plain', '#E2CCF2', '#FFCF85', { chim: 1 }]]); // pastel painted terraces
+  if (P && H.lively && kind === 'london') P.styles = [['brick', '#B5654A', '#FFD48A', { chim: 1 }], ['glass', '#9CC3D5', '#FFE3B0', {}]].concat([['plain', '#FFC3A0', '#FFD48A', { chim: 1 }], ['plain', '#F7B9C6', '#FFD48A', { chim: 1 }], ['plain', '#BDE6D2', '#FFD48A', { chim: 1 }], ['plain', '#FFE3A3', '#FFCF85', { chim: 1 }], ['plain', '#C7D8F4', '#FFD48A', { chim: 1 }], ['plain', '#E2CCF2', '#FFCF85', { chim: 1 }], ['plain', '#F7B9C6', '#FFD48A', { chim: 1 }], ['plain', '#BDE6D2', '#FFD48A', { chim: 1 }], ['plain', '#FFE3A3', '#FFCF85', { chim: 1 }], ['plain', '#C7D8F4', '#FFD48A', { chim: 1 }], ['plain', '#E2CCF2', '#FFCF85', { chim: 1 }]]); // pastel painted terraces
+  if (P && H.lively && kind === 'london') P.ground = ['#DCD3C4', '#D3C9B8']; // warm light paving
   const RC = P || { bg: '#DCE6EC', ground: ['#C9D5DA', '#C2CFD5'], trees: 'round', styles: [['plain', '#F1E4CC', '#9FC6DA', {}]], h: [3, 6, 6, 10, 8, 14] };
 
   // landmarks & water first (they reserve space)
@@ -480,7 +482,7 @@ export function buildCity(kind, cg, H, box) {
       { const px = xW - 11, pz = 6.5, g = C(px, pz); g.position.y = GY; // park bandstand under bunting
         put(cyl(1.7, 1.8, 0.35, '#F4EFE6'), 0, 0.18, 0, g); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; put(cyl(0.06, 0.06, 2.0, '#2E6B4A'), Math.cos(a) * 1.5, 1.35, Math.sin(a) * 1.5, g); }
         const rf = new THREE.Mesh(new THREE.ConeGeometry(2.0, 1.1, 8), mat('#D9342B', { r: 0.7 })); put(rf, 0, 2.9, 0, g); put(sph(0.14, '#E3B341', { m: 0.6, r: 0.3 }), 0, 3.5, 0, g);
-        const rr = new THREE.Mesh(new THREE.CylinderGeometry(2.02, 2.02, 0.16, 8, 1, true), mat('#FFFFFF')); put(rr, 0, 2.38, 0, g);
+        const rr = new THREE.Mesh(new THREE.CylinderGeometry(2.02, 2.02, 0.16, 8, 1, true), mat('#FFFFFF')); put(rr, 0, 2.38, 0, g); if (H.cityKit && H.glb) H.glb(g, 'lon_bandstand', { h: 4.2 });
         for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; bunting(px, pz, px + Math.cos(a) * 6, pz + Math.sin(a) * 4, GY + 3.3, 7); } }
       { const sx = xE + 12, sz = zS + 12, g = C(sx, sz, Math.PI); g.position.y = GY; put(rbox(10, 6, 8, '#E8DCC4', 0.1), 0, 3, 0, g); const dm = sph(3.2, '#AFC3C9'); dm.scale.y = 0.9; put(dm, 0, 8.5, 0, g); // St Paul's (modelled; a block stands in until it loads)
         lm(g, sx, sz, 15, 7); reserve(sx - 8, sx + 8, sz - 7, sz + 7); if (H.glb) H.glb(g, 'lm_london/k_stpauls', { len: 15 }); }
@@ -559,6 +561,18 @@ export function buildCity(kind, cg, H, box) {
 
   // fill blocks
   const rowH = (row) => { const [a, b] = [RC.h[row * 2], RC.h[row * 2 + 1]]; return a + R() * (b - a); };
+  // London building kit (Meshy, from the reference painting): each street building is one of 8 modelled pieces, scaled to a height,
+  // the pastel house tinted per instance. Front of every model faces +Z; the street side of a band building is its local -z, hence rot π.
+  const CK = !!(H.lively && H.cityKit && H.glb && kind === 'london');
+  const KITS = { house_pastel: [0.42, 9], house_brick: [0.72, 7.5], shop_corner: [0.76, 6.5], cafe_bakery: [0.70, 7], townhouse_tall: [0.60, 11], flats_block: [0.64, 14] };
+  const TINTS = ['#FFB7C5', '#B9EBD3', '#FFE79A', '#B9D3FF', '#E2C2FF', '#FFC9A3', '#FFFFFF'];
+  function pickKit(row) { const r = R(), k = row === 0 ? (r < 0.35 ? 'house_pastel' : r < 0.55 ? 'house_brick' : r < 0.7 ? 'shop_corner' : r < 0.85 ? 'cafe_bakery' : 'townhouse_tall') : row === 1 ? (r < 0.4 ? 'house_pastel' : r < 0.65 ? 'house_brick' : 'townhouse_tall') : (r < 0.5 ? 'flats_block' : 'townhouse_tall');
+    const hh = KITS[k][1] * (0.92 + R() * 0.16); return { k, h: hh, w: KITS[k][0] * hh, tint: k === 'house_pastel' ? pick(TINTS) : null }; }
+  function kitModel(x, z, t, rot) {
+    const g = grp(x, z, rot, cg); g.position.y = GY; const ph = put(rbox(t.w * 0.95, t.h * 0.9, t.w * 0.6, t.tint || '#E9DCCB', 0.1), 0, t.h * 0.45, 0, g); // stand-in until the model loads
+    H.glb(g, 'lon_' + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}) });
+    B.push({ o: g, x, z, h: t.h, r: t.w / 2 + 1 }); return g;
+  }
   function band(ax, bx, az, bz, depthAxis) {
     // depthAxis: 'z-' grows away north, 'z+' south, 'x-' west, 'x+' east
     const rows = DENSE ? (H.low ? 4 : 6) : H.low ? 2 : 3, lim = DENSE ? 74 : 46;
@@ -566,7 +580,7 @@ export function buildCity(kind, cg, H, box) {
       const dd = 5 + R() * 1.5;
       let off = 2.6 + row * 7.5;
       for (let u = depthAxis[0] === 'z' ? ax : az; u < (depthAxis[0] === 'z' ? bx : bz);) {
-        const TIGHT = H.lively && kind === 'london' && row < 2, w = TIGHT ? 3.8 + R() * 2.2 : 3.6 + R() * 3.4, st = pick(RC.styles), h = rowH(Math.min(row, 2)) * (row > 2 ? 0.8 + R() * 0.5 : 1), gap = DENSE ? 0.25 + R() * 0.5 : TIGHT ? 0.05 + R() * 0.2 : 0.8 + R() * 1.4; // lively London: terraces in continuous rows
+        const TIGHT = H.lively && kind === 'london' && row < 2, kt = CK ? pickKit(row) : null, w = kt ? kt.w : TIGHT ? 3.8 + R() * 2.2 : 3.6 + R() * 3.4; let st = pick(RC.styles); if (TIGHT && st[0] === 'glass') st = RC.styles[2 + Math.floor(R() * 6)]; const h = rowH(Math.min(row, 2)) * (row > 2 ? 0.8 + R() * 0.5 : 1), gap = DENSE ? 0.25 + R() * 0.5 : TIGHT ? 0.05 + R() * 0.2 : 0.8 + R() * 1.4; // lively London: terraces in continuous rows
         let x, z, bw, bd;
         if (depthAxis === 'z-') { x = u + w / 2; z = az - off - dd / 2; bw = w; bd = dd; }
         else if (depthAxis === 'z+') { x = u + w / 2; z = az + off + dd / 2; bw = w; bd = dd; }
@@ -580,6 +594,7 @@ export function buildCity(kind, cg, H, box) {
           const rot = depthAxis === 'z-' ? Math.PI : depthAxis === 'x-' ? -Math.PI / 2 : depthAxis === 'x+' ? Math.PI / 2 : 0;
           const swap = rot === Math.PI / 2 || rot === -Math.PI / 2;
           if (DENSE && row >= (H.low ? 1 : 2)) denseBld(depthAxis + row + ':' + Math.floor(u / 22), x, z, bw, bd, h, 0, row > 1);
+          else if (kt) kitModel(x, z, kt, rot);
           else bld(x, z, swap ? bd : bw, swap ? bw : bd, h, { ...o, rot, row });
           reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2);
         }
@@ -594,6 +609,17 @@ export function buildCity(kind, cg, H, box) {
   for (let z = zN + 3; z < zS - 2; z += 6) { if (z < 6 || z > 13) { tree(xW + 2.0, z, RC.trees, 0.8); tree(xE - 2.0, z, RC.trees, 0.8); } }
   for (let x = xW + 5.5; x < xE - 2; x += 8) lamp(x, zN + 2.0);
 
+  if (H.lively && kind === 'london') { // greenery in every gap between buildings + boats on the river
+    let nT = 0; const maxT = H.low ? 18 : 60;
+    for (let gx = -40; gx < 46 && nT < maxT; gx += 3.2) for (let gz = zN - 22; gz < zS + 22 && nT < maxT; gz += 3.2) {
+      const x = gx + (R() - 0.5) * 1.4, z = gz + (R() - 0.5) * 1.4;
+      if (x > xW - 3 && x < xE + 3 && z > zN - 3 && z < zS + 3) continue; // not on the plot or its ring road
+      if (!free(x - 0.9, x + 0.9, z - 0.9, z + 0.9) || R() < 0.45) continue;
+      tree(x, z, R() < 0.8 ? RC.trees : 'round', 0.8 + R() * 0.35); nT++; if (R() < 0.3) { const fb = grp(x + 1.0, z, 0, cg); fb.position.y = GY; put(cyl(0.5, 0.55, 0.3, '#9A6B4A'), 0, 0.15, 0, fb); for (let k = 0; k < 6; k++) put(sph(0.16, FLW2[k % FLW2.length]), Math.cos(k) * 0.3, 0.38, Math.sin(k) * 0.3, fb); }
+      reserve(x - 0.9, x + 0.9, z - 0.9, z + 0.9);
+    }
+    for (const [bz, sp, c] of [[zN - 22.5, 1.6, '#2E6B4A'], [zN - 19.5, -1.2, '#B5342B']]) { const b = grp(-40, bz, Math.PI / 2, cg); b.position.y = GY; put(rbox(1.3, 0.6, 5, c, 0.2), 0, 0.3, 0, b); put(rbox(1.0, 0.6, 3.2, '#F2C230', 0.1), 0, 0.85, -0.3, b); for (let k = 0; k < 4; k++) put(rbox(0.06, 0.25, 0.4, '#FFFFFF', 0.02), 0.52, 0.85, -1.4 + k * 0.8, b); movers.push({ o: b, rail: [-46, 52], sp }); if (sp < 0) b.position.x = 52; }
+  }
   if (H.low) cg.traverse((o) => { if (o.isMesh) o.castShadow = false; });
   kitBuild();
   return { bg: RC.bg, ground: RC.ground, buildings: B, movers };
