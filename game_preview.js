@@ -1391,13 +1391,13 @@ function socialKit(g, cx, cz, room) {
 // Wedding Calm Bureau (Mumbai; layout = the wedding bureau painting): carved desk with the planner behind it, two red armchairs on a red rug, the lehenga on its mannequin, marigolds, the flower arch in the corner
 function weddingKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, bz = -D / 2;
-  const dz = bz + (S ? 1.05 : 1.45), dx = S ? 0 : w < 5 ? -0.25 : -0.35, az = dz + (S ? 1.05 : 1.4);
+  const dz = bz + (S ? 1.05 : 1.75), dx = S ? 0 : w < 5 ? -0.25 : -0.35, az = dz + (S ? 1.05 : 1.4);
   const L = [{ p: 'k_desk', len: 1.25, x: dx, z: dz }, { p: 'k_armchair', h: 0.85, x: dx - 0.48, z: az, rot: Math.PI, solid: false }, { p: 'k_armchair', h: 0.85, x: dx + 0.48, z: az, rot: Math.PI }];
   if (first) L.push({ p: 'k_dress', h: 1.7, wall: 'left', u: 'B', gap: 0.15 });
   if (last && !S) L.push({ p: 'k_arch', h: 2.0, wall: 'back', u: 'R' });
   kitRoom(g, cx, cz, room, ROOM_STYLE.wedding.model, L, WEDDING_DIMS);
   { const rw = S ? 2.2 : 2.6, rd = S ? 2.1 : 2.6, rz = (dz + az) / 2; put(rbox(rw, 0.02, rd, '#B3863A', 0.01), cx + dx, 0.12, cz + rz, g); put(rbox(rw - 0.14, 0.024, rd - 0.14, '#9E1B24', 0.01), cx + dx, 0.125, cz + rz, g); } // red rug with a gold border
-  if (first) { const mx = cx - w / 2 + 0.38, mz = cz + (S ? 0.1 : -0.2), pg = grp(mx, mz, 0, g); put(cyl(0.2, 0.15, 0.32, '#B5623A'), 0, 0.27, 0, pg); put(cyl(0.21, 0.21, 0.04, '#8E4A2A'), 0, 0.43, 0, pg); // marigolds in a terracotta pot
+  if (first) { const mx = cx - w / 2 + (S ? 0.38 : 1.05), mz = cz + (S ? 0.1 : bz + 0.32), pg = grp(mx, mz, 0, g); put(cyl(0.2, 0.15, 0.32, '#B5623A'), 0, 0.27, 0, pg); put(cyl(0.21, 0.21, 0.04, '#8E4A2A'), 0, 0.43, 0, pg); // marigolds in a terracotta pot
     for (let i = 0; i < 9; i++) { const a = i * 2.4, r = i ? 0.13 : 0; put(sph(0.075, i % 3 ? '#F28C1E' : '#F6B41A'), Math.cos(a) * r, 0.55 + (i ? 0 : 0.06), Math.sin(a) * r, pg); } for (let i = 0; i < 5; i++) put(sph(0.05, '#3E7A3A'), Math.cos(i * 1.3) * 0.2, 0.47, Math.sin(i * 1.3) * 0.2, pg); }
   { const fr = wallHung(g, cx, cz, room, 0, -1, dx, 1.55); put(rbox(0.62, 0.78, 0.04, '#5A2E1E', 0.02), 0, 0, 0.02, fr); // framed sign above the desk
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.68), new THREE.MeshStandardMaterial({ map: canvasTex(128, 168, (c, W, H) => { c.fillStyle = '#F6EAD3'; c.fillRect(0, 0, W, H); c.strokeStyle = '#B3863A'; c.lineWidth = 4; c.strokeRect(8, 8, W - 16, H - 16); c.font = '64px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('💍', W / 2, H / 2 - 8); c.fillStyle = '#9E1B24'; c.fillRect(W / 2 - 26, H - 40, 52, 4); }), roughness: 0.9 })); sg.position.set(0, 0, 0.045); fr.add(sg); }
