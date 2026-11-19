@@ -667,7 +667,7 @@ function floorMat(kind, w, d) { // one material per (kind, size) so the pattern 
 const LAWN_TEX = (rep) => canvasTex(128, 128, (g) => { g.fillStyle = '#6CAF48'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#79BB53'; g.fillRect(0, 0, 64, 128);
   for (let k = 0; k < 220; k++) { g.fillStyle = k % 2 ? 'rgba(40,110,30,0.16)' : 'rgba(255,255,200,0.14)'; g.fillRect((k * 37) % 128, (k * 59) % 128, 2, 4); } }, rep);
 const GARDEN = { // lawn, hedge greens, flowers, tree model and its stand-in colour; dry = gravel garden with a small lawn
-  london: { tree: 'lon_tree_round', tc: '#4FAE44', fl: ['#FF6F91', '#FFD25E', '#FF4F5E', '#FFFFFF', '#B57BE8', '#FF9F43', '#FF8FC8'] },
+  london: { tree: 'lon_tree_hq', tc: '#4FAE44', fl: ['#FF6F91', '#FFD25E', '#FF4F5E', '#FFFFFF', '#B57BE8', '#FF9F43', '#FF8FC8'] },
   newyork: { tree: 'tree', tc: '#5FA05A', fl: ['#FF4F5E', '#FFD25E', '#FFFFFF', '#FF8FC8', '#FF9F43'] },
   saopaulo: { tree: 'sp_ipe_y', tc: '#F2C230', fl: ['#FFD25E', '#FF6F91', '#FFFFFF', '#FF9F43', '#B57BE8'] },
   mexico: { tree: 'sp_ipe_p', tc: '#9B7FD6', fl: ['#E83E8C', '#FF9F43', '#FFD25E', '#C2185B', '#FFFFFF'] },
@@ -693,15 +693,20 @@ function lotGarden(L, i, g, c = 'london') {
   // gravel path from the gate to a little round plaza
   const pm = mat('#EAD9B5', { r: 1 }); floorPlane(gate[0] + 0.15, gate[1] - 0.15, cz, L[3] - 0.1, pm, -0.22, g);
   const pl = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.04, 28), pm); pl.position.set(cx, -0.21, cz); pl.receiveShadow = true; g.add(pl);
-  // flower beds in the corners: dark soil heaped with clay blooms
+  // flower beds in the corners (modelled clay bed; soil and blooms until it loads)
   const FL = GD.fl;
-  for (const [fx, fz] of [[L[0] + 1.5, L[2] + 1.5], [L[1] - 1.5, L[2] + 1.5], [L[0] + 1.5, L[3] - 1.6], [L[1] - 1.5, L[3] - 1.6]]) {
-    const bed = sph(0.95, '#6B4A33', { r: 1 }); bed.scale.set(1, 0.22, 0.8); put(bed, fx, -0.22, fz, g);
-    for (let k = 0; k < 16; k++) { const a = rr() * Math.PI * 2, r = Math.sqrt(rr()) * 0.78, lf = sph(0.13, k % 3 ? '#4FAE44' : '#3F9A3A', { r: 0.9 }); put(lf, fx + Math.cos(a) * r, -0.1, fz + Math.sin(a) * r * 0.8, g);
-      const f = sph(0.1 + rr() * 0.04, FL[Math.floor(rr() * FL.length)], { r: 0.7 }); put(f, fx + Math.cos(a) * r, 0.02 + rr() * 0.06, fz + Math.sin(a) * r * 0.8, g); } }
-  // round clay tree and a bench by the plaza
+  for (const [fx, fz] of [[L[0] + 1.6, L[2] + 1.6], [L[1] - 1.6, L[2] + 1.6], [L[0] + 1.6, L[3] - 1.7], [L[1] - 1.6, L[3] - 1.7]]) {
+    const bd = grp(fx, fz, rr() * 6, g); const bed = sph(0.95, '#6B4A33', { r: 1 }); bed.scale.set(1, 0.22, 0.8); put(bed, 0, -0.22, 0, bd);
+    for (let k = 0; k < 10; k++) { const a = rr() * Math.PI * 2, r = Math.sqrt(rr()) * 0.7; put(sph(0.12, FL[Math.floor(rr() * FL.length)], { r: 0.7 }), Math.cos(a) * r, -0.02, Math.sin(a) * r * 0.8, bd); }
+    glbSwap(bd, 'lon_flowerbed', { len: 2.0, y: -0.24 }); }
+  // round clipped bushes along the inside of the hedge, every few metres (none at the gate or the corner beds)
+  for (let t = 3.2; t < w - 3; t += 2.6 + rr() * 0.8) { const b = grp(L[0] + t, L[2] + 0.95, rr() * 6, g); put(sph(0.45, '#5DBB4E'), 0, 0.2, 0, b); glbSwap(b, 'lon_bush', { h: 0.85 + rr() * 0.3, y: -0.24 }); }
+  for (let t = 3.2; t < d - 3; t += 2.6 + rr() * 0.8) for (const sx of [L[0] + 0.95, L[1] - 0.95]) { const b = grp(sx, L[2] + t, rr() * 6, g); put(sph(0.45, '#5DBB4E'), 0, 0.2, 0, b); glbSwap(b, 'lon_bush', { h: 0.8 + rr() * 0.35, y: -0.24 }); }
+  // white planters of geraniums either side of the gate
+  for (const px of [gate[0] - 0.75, gate[1] + 0.75]) { const p = grp(px, L[3] - 0.95, 0, g); put(rbox(1.0, 0.45, 0.45, '#F4F1EA', 0.05), 0, 0, 0, p); glbSwap(p, 'lon_planter', { len: 1.1, y: -0.24 }); }
+  // two trees (tropical cities: palms) and a bench by the plaza
   const tg = grp(cx + (i % 2 ? -1 : 1) * Math.min(3.2, w / 2 - 1.8), cz - Math.min(2.2, d / 2 - 1.8), 0, g); put(sph(1.2, GD.tc), 0, 2.2, 0, tg); glbSwap(tg, GD.tree, { h: GD.tree === 'sp_palm' ? 5.2 : 4.2, y: -0.24 });
-  if (GD.lush) { const t2 = grp(cx - (i % 2 ? -1 : 1) * Math.min(3.4, w / 2 - 1.6), cz + Math.min(1.6, d / 2 - 2.2), 0, g); put(sph(1.0, GD.tc), 0, 2, 0, t2); glbSwap(t2, GD.tree, { h: 4.4, y: -0.24 }); } // tropical: a second palm
+  if (w > 7 || d > 7) { const t2 = grp(cx - (i % 2 ? -1 : 1) * Math.min(3.4, w / 2 - 2), cz + Math.min(1.8, d / 2 - 2.4), 0, g); put(sph(1.0, GD.tc), 0, 2, 0, t2); glbSwap(t2, GD.tree, { h: GD.tree === 'sp_palm' ? 4.6 : 3.6, y: -0.24 }); }
   const bg = grp(cx, cz - 1.9, 0, g); put(rbox(1.5, 0.08, 0.42, '#B5793A', 0.03), 0, 0.2, 0, bg); glbSwap(bg, 'bench', { len: 1.5, y: -0.24 });
 }
 function floorPlane(x0, x1, z0, z1, m, y = 0.1, parent = scene) {
@@ -758,7 +763,7 @@ function propModel(name) {
     return gl.scene;
   })());
 }
-const INST = {}, INST_NAMES = new Set(['lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
+const INST = {}, INST_NAMES = new Set(['lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true;
   let rec = INST[name]; if (!rec || rec.done) { rec = INST[name] = { list: [], done: false }; const R0 = rec; propModel(name).then((src) => { R0.done = true; buildInst(src, R0.list); }).catch((e) => console.warn('[props]', name, e.message)); }
