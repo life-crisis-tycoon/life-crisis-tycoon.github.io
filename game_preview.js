@@ -558,6 +558,7 @@ function los(a, b) {
   return true;
 }
 function findPath(from, to) {
+  if (!Number.isFinite(to.x) || !Number.isFinite(to.z) || !Number.isFinite(from.x) || !Number.isFinite(from.z)) { console.warn('[findPath] bad point', JSON.stringify(from), JSON.stringify(to), new Error().stack.split('\n').slice(2, 5).join(' | ')); return []; }
   const [si, sj] = ci(from.x, from.z), [ti, tj] = ci(to.x, to.z);
   const N = GW * GH, inB = (i, j) => i >= 0 && j >= 0 && i < GW && j < GH;
   if (inB(si, sj) && !inB(ti, tj)) { const ex = clamp(to.x, G0x + 0.3, G0x + GW * GCs - 0.3), ez = clamp(to.z, G0z + 0.3, G0z + GH * GCs - 0.3); return findPath(from, { x: ex, z: ez }).concat([{ x: to.x, z: to.z }]); } // leaving the map: walk to its edge properly, then out
