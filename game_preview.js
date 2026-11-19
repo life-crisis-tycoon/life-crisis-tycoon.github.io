@@ -1317,10 +1317,13 @@ function cafeKit(g, cx, cz, room) {
     else { const bx = sx * (w / 2 - 0.33); // banquette on the side wall away from the door, its table and one chair facing it; a second table on the door side
       L.push({ p: 'k_bench', h: 0.95 * K, wall: sx > 0 ? 'right' : 'left', u: 0.9 }, { p: 'k_table', h: 0.78 * K, x: bx - sx * 0.95 * K, z: 0.9 }, { p: 'k_chair', h: 0.95 * K, x: bx - sx * 1.65 * K, z: 0.9, rot: sx * H },
         { p: 'k_table', h: 0.78 * K, x: -sx * (1.6 + (K - 1) * 1.0), z: 1.4 }, { p: 'k_chair', h: 0.95 * K, x: -sx * (1.6 + (K - 1) * 1.0) - 0.75, z: 1.4, rot: H }, { p: 'k_chair', h: 0.95 * K, x: -sx * (1.6 + (K - 1) * 1.0) + 0.75, z: 1.4, rot: -H },
-        { p: '@plant', s: 1.8 * K, v: K > 1 ? 'plant_l' : null, vh: 1.25, wall: sx > 0 ? 'right' : 'left', u: 'B' }); } // diorama café: the monstera (crisp leaves), same height as before
+        { p: '@plant', s: 1.8 * K, v: K > 1 ? 'pharmacy_kit/k_succulent' : null, vh: 1.0, wall: sx > 0 ? 'right' : 'left', u: 'B' }); } // diorama café: the monstera (crisp leaves), same height as before
     kitRoom(g, cx, cz, room, ROOM_STYLE.cafe.model, L, CAFE_DIMS, F);
     const P = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; }, b = P(ccx, ccz - 1.0 * K);
     room.staffSpot = { x: b.x, z: b.z, rot: F.rho, sit: false, y: 0 };
+    if (K > 1 && !S) { // diorama café: drinks are taken seated at the tables (the 3 chairs), facing the table, instead of standing at the counter
+      const tb = -sx * (1.6 + (K - 1) * 1.0), bx2 = sx * (w / 2 - 0.33) - sx * 0.95 * K, seat = (x, z, tx, tz) => { const a = P(x, z), b2 = P(tx, tz); room.spots.push({ x: a.x, z: a.z, rot: Math.atan2(b2.x - a.x, b2.z - a.z), sit: true, y: 0.02, cafe: true, busy: null }); };
+      seat(tb - 0.75, 1.4, tb, 1.4); seat(tb + 0.75, 1.4, tb, 1.4); seat(sx * (w / 2 - 0.33) - sx * 1.65 * K, 0.9, bx2, 0.9); return; }
     for (let i = 0, n = S ? 2 : 3; i < n; i++) { const c = P(ccx - (n - 1) * 0.3 + i * 0.6, ccz + 1.05 * K); room.spots.push({ x: c.x, z: c.z, rot: F.rho + Math.PI, sit: false, y: 0, cafe: true, busy: null }); }
     return;
   }
