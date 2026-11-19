@@ -1512,12 +1512,12 @@ const BUDGET_DIMS = {"k_easel":[0.7207,0.998,0.1699],"k_armchair":[0.9512,0.998,
 function budgetKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, two = (room.nst || 1) > 1, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, bz = -D / 2, H = Math.PI / 2;
   const dx = two ? 0.2 : S ? 0.15 : 0, dz = bz + (S ? 1.45 : 1.75), sc = S ? 0.9 : 1; // desk centre; the coach sits between it and the back wall
-  const coach = { x: dx, z: dz - 0.85 * sc }, client = { x: dx, z: dz + 0.9 * sc };
-  const L = [{ p: '@rug', len: S ? 1.9 : 2.3, x: dx, z: dz + 0.25, solid: false }, { p: 'k_desk', len: 1.6 * sc, x: dx, z: dz, rot: 0 },
-    { p: 'k_chair', h: 1.0, x: coach.x, z: coach.z, rot: 0, solid: false }, { p: 'k_chair', h: 1.0, x: client.x, z: client.z, rot: Math.PI, solid: false }];
+  const coach = { x: dx, z: dz - 0.9 * sc }, client = { x: dx, z: dz + 0.95 * sc };
+  const L = [{ p: '@rug', len: S ? 1.9 : 2.3, x: dx, z: dz + 0.25, solid: false }, { p: 'k_desk', len: 1.85 * sc, x: dx, z: dz, rot: 0 },
+    { p: 'k_chair', h: 1.05, x: coach.x, z: coach.z, rot: 0, solid: false }, { p: 'k_chair', h: 1.05, x: client.x, z: client.z, rot: Math.PI, solid: false }];
   if (first) L.push({ p: 'k_bookcase', h: S ? 1.75 : 1.95, wall: 'back', u: 'L' });
-  if (last) { L.push({ p: '@plant', s: 1.5, wall: 'back', u: 'R' }); L.push({ p: 'k_easel', h: S ? 1.3 : 1.5, wall: 'right', u: S ? 0.35 : 0.1 }); }
-  if (!S && first) L.push({ p: 'k_armchair', h: 0.95, x: -w / 2 + 0.6, z: D / 2 - 1.15, rot: H * 0.6 }, { p: 'k_table', len: 0.62, x: -w / 2 + 1.45, z: D / 2 - 0.6, rot: 0 });
+  if (last) { L.push({ p: '@plant', s: 1.5, wall: 'back', u: 'R' }); L.push({ p: 'k_easel', h: S ? 1.3 : 1.55, wall: 'back', u: S ? 0.75 : two ? 0.95 : 1.35 }); }
+  if (!S && first) L.push({ p: 'k_armchair', h: 1.0, x: -w / 2 + 0.62, z: 0.55, rot: H * 0.75 }, { p: 'k_table', len: 0.7, x: -w / 2 + 0.75, z: 1.55, rot: 0 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.budget.model, L, BUDGET_DIMS);
   room.staffSpot = { x: cx + coach.x, z: cz + coach.z, rot: 0, sit: true, y: 0.02 };
   room.spots.push({ x: cx + client.x, z: cz + client.z, rot: Math.PI, sit: true, y: 0.02, busy: null });
