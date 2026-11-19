@@ -42,6 +42,7 @@ export function buildCity(kind, cg, H, box) {
       g.fillStyle = c; g.beginPath(); g.roundRect(x + 2, y + 2, 60, 12, 3); g.fill(); g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(x + 4, y + 3, 56, 3);
     } });
   const stuccoTex = () => kitTex('stucco', 128, 128, (g) => { g.fillStyle = '#F2E9D6'; g.fillRect(0, 0, 128, 128); g.fillStyle = 'rgba(160,140,110,.10)'; for (let y = 0; y < 128; y += 32) g.fillRect(0, y, 128, 2); });
+  const tileTex = () => kitTex('tile', 128, 128, (g) => { g.fillStyle = '#F4F0EA'; g.fillRect(0, 0, 128, 128); for (let row = 0; row < 8; row++) { g.fillStyle = 'rgba(0,0,0,.16)'; g.fillRect(0, row * 16 + 13, 128, 3); for (let i = 0; i < 9; i++) { g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(i * 16 + (row % 2 ? 8 : 0), row * 16, 2, 13); } } });
   const slateTex = () => kitTex('slate', 128, 128, (g) => { g.fillStyle = '#4C5260'; g.fillRect(0, 0, 128, 128); for (let row = 0; row < 8; row++) for (let i = -1; i < 5; i++) { g.fillStyle = ['#5A6170', '#535A68', '#606878'][(row * 3 + i + 9) % 3]; g.beginPath(); g.roundRect(i * 32 + (row % 2 ? 16 : 0) + 1, row * 16 + 1, 30, 14, 2); g.fill(); } });
   const AWN = [['#E5484D', '#FFFFFF'], ['#2F6FD6', '#FFFFFF'], ['#2E9E5B', '#F4EFE6'], ['#F2C230', '#FFFFFF'], ['#B57BE8', '#FFFFFF']], FLW = ['#FF5FA2', '#FFD25E', '#E5484D', '#FFFFFF', '#B57BE8', '#5A9E4A'];
   const awningTex = (i) => kitTex('awn' + i, 64, 16, (g) => { for (let k = 0; k < 8; k++) { g.fillStyle = AWN[i][k % 2]; g.fillRect(k * 8, 0, 8, 16); } });
@@ -87,7 +88,7 @@ export function buildCity(kind, cg, H, box) {
       const v = [-hw, 0, hd, hw, 0, hd, hw, rh, 0, -hw, rh, 0, hw, 0, -hd, -hw, 0, -hd, -hw, rh, 0, hw, rh, 0];
       geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); geo.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
       geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, w, 0, w, hd * 1.2, 0, hd * 1.2, 0, 0, w, 0, w, hd * 1.2, 0, hd * 1.2].map((a) => a / 1.4), 2)); geo.computeVertexNormals();
-      const roof = new THREE.Mesh(geo, kitMat(slateTex(), 1, 1, H.lively ? pick(['#FFFFFF', '#FFFFFF', '#E9A07E', '#C98C8C', '#9FB7C9', '#B8C9A2']) : '#FFFFFF')); roof.position.y = top; roof.castShadow = true; g.add(roof);
+      const rc = H.lively ? pick([null, '#D9765A', '#E59A8E', '#8FB5D6', '#A9CC8E', '#C9A0D6', '#D9765A']) : null, roof = new THREE.Mesh(geo, rc ? kitMat(tileTex(), 1, 1, rc) : kitMat(slateTex(), 1, 1)); roof.position.y = top; // lively: bright tiled roofs (terracotta, rose, sky, sage, lilac) among the slate roof.castShadow = true; g.add(roof);
       const gy = rh * (d / 2) / hd, gab = new THREE.BufferGeometry(); gab.setAttribute('position', new THREE.Float32BufferAttribute([w / 2, 0, d / 2, w / 2, 0, -d / 2, w / 2, gy, 0, -w / 2, 0, -d / 2, -w / 2, 0, d / 2, -w / 2, gy, 0], 3));
       gab.setAttribute('uv', new THREE.Float32BufferAttribute([d / 2, 0, -d / 2, 0, 0, gy, -d / 2, 0, d / 2, 0, 0, gy].map((a, i) => (i % 2 ? (a + h) : a + 50) / 2.0), 2)); gab.computeVertexNormals();
       const gm = new THREE.Mesh(gab, wallMat); gm.material.side = THREE.DoubleSide; gm.position.y = top; gm.castShadow = true; g.add(gm);
