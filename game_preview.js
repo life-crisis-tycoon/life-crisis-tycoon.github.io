@@ -774,10 +774,17 @@ const CITY_LIGHT = {
   cairo: { hemi: ['#FFE4C2', '#B08A5E', 0.66], sun: ['#FFC98A', 3.2], fill: ['#FFE9CF', 0.3], fog: [80, 170] },
   london: { hemi: ['#FFE6C4', '#A8865E', 0.72], sun: ['#FFC27A', 3.0], fill: ['#FFE2C2', 0.3], wet: true, fog: [70, 150] }, // warm golden late-afternoon light
 };
+// a passer-by for the city streets: one of the city's visitor models, walking (created once its model is loaded)
+function cityWalker(cb) {
+  if (CHAR.status === 'off' || CHAR.status === 'fallback') return; if (CHAR.status !== 'ready') { setTimeout(() => cityWalker(cb), 1500); return; }
+  const k = pickVis(false); if (!k) { setTimeout(() => cityWalker(cb), 1500); return; }
+  loadFull(k).then((g) => { if (!g) return; const look = { vm: k, tall: VIS[k].h / 1.75, wide: 1, male: VIS_MALE.has(k) }; const av = person(look, 'visitor'); if (!av.userData.p.glb) return;
+    av.traverse((m) => { if (m.isMesh) m.castShadow = false; }); av.userData.p.anim.set('walk', 1.15 / 2.3); cb(av); });
+}
 function buildCityDecor(kind) {
   if (cityScene === kind) { buildShell(kind); buildAnnexLot(kind); return; } cityScene = kind;
   if (world.cityG) scene.remove(world.cityG); const cg = new THREE.Group(); scene.add(cg); world.cityG = cg;
-  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, glb: kind === 'london' || kind === 'saopaulo' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
+  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, lively: kind === 'london', walker: cityWalker, glb: kind === 'london' || kind === 'saopaulo' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
   scene.background = new THREE.Color(res.bg); const L = CITY_LIGHT[kind] || CITY_LIGHT._;
   world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];

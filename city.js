@@ -43,11 +43,13 @@ export function buildCity(kind, cg, H, box) {
     } });
   const stuccoTex = () => kitTex('stucco', 128, 128, (g) => { g.fillStyle = '#F2E9D6'; g.fillRect(0, 0, 128, 128); g.fillStyle = 'rgba(160,140,110,.10)'; for (let y = 0; y < 128; y += 32) g.fillRect(0, y, 128, 2); });
   const slateTex = () => kitTex('slate', 128, 128, (g) => { g.fillStyle = '#4C5260'; g.fillRect(0, 0, 128, 128); for (let row = 0; row < 8; row++) for (let i = -1; i < 5; i++) { g.fillStyle = ['#5A6170', '#535A68', '#606878'][(row * 3 + i + 9) % 3]; g.beginPath(); g.roundRect(i * 32 + (row % 2 ? 16 : 0) + 1, row * 16 + 1, 30, 14, 2); g.fill(); } });
+  const AWN = [['#E5484D', '#FFFFFF'], ['#2F6FD6', '#FFFFFF'], ['#2E9E5B', '#F4EFE6'], ['#F2C230', '#FFFFFF'], ['#B57BE8', '#FFFFFF']], FLW = ['#FF5FA2', '#FFD25E', '#E5484D', '#FFFFFF', '#B57BE8', '#5A9E4A'];
+  const awningTex = (i) => kitTex('awn' + i, 64, 16, (g) => { for (let k = 0; k < 8; k++) { g.fillStyle = AWN[i][k % 2]; g.fillRect(k * 8, 0, 8, 16); } });
   const kitMat = (tex, rx, ry, c = '#FFFFFF') => { const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return new THREE.MeshStandardMaterial({ map: t, color: c, roughness: 0.85 }); };
   function kitBld(x, z, w, d, h, o) {
     const g = grp(x, z, o.rot || 0, cg), st = o.style, row = o.row || 0, top = GY + h;
     const nF = Math.max(1, Math.round(h / 2.3)), FH = h / nF, ky = FH / 2.3;
-    const wallMat = st === 'brick' ? kitMat(brickTex(), 1, 1) : st === 'plain' ? kitMat(stuccoTex(), 1, 1) : mat('#5D7290', { r: 0.3 });
+    const wallMat = st === 'brick' ? kitMat(brickTex(), 1, 1) : st === 'plain' ? kitMat(stuccoTex(), 1, 1, H.lively && o.col ? o.col : '#FFFFFF') : mat('#5D7290', { r: 0.3 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat); body.position.y = GY + h / 2; body.castShadow = body.receiveShadow = true; g.add(body);
     if (st !== 'glass') { // texture repeats per face size: brick courses stay the same size on every building
       const uv = body.geometry.attributes.uv, pos = body.geometry.attributes.position;
@@ -94,6 +96,9 @@ export function buildCity(kind, cg, H, box) {
       put(rbox(w - 0.1, 0.06, d - 0.1, '#8E939C', 0.02), 0, top + 0.03, 0, g);
       if (st === 'glass') for (let i = 0; i < 2; i++) put(rbox(0.8, 0.5, 0.6, '#C9CED6', 0.05), (R() - 0.5) * (w - 1.6), top + 0.3, (R() - 0.5) * (d - 1.6), g);
     }
+    if (H.lively && shop) { const aw = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 0.06, 0.95), new THREE.MeshStandardMaterial({ map: awningTex(Math.floor(R() * AWN.length)), roughness: 0.8 })); aw.position.set(0, GY + FH * 0.92, -d / 2 - 0.42); aw.rotation.x = -0.32; aw.castShadow = true; g.add(aw);
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 0.22, 0.08), new THREE.MeshStandardMaterial({ map: awningTex(Math.floor(R() * AWN.length)), roughness: 0.8 })); fl.position.set(0, GY + FH * 0.92 - 0.3, -d / 2 - 0.88); g.add(fl); } // striped awning over the shop window
+    if (H.lively && !H.low && row === 0 && st !== 'glass') for (let f = 1; f < nF; f++) { const nb = Math.max(1, Math.floor(w / 1.9)), bw = w / nb; for (let b = 0; b < nb; b++) if (R() < 0.6) { const fb = put(rbox(bw * 0.5, 0.16, 0.22, '#7A5236', 0.03), -w / 2 + bw * (b + 0.5), GY + f * FH + 0.12, -d / 2 - 0.12, g); for (let k = 0; k < 4; k++) put(sph(0.08, FLW[(b + k + f) % FLW.length]), -w / 2 + bw * (b + 0.5) - bw * 0.18 + k * bw * 0.12, GY + f * FH + 0.26, -d / 2 - 0.12, g); } } // window flower boxes
     const rec = { o: g, x, z, h, r: Math.max(w, d) / 2, kit: [] };
     g.updateMatrixWorld(true);
     for (const [k, m] of parts) { const wm = g.matrixWorld.clone().multiply(m); (KIT.place[k] = KIT.place[k] || []).push([wm, rec]); }
@@ -447,6 +452,7 @@ export function buildCity(kind, cg, H, box) {
     cairo: { bg: '#F2DFC2', ground: ['#D9C29C', '#D1B992'], trees: 'palm', styles: [['balc', '#D9B98C', '#5A4632', { laundry: 1, ac: 1 }], ['plain', '#C9A27A', '#4A3A2A', { ac: 2 }], ['balc', '#E8D3B0', '#5A4632', { laundry: 1, tanks: 1 }], ['plain', '#B88A62', '#3E3226', { ac: 1 }], ['glass', '#9FB8C4', '#E3F2F8', {}]], h: [4, 9, 8, 14, 12, 22] },
     saopaulo: { bg: '#E3DFD8', ground: ['#C4BEB3', '#BCB6AA'], trees: 'jacaranda', styles: [['grid', '#B8B2A6', '#E3DDD2', { heli: 1 }], ['plain', '#E3DDD2', '#5E6B78', { ac: 2 }], ['grid', '#9C978D', '#D8D2C6', { heli: 1 }], ['glass', '#8FA3B3', '#DCE8EE', { heli: 1 }], ['plain', '#C9C3B6', '#5E6B78', { mural: 1 }]], h: [6, 12, 14, 24, 22, 34] },
   }[kind] || null;
+  if (P && H.lively && kind === 'london') P.styles = P.styles.concat([['plain', '#F7B9C6', '#FFD48A', { chim: 1 }], ['plain', '#BDE6D2', '#FFD48A', { chim: 1 }], ['plain', '#FFE3A3', '#FFCF85', { chim: 1 }], ['plain', '#C7D8F4', '#FFD48A', { chim: 1 }], ['plain', '#E2CCF2', '#FFCF85', { chim: 1 }]]); // pastel painted terraces
   const RC = P || { bg: '#DCE6EC', ground: ['#C9D5DA', '#C2CFD5'], trees: 'round', styles: [['plain', '#F1E4CC', '#9FC6DA', {}]], h: [3, 6, 6, 10, 8, 14] };
 
   // landmarks & water first (they reserve space)
@@ -463,6 +469,23 @@ export function buildCity(kind, cg, H, box) {
     for (let z = zN + 6; z < zS - 4; z += 7) { lampL(xW + 1.9, z); lampL(xE - 1.9, z); }
     for (const [bx, r] of [[-30, Math.PI], [-14, Math.PI], [18, Math.PI], [34, Math.PI]]) benchL(bx, zS + 1.95, r);
     postL(x0 - 3.2, zS - 1.85); postL(x1 + 2.6, zS - 1.85); postL(xE + 1.9, zS + 4);
+    if (H.lively) {
+      const FL = ['#E5484D', '#FFFFFF', '#2F6FD6', '#FFD25E', '#2E9E5B', '#FF5FA2'];
+      const bunting = (ax, az, bx, bz, y, n) => { const g = new THREE.Group(); cg.add(g); const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz), ry = Math.atan2(dx, dz);
+        for (let i = 0; i <= n; i++) { const t = i / n, sag = Math.sin(t * Math.PI) * 0.5, f = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.32, 3), mat(FL[i % FL.length], { r: 0.8 })); f.rotation.set(Math.PI, ry, 0); f.position.set(ax + dx * t, y - sag - 0.16, az + dz * t); g.add(f); }
+        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, L), mat('#F4EFE6')); rope.rotation.set(Math.PI / 2, 0, 0); const rg = new THREE.Group(); rg.add(rope); rg.position.set((ax + bx) / 2, y - 0.25, (az + bz) / 2); rg.rotation.y = ry; g.add(rg); return g; };
+      for (let x = -38; x < 48; x += 8) bunting(x, zS - 1.85, x + 4, zS + 1.9, GY + 3.0, 9); // flags across the high street, lamp to lamp
+      for (let z = zN + 6; z < zS - 4; z += 7) { bunting(xW - 1.9, z, xW + 1.9, z + 3.5, GY + 3.0, 8); bunting(xE + 1.9, z, xE - 1.9, z + 3.5, GY + 3.0, 8); }
+      { const px = xW - 11, pz = 6.5, g = C(px, pz); g.position.y = GY; // park bandstand under bunting
+        put(cyl(1.7, 1.8, 0.35, '#F4EFE6'), 0, 0.18, 0, g); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; put(cyl(0.06, 0.06, 2.0, '#2E6B4A'), Math.cos(a) * 1.5, 1.35, Math.sin(a) * 1.5, g); }
+        const rf = new THREE.Mesh(new THREE.ConeGeometry(2.0, 1.1, 8), mat('#D9342B', { r: 0.7 })); put(rf, 0, 2.9, 0, g); put(sph(0.14, '#E3B341', { m: 0.6, r: 0.3 }), 0, 3.5, 0, g);
+        const rr = new THREE.Mesh(new THREE.CylinderGeometry(2.02, 2.02, 0.16, 8, 1, true), mat('#FFFFFF')); put(rr, 0, 2.38, 0, g);
+        for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; bunting(px, pz, px + Math.cos(a) * 6, pz + Math.sin(a) * 4, GY + 3.3, 7); } }
+      { const sx = xE + 12, sz = zS + 12, g = C(sx, sz, Math.PI); g.position.y = GY; put(rbox(10, 6, 8, '#E8DCC4', 0.1), 0, 3, 0, g); const dm = sph(3.2, '#AFC3C9'); dm.scale.y = 0.9; put(dm, 0, 8.5, 0, g); // St Paul's (modelled; a block stands in until it loads)
+        lm(g, sx, sz, 15, 7); reserve(sx - 8, sx + 8, sz - 7, sz + 7); if (H.glb) H.glb(g, 'lm_london/k_stpauls', { len: 15 }); }
+      if (H.walker) { const ring = [[xW - 2.6, zN - 2.6], [xE + 2.6, zN - 2.6], [xE + 2.6, zS + 2.6], [xW - 2.6, zS + 2.6]], rev = ring.slice().reverse();
+        for (let i = 0; i < (H.low ? 1 : 3); i++) H.walker((o) => { cg.add(o); movers.push({ o, path: i % 2 ? rev : ring, s: i / 3 + R() * 0.1, sp: 0.034 + R() * 0.006, y: GY + 0.02 }); }); } // a few passers-by on the outer pavement
+    }
     { const g = C(cx + 3, zS + 2.05, Math.PI); g.position.y = GY; for (const x of [-1.1, 1.1]) put(cyl(0.05, 0.05, 2.2, '#4C7774'), x, 1.1, 0, g); put(rbox(2.4, 0.08, 1.0, '#CFE9F2', 0.03), 0, 2.25, 0, g); if (H.glb) H.glb(g, 'busstop', { len: 2.4 }); }
   } else if (kind === 'lagos') {
     water(-44, 50, -48, zN - 8, '#4FA3B8'); lekkiBridge(cx + 6, zN - 26); ekoTowers(cx - 10, -44);
@@ -542,7 +565,7 @@ export function buildCity(kind, cg, H, box) {
       const dd = 5 + R() * 1.5;
       let off = 2.6 + row * 7.5;
       for (let u = depthAxis[0] === 'z' ? ax : az; u < (depthAxis[0] === 'z' ? bx : bz);) {
-        const w = 3.6 + R() * 3.4, st = pick(RC.styles), h = rowH(Math.min(row, 2)) * (row > 2 ? 0.8 + R() * 0.5 : 1), gap = DENSE ? 0.25 + R() * 0.5 : 0.8 + R() * 1.4;
+        const TIGHT = H.lively && kind === 'london' && row < 2, w = TIGHT ? 3.8 + R() * 2.2 : 3.6 + R() * 3.4, st = pick(RC.styles), h = rowH(Math.min(row, 2)) * (row > 2 ? 0.8 + R() * 0.5 : 1), gap = DENSE ? 0.25 + R() * 0.5 : TIGHT ? 0.05 + R() * 0.2 : 0.8 + R() * 1.4; // lively London: terraces in continuous rows
         let x, z, bw, bd;
         if (depthAxis === 'z-') { x = u + w / 2; z = az - off - dd / 2; bw = w; bd = dd; }
         else if (depthAxis === 'z+') { x = u + w / 2; z = az + off + dd / 2; bw = w; bd = dd; }
@@ -583,6 +606,6 @@ export function moveCity(movers, dt) {
     const P = m.path; let L = 0; const seg = []; for (let i = 0; i < 4; i++) { const a = P[i], b = P[(i + 1) % 4]; const l = Math.hypot(b[0] - a[0], b[1] - a[1]); seg.push(l); L += l; }
     m.s = (m.s + m.sp * dt * 30 / L) % 1; let d = m.s * L, i = 0; while (d > seg[i]) { d -= seg[i]; i++; }
     const a = P[i], b = P[(i + 1) % 4], f = d / seg[i];
-    m.o.position.set(a[0] + (b[0] - a[0]) * f, 0, a[1] + (b[1] - a[1]) * f); m.o.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]);
+    m.o.position.set(a[0] + (b[0] - a[0]) * f, m.y || 0, a[1] + (b[1] - a[1]) * f); m.o.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]);
   }
 }
