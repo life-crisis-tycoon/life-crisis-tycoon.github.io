@@ -105,3 +105,4 @@ Read this first. The user (French or English; answer in the language she writes 
 
 ## Diorama café live (2026-11-19, approved by the owner)
 - Published to game.js via tools/publish.sh: 7eb5988, 895de2f, 61dd20d, 26724d5, 70605d6 (diorama view button, rounded café walls/floor, calmer tiles, bigger pieces + wall decor, crisp plant leaves, succulent in the café, café visitors drink seated at the 3 chairs).
+- 7c82736 (live too): no diorama button any more; `camPitch` eases from the player's tilt down to `DIO_PITCH` (0.56) as you zoom in (fully at half ≤ 7). The broom (`holdBroom`) is a child of the cleaner, its head on the floor 0.6 m ahead sweeping ±0.32 m, stick leaning up to the right hand (Meshy has no sweep clip).

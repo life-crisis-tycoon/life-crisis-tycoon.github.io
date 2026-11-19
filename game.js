@@ -195,7 +195,8 @@ const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
 const view = { tx: -0.6, tz: -1.6, half: 15.5, yaw: Math.PI / 4, pitch: 0.72, yawT: null };
 const CLOSE_HALF = 10; // zoomed in closer than this = dollhouse view: everything between the camera and what you look at drops to hip height
 const PITCH_MIN = 0.26; // ~15° above the ground: the lowest, most cinematic side view
-const camPitch = () => view.dio ? view.pitch : Math.max(view.pitch, 0.74 * Math.min(1, Math.max(0, (CLOSE_HALF + 3 - view.half) / 4)) * Math.min(1, Math.max(0, (view.pitch - 0.3) / 0.25))); // close up, the camera looks down a little more, unless the player deliberately tilted it low
+const DIO_PITCH = 0.56; // ~32°: the diorama angle the camera eases into as you pinch-zoom in
+const camPitch = () => { const f = Math.min(1, Math.max(0, (CLOSE_HALF + 3 - view.half) / 6)); return view.pitch > DIO_PITCH ? view.pitch + (DIO_PITCH - view.pitch) * f : view.pitch; }; // zooming in lowers the camera toward the diorama view; a lower tilt chosen by the player is kept
 let PR_BASE = null; // pixel ratio chosen by the graphics level / speed watcher; close up we draw at the screen's full sharpness
 function closePR() { if (PR_BASE == null) PR_BASE = renderer.getPixelRatio(); const dpr = window.devicePixelRatio || 1;
   const want = view.half < CLOSE_HALF - 0.4 ? Math.max(PR_BASE, Math.min(dpr, GFX.low ? 2 : 3)) : view.half > CLOSE_HALF + 0.4 ? PR_BASE : null;
@@ -207,7 +208,6 @@ function fitSun() { // close up the shadow map covers just what you see, so shad
   sc.updateProjectionMatrix(); sun.target.updateMatrixWorld();
 }
 function placeCam() {
-  if (view.dio && view.half > CLOSE_HALF + 1) view.dio = false; // zooming out leaves the diorama view
   closePR(); fitSun();
   const a = innerWidth / innerHeight;
   cam.left = -view.half * a; cam.right = view.half * a; cam.top = view.half; cam.bottom = -view.half; cam.updateProjectionMatrix();
@@ -2172,8 +2172,23 @@ function holdProp(av, key, on, make) {
   av.updateMatrixWorld(true); const ws = h.getWorldScale(new THREE.Vector3()); if (!(ws.x > 1e-6 && ws.y > 1e-6 && ws.z > 1e-6)) return; const g = new THREE.Group(); make(g); g.scale.set(1 / ws.x, 1 / ws.y, 1 / ws.z); h.add(g); ud[key] = g;
 }
 function holdCup(av, on) { holdProp(av, 'cup', on, (g) => { const c = put(cyl(0.04, 0.032, 0.1, '#F4EFE6'), 0, 0.09, 0.03, g); put(cyl(0.036, 0.036, 0.01, '#6B4226'), 0, 0.135, 0.03, g); c.castShadow = false; }); }
-function holdBroom(av, on) { holdProp(av, 'broom', on, (g) => { const b = new THREE.Group(); g.add(b); b.position.set(0, 0.05, 0.02);
-  put(cyl(0.014, 0.014, 0.88, '#B5793A'), 0, 0.34, 0, b); put(rbox(0.32, 0.1, 0.07, '#E3B341', 0.02), 0, 0.8, 0, b); }); }
+// The broom is not glued to the hand: its top follows the right hand, its head stays on the floor in front of the agent and
+// sweeps left and right (Meshy has no sweeping clip, so the broom does the sweeping and reads as such from far away)
+const _bv = { h: null, d: null, s: null, x: null, y: null, z: null, m: null };
+function holdBroom(av, on) {
+  const ud = av.userData; if (!on) { if (ud.broomS) { ud.broomS.parent && ud.broomS.parent.remove(ud.broomS); ud.broomS = null; } return; }
+  if (!_bv.h) for (const k of ['h', 'd', 's', 'x', 'y', 'z']) _bv[k] = new THREE.Vector3(); if (!_bv.m) _bv.m = new THREE.Matrix4();
+  let b = ud.broomS; if (!b) { b = ud.broomS = new THREE.Group(); b.matrixAutoUpdate = false; av.add(b); // child of the person, so it leaves with them
+    put(cyl(0.016, 0.016, 1.0, '#B5793A'), 0, -0.5, 0, b); put(rbox(0.36, 0.07, 0.09, '#9C6B40', 0.02), 0, -1.0, 0, b); // stick, head block
+    const br = put(rbox(0.34, 0.1, 0.08, '#E3B341', 0.02), 0, -1.08, 0, b); br.scale.z = 1.1; b.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
+  const ry = av.rotation.y, fx = Math.sin(ry), fz = Math.cos(ry), t = performance.now() / 1000, sw = Math.sin(t * 5.5);
+  const hb = ud.p && ud.p.glb ? (ud._hand || (ud._hand = handBone(av))) : null;
+  if (hb) hb.getWorldPosition(_bv.h); else _bv.h.set(av.position.x + fx * 0.25, av.position.y + 1.0, av.position.z + fz * 0.25);
+  _bv.d.set(av.position.x + fx * 0.62 - fz * sw * 0.32, 0.2, av.position.z + fz * 0.62 + fx * sw * 0.32); // where the bristles touch the floor
+  _bv.y.subVectors(_bv.h, _bv.d).normalize(); _bv.s.set(-fz, 0, fx); _bv.x.copy(_bv.s).addScaledVector(_bv.y, -_bv.s.dot(_bv.y)).normalize(); _bv.z.crossVectors(_bv.x, _bv.y);
+  _bv.m.makeBasis(_bv.x, _bv.y, _bv.z); _bv.m.setPosition(_bv.d.addScaledVector(_bv.y, 1.08)); // bristles on the floor point, stick leaning up toward the hand
+  av.updateMatrixWorld(); b.matrix.copy(av.matrixWorld).invert().multiply(_bv.m); b.matrixWorldNeedsUpdate = true;
+}
 function leaveTraining(rs) { if (rs.seat) rs.seat.busy = null; rs.seat = null; rs.lesPose = null; rs.gradT = 0; if (rs.at === 'train') { rs.at = null; assignStaff(); } }
 function trainTick(dt) {
   lessonTick(dt);
@@ -3011,13 +3026,11 @@ function openRoomMenu(id) {
     if (ROOMS[r.type].role || r.type === 'cafe') h += `<div class="receipt" style="margin-bottom:8px"><div><span>☀️ ${t('room.today')}</span><b>+${money(((S.rEarn || {})[id] || {})[S.day] || 0)}</b></div><div><span>💵 ${t('room.week')}</span><b>+${money(wk)}</b></div>${wg ? `<div><span>👥 ${t('room.wages')}</span><span>-${money(wg)}</span></div><div style="font-weight:800"><span>${t('room.net')}</span><span style="color:${wk - wg >= 0 ? '#1E8A3A' : 'var(--red)'}">${wk - wg >= 0 ? '+' : '-'}${money(Math.abs(wk - wg))}</span></div>` : ''}${S.day < 7 ? `<div style="font-size:12px;color:var(--muted)">${t('room.weekNote', { d: S.day })}</div>` : ''}</div>`;
     if (dd >= 0.35) h += `<div class="msg" style="margin-bottom:8px">🧽 ${t('room.dirty', { p: Math.round(dd * 100) })}</div>`; }
   if (ROOMS[r.type].role || ROOMS[r.type].loo) h += roomQueueHtml(room) + '<div style="height:10px"></div>';
-  h += `<button class="btn w" id="rmDio" style="width:100%;margin-bottom:8px">🔍 ${({ fr: 'Vue diorama', es: 'Vista diorama', pt: 'Vista diorama', de: 'Diorama-Ansicht', ja: 'ジオラマ表示', ko: '디오라마 보기' })[getLang()] || 'Diorama view'}</button>`;
   h += `<div class="row2" style="margin-bottom:10px"><button class="btn g" id="rmMove">✋ ${t('room.move')}</button><button class="btn y" id="rmDemo">🗑️ ${t('room.demolish', { m: money(refund) })}</button></div>`;
   h += `<div class="lbl" style="margin:4px 0 6px">${t('room.resize')}</div>` + sizeCards(r.type, r.size);
   if (role && room.staff.some((s) => !s)) h += `<button class="btn w" id="rmHire" style="width:100%">${t('next.staff', { role: roleN(role), room: rn(r.type) })}</button>`;
   openSheet(h);
   $('rmMove').onclick = () => { closeSheet(); startPlace({ type: r.type, size: r.size }, r); };
-  $('rmDio').onclick = () => { closeSheet(); dioramaView(r.id); };
   { const xb = $('rmExpress'); if (xb) xb.onclick = () => { if (incExpress(id)) openRoomMenu(id); }; }
   $('rmDemo').onclick = () => { closeSheet(); demolish(r.id); };
   const hb = $('rmHire'); if (hb) hb.onclick = () => openHire(role);
@@ -3395,12 +3408,11 @@ canvas.addEventListener('pointerup', (e) => {
 canvas.addEventListener('wheel', (e) => { view.half = clamp(view.half * (e.deltaY > 0 ? 1.08 : 0.93), 5, 22); placeCam(); }, { passive: true });
 function camRot(dir) { view.yawT = (view.yawT ?? view.yaw) + dir * Math.PI / 2; }
 // Diorama view: frames one room close up, ~32° above the ground, so you see furniture height, wall depth and details (the management view is unchanged)
-const DIO_PITCH = 0.56;
 function dioramaView(id) { const r = S.rooms.find((o) => o.id === id); if (!r) return; const q = roomRect(r), W = q.x1 - q.x0, D = q.z1 - q.z0, a = innerWidth / innerHeight;
   const yaw = view.yawT ?? view.yaw, cx = Math.sin(yaw), cz = Math.cos(yaw), hw = (Math.abs(cz) * W + Math.abs(cx) * D) / 2 + 0.6, depth = (Math.abs(cx) * W + Math.abs(cz) * D) / 2;
   const vh = depth * Math.sin(DIO_PITCH) + 1.3 * Math.cos(DIO_PITCH) + 0.4; // footprint seen at this tilt plus the back walls
-  view.dio = true; view.tx = (q.x0 + q.x1) / 2; view.tz = (q.z0 + q.z1) / 2; view.half = clamp(Math.max(hw / a, vh) * 1.04, 3.2, CLOSE_HALF); view.pitchT = DIO_PITCH; placeCam(); }
-function camTilt() { view.dio = false; const L = [0.3, 0.53, 0.72, 0.9, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
+  view.tx = (q.x0 + q.x1) / 2; view.tz = (q.z0 + q.z1) / 2; view.half = clamp(Math.max(hw / a, vh) * 1.04, 3.2, CLOSE_HALF); placeCam(); }
+function camTilt() { const L = [0.3, 0.53, 0.72, 0.9, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
 function camAnim(rdt) {
   let ch = false;
   if (view.yawT != null) { const d = view.yawT - view.yaw; if (Math.abs(d) < 0.01) { view.yaw = view.yawT; view.yawT = null; } else view.yaw += d * Math.min(1, rdt * 7); ch = true; }
