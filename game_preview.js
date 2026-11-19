@@ -846,6 +846,8 @@ ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0',
 ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', floorM: () => mat('#FFFFFF', { map: CHECKER_M(), mapK: 'cafeM', r: 0.6 }), model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER_SOFT(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_in', wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
 ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
+// diorama look (validated on the café) for every room built from Tripo/Meshy pieces: rounded walls and floor, sage plinth, soft contact shadows, pieces ×1.1
+for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 // one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
 function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
@@ -980,7 +982,9 @@ function buildRoom(r) {
     sh.moveTo(x0 + rr, -z0); sh.lineTo(x1 - rr, -z0); sh.absarc(x1 - rr, -z0 - rr, rr, Math.PI / 2, 0, true); sh.lineTo(x1, -z1 + rr); sh.absarc(x1 - rr, -z1 + rr, rr, 0, -Math.PI / 2, true);
     sh.lineTo(x0 + rr, -z1); sh.absarc(x0 + rr, -z1 + rr, rr, -Math.PI / 2, -Math.PI, true); sh.lineTo(x0, -z0 - rr); sh.absarc(x0 + rr, -z0 - rr, rr, Math.PI, Math.PI / 2, true);
     const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.04, bevelEnabled: false, curveSegments: 10 }); geo.rotateX(-Math.PI / 2);
-    const fl = new THREE.Mesh(geo, RS.floorM ? RS.floorM() : fm); fl.position.y = 0.09; fl.receiveShadow = true; g.add(fl); }
+    const fW = x1 - x0, fD = z1 - z0, metre = (m) => { if (!m.map) return m; const k = 'fmM' + m.uuid + '|' + fW.toFixed(2) + '|' + fD.toFixed(2); // same tiling as the flat floor, in metre UVs
+      if (!MC[k]) { const tx = m.map.clone(); tx.repeat.set(m.map.repeat.x / fW, m.map.repeat.y / fD); tx.needsUpdate = true; MC[k] = m.clone(); MC[k].map = tx; } return MC[k]; };
+    const fl = new THREE.Mesh(geo, RS.floorM ? RS.floorM() : metre(fm)); fl.position.y = 0.09; fl.receiveShadow = true; g.add(fl); }
   else floorPlane(q.x0 + 0.04, q.x1 - 0.04, q.z0 + 0.04, q.z1 - 0.04, FLOOR_KIND[r.type] && !(RS && RS.model) ? floorMat(FLOOR_KIND[r.type], q.x1 - q.x0 - 0.08, q.z1 - q.z0 - 0.08) : fm, 0.11, g);
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
@@ -1218,12 +1222,13 @@ const DECO = {
     put(sph(0.09, it.c2 || '#9DB38C', { r: 0.9 }), 0, y - H * 0.05, 0.02, p).scale.z = 0.2; put(rbox(W * 0.5, 0.04, 0.05, it.c2 || '#9DB38C', 0.01, { r: 0.9 }), 0, y - H * 0.3, 0.004, p); },
   '@rug': (p, it) => { const r = (it.len || 1.8) / 2; put(cyl(r, r, 0.015, '#9DB38C', { r: 1 }, 32), 0, 0.14, 0, p); put(cyl(r - 0.1, r - 0.1, 0.018, '#EADBB8', { r: 1 }, 32), 0, 0.142, 0, p); put(cyl(r - 0.28, r - 0.28, 0.02, '#D9A877', { r: 1 }, 32), 0, 0.144, 0, p); put(cyl(r - 0.4, r - 0.4, 0.022, '#EADBB8', { r: 1 }, 32), 0, 0.146, 0, p); },
 };
+const KITK = new Proxy({}, { get: (o, kit) => { const st = Object.values(ROOM_STYLE).find((x) => x && x.model === kit); return st && st.kscale || 1; } }); // per-kit piece scale (diorama look)
 function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
   const w = F.w, D = F.D, lx = -w / 2, rx = w / 2, bz = -D / 2, fz = D / 2, H = Math.PI / 2, out = [], rep = [], door = F.door;
   const W = (x, z) => { const p = F.T(x, z); return { x: cx + p.x, z: cz + p.z }; }; // layout frame -> station coords
   const lane = door ? (Math.abs(door.z) / (D / 2) >= Math.abs(door.x) / (w / 2) ? { x0: door.x - 0.55, x1: door.x + 0.55, z0: door.z > 0 ? door.z - 1.4 : door.z, z1: door.z > 0 ? door.z : door.z + 1.4 } : { z0: door.z - 0.55, z1: door.z + 0.55, x0: door.x > 0 ? door.x - 1.4 : door.x, x1: door.x > 0 ? door.x : door.x + 1.4 }) : null; // 1.1 m wide, 1.4 m in from the door
   for (const it of items) { if (!it) continue; const dm = it.p === '@plant' ? [0.45, 1, 0.45] : dims[it.p] || DECO_DIMS[it.p]; if (!dm) { rep.push('no piece ' + it.p); continue; }
-    const k = it.p === '@plant' ? (it.s || 1.5) : it.len ? it.len / Math.max(dm[0], dm[2]) : it.h / dm[1], pw = dm[0] * k, pd = dm[2] * k, gp = it.gap ?? 0.04; let x, z, rot;
+    const KS = it.p[0] === '@' ? 1 : KITK[kit] || 1, k = it.p === '@plant' ? (it.s || 1.5) : (it.len ? it.len / Math.max(dm[0], dm[2]) : it.h / dm[1]) * KS, pw = dm[0] * k, pd = dm[2] * k, gp = it.gap ?? 0.04; let x, z, rot;
     const along = (u, half, lo, hi) => u === 'L' || u === 'B' ? lo + half + gp : u === 'R' || u === 'F' ? hi - half - gp : (lo + hi) / 2 + (u || 0);
     if (it.wall === 'back') { rot = 0; z = bz + pd / 2 + gp; x = along(it.u, pw / 2, lx, rx); }
     else if (it.wall === 'front') { rot = Math.PI; z = fz - pd / 2 - gp; x = along(it.u, pw / 2, lx, rx); }
@@ -1244,7 +1249,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5) } : null); box.g = p; continue; } // the game's own potted plants
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
-    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len } : { h: it.h }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p;
+    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p;
     if (!it.hang && it.p !== '@rug' && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
