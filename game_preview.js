@@ -1060,6 +1060,15 @@ const FABRIC_N = () => GC.fabricN || (GC.fabricN = (() => { const W = 128, cv = 
   for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const hx = h[y * W + (x + 1) % W] - h[y * W + (x + W - 1) % W], hy = h[((y + 1) % W) * W + x] - h[((y + W - 1) % W) * W + x], i = (y * W + x) * 4;
     im.data[i] = 128 - hx * 60; im.data[i + 1] = 128 - hy * 60; im.data[i + 2] = 255; im.data[i + 3] = 255; } c.putImageData(im, 0, 0);
   const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6); return t; })());
+// fluffy pile: the rug drawn again as stacked shells, each a little higher and sparser (classic shell fur), in one soft colour
+const FUR_A = () => GC.furA || (GC.furA = canvasTex(128, 128, (c, W) => { c.fillStyle = '#000'; c.fillRect(0, 0, W, W); let sd = 13; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 2600; i++) { const v = Math.floor(80 + rr() * 175); c.fillStyle = `rgb(${v},${v},${v})`; c.beginPath(); c.arc(rr() * W, rr() * W, 0.7 + rr() * 1.1, 0, 6.3); c.fill(); } }, [8, 8]));
+function furShells(m, col, n = 9, hgt = 0.05) {
+  const meshes = []; m.traverse((c) => { if (c.isMesh) meshes.push(c); });
+  for (const c of meshes) { c.material = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }); // base: the pile's colour, no flat print
+    for (let i = 1; i <= n; i++) { const t = i / n, sh = new THREE.Mesh(c.geometry, new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(0.82 + 0.3 * t), roughness: 1, alphaMap: FUR_A(), alphaTest: 0.3 + 0.6 * t, transparent: false }));
+      sh.position.copy(c.position); sh.quaternion.copy(c.quaternion); sh.scale.copy(c.scale); const ws = new THREE.Vector3(); c.parent.updateWorldMatrix(true, false); c.parent.getWorldScale(ws); sh.position.y += hgt * t / Math.max(1e-4, ws.y); sh.receiveShadow = true; c.parent.add(sh); } }
+}
 const DIO_RC = 0.38; // corner radius of a diorama room (on the wall line)
 // a quarter ring standing up: radii r0..r1 around (cx, cz), from world direction (ax, az) to (bx, bz), height h from y; optional soft bevel
 function ringQ(parent, cx, cz, ax, az, bx, bz, r0, r1, h, y, c, bev = 0, o = { r: 0.9 }) {
@@ -1469,7 +1478,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5), tint: it.tint } : null); box.g = p; continue; } // the game's own potted plants
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
-    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}), ...(it.tint ? { tint: it.tint } : {}), ...(it.rugH ? { rugH: it.rugH } : {}) }); box.g = p;
+    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}), ...(it.tint ? { tint: it.tint } : {}), ...(it.rugH ? { rugH: it.rugH } : {}), ...(it.onModel ? { onModel: it.onModel } : {}) }); box.g = p;
     if (!it.hang && !/rug/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
@@ -1581,8 +1590,8 @@ function napKit(g, cx, cz, room) {
 
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
   if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H, fabric: '#E9D6FF' }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
-  if (!S) L.push({ p: 'k_rug', len: 2.0, x: 0, z: D / 2 - 1.4, solid: false, rugH: 0.1 }); // kept thick enough that its fur shows // the owner's cloud rug, with its own fluffy texture
-  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? '#C4B8DA' : '#B8A0B0'; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
+  if (!S) L.push({ p: 'k_rug', len: 2.0, x: 0, z: D / 2 - 1.4, solid: false, onModel: (m) => furShells(m, '#D8CCEA') }); // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
+  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? null : '#B8A0B0'; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   if (!GFX.low) { const pl = new THREE.PointLight('#FFA45C', 11, 7.5, 1.5); pl.position.set(cx, 1.5, cz - D / 2 + 1.2); g.add(pl); } // the warm, dimmed glow of the lamps and the moon
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
