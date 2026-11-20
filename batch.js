@@ -9,7 +9,7 @@ function kindMat(m) {
   const k = kindKey(m);
   return MATS[k] || (MATS[k] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: m.roughness, metalness: m.metalness, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity }));
 }
-const canBatch = (o) => o.isMesh && !o.isSkinnedMesh && !o.isInstancedMesh && o.visible && o.material && !Array.isArray(o.material) && o.material.isMeshStandardMaterial && !o.material.map && !o.material.transparent && !o.material.vertexColors;
+const canBatch = (o) => o.isMesh && !o.userData.kitW && !o.isSkinnedMesh && !o.isInstancedMesh && o.visible && o.material && !Array.isArray(o.material) && o.material.isMeshStandardMaterial && !o.material.map && !o.material.transparent && !o.material.vertexColors;
 
 // Merge the batchable meshes found under `node` (not crossing `stop` nodes) into children of `node`.
 export function batchNode(node, stop = new Set(), opts = {}) {
