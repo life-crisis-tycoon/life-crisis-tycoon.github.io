@@ -791,7 +791,7 @@ function propModel(name) {
 // arched door frame, window. Loaded before the first room is built; every chunky room is assembled from it (falls back to code walls)
 const KIT_C = { rim: '#E3AD89', trim: '#FBF5EA', plinth: '#F2E7D5', glass: '#A8CFEF' };
 let RKIT = null;
-try { const gl = await propModel('room_kit'); RKIT = {}; gl.scene.traverse((o) => { if (o.isMesh) RKIT[o.name] = o.geometry; }); if (!RKIT.k_wall_in) RKIT = null; } catch (e) { console.warn('[room kit]', e); RKIT = null; }
+try { const gl = await propModel('room_kit'); RKIT = {}; (gl.scene || gl).traverse((o) => { if (o.isMesh) RKIT[o.name] = o.geometry; }); if (!RKIT.k_wall_in) RKIT = null; } catch (e) { console.warn('[room kit]', e); RKIT = null; }
 const KM = (name, c, r = 0.9) => { const m = new THREE.Mesh(RKIT[name], mat(c, { r })); m.castShadow = m.receiveShadow = true; return m; };
 const INST = {}, INST_NAMES = new Set([...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
