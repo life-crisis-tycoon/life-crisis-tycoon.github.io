@@ -787,6 +787,12 @@ function propModel(name) {
     return gl.scene;
   })());
 }
+// room architecture kit, modelled once in Blender (tools/blender/room_kit.py): wall layers, crown, skirting, plinth, rounded corners,
+// arched door frame, window. Loaded before the first room is built; every chunky room is assembled from it (falls back to code walls)
+const KIT_C = { rim: '#E3AD89', trim: '#FBF5EA', plinth: '#F2E7D5', glass: '#A8CFEF' };
+let RKIT = null;
+try { const gl = await propModel('room_kit'); RKIT = {}; gl.scene.traverse((o) => { if (o.isMesh) RKIT[o.name] = o.geometry; }); if (!RKIT.k_wall_in) RKIT = null; } catch (e) { console.warn('[room kit]', e); RKIT = null; }
+const KM = (name, c, r = 0.9) => { const m = new THREE.Mesh(RKIT[name], mat(c, { r })); m.castShadow = m.receiveShadow = true; return m; };
 const INST = {}, INST_NAMES = new Set([...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true;
@@ -1055,6 +1061,11 @@ function ringQ(parent, cx, cz, ax, az, bx, bz, r0, r1, h, y, c, bev = 0, o = { r
 function dioCorner(g, RS, q, sx, sz, owA, owB) {
   const px = sx < 0 ? q.x0 : q.x1, pz = sz < 0 ? q.z0 : q.z1, R = DIO_RC, cx = px - sx * R, cz = pz - sz * R, h = RS.h, ow = owA && owB, IN = ow ? 0.135 : 0.09, OUT = ow ? 0 : 0.06;
   const cg = new THREE.Group(); g.add(cg); cg.userData.n = [sx * Math.SQRT1_2, sz * Math.SQRT1_2]; cg.userData.p = [px, pz]; cg.userData.corner = true;
+  if (RKIT) { const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(cx, y, cz); m.scale.set(sx, sy, sz); par.add(m); return m; };
+    pc('k_c_wall_in', RS.wall, cg, 0.1, h, 0.95); if (!ow) pc('k_c_wall_out', _mix(RS.wall, '#7A5546', 0.14), cg, 0.1, h, 0.95); pc('k_c_skirt', KIT_C.trim, cg, 0.1, 1, 0.6);
+    const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; cg.add(rim); pc('k_c_rim', KIT_C.rim, rim, 0, 1, 0.72);
+    if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; cg.add(base); pc('k_c_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
+    return cg; }
   ringQ(cg, cx, cz, sx, 0, 0, sz, R - IN, R, h, 0.1, RS.wall, 0, { r: 0.95 });
   if (OUT) ringQ(cg, cx, cz, sx, 0, 0, sz, R, R + OUT, h, 0.1, OUT_WALL, 0, { r: 0.95 });
   ringQ(cg, cx, cz, sx, 0, 0, sz, R - IN - 0.035, R - IN + 0.005, 0.14, 0.1, RS.inBase, 0);
@@ -1071,6 +1082,16 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
   if (len < 0.05) return;
   const n = (parent.userData && parent.userData.n) || [0, -1], ow = !!parent.userData.outer, IN = ow ? 0.135 : 0.09, OUT = ow ? 0 : 0.06; // n points outside
   const run = (a, b, hh, y, c, r, o, ex = 0) => wbox(parent, alongX, cx, cz, 1, n, -len / 2 - ex, len / 2 + ex, a, b, hh, y, c, r, o);
+  if (S.chunky && RKIT) { // kit wall: paint layer, outer layer (a shade deeper), skirting; crown and plinth keep their shape under the cutaway
+    const yaw = Math.atan2(n[0], n[1]), paint = parent.userData.wall || S.wall;
+    const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(cx, y, cz); m.rotation.y = yaw; m.scale.set(len, sy, 1); par.add(m); return m; };
+    pc('k_wall_in', paint, parent, 0.1, h, 0.95); if (!ow) pc('k_wall_out', _mix(paint, '#7A5546', 0.14), parent, 0.1, h, 0.95); pc('k_skirt', KIT_C.trim, parent, 0.1, 1, 0.6);
+    const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; parent.add(rim); pc('k_rim', KIT_C.rim, rim, 0, 1, 0.72); parent.userData.rim = rim;
+    if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; parent.add(base); pc('k_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
+    if (S.ao && parent.parent) aoStrip(parent.parent, cx, cz, len, n, 0.12);
+    if (len > 0.6) put(rbox(alongX ? len - 0.1 : 0.03, 0.05, alongX ? 0.03 : len - 0.1, '#FFE6B0', 0.01, { e: '#FFD58A', ei: 1.6 }), cx - n[0] * 0.14, h - 0.02, cz - n[1] * 0.14, parent);
+    return;
+  }
   run(-IN, 0, h, h / 2 + 0.1, parent.userData.wall || S.wall, 0.05, { r: 0.95 });
   if (OUT) run(0, OUT, h, h / 2 + 0.1, OUT_WALL, 0.03, { r: 0.95 });
   if (S.chunky) { // diorama wall: a thick, fully rounded cream rim and a tall sage plinth outside (kept within 8.5 cm so a neighbour's lining still hides it)
@@ -1095,6 +1116,11 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
     for (let u = 0.3; u < len - 0.2; u += 0.32) { const px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u, y = h - 0.15 - rr() * 0.55;
       put(leaf(0.04 + rr() * 0.035, '#FFF1B8', { e: '#FFE38A', ei: 2.2 }), px - n[0] * (IN + 0.01), y, pz - n[1] * (IN + 0.01), parent); } }
   if (len > 0.6) put(rbox(alongX ? len - 0.1 : 0.03, 0.05, alongX ? 0.03 : len - 0.1, '#FFE6B0', 0.01, { e: '#FFD58A', ei: 1.6 }), cx - n[0] * (IN + 0.02), h - 0.02, cz - n[1] * (IN + 0.02), parent); // warm cove light under the rim
+}
+function kitWin(parent, x, z, nx, nz) { // kit window: deep rounded frame, cross mullion, glass through the wall, a sill on both faces
+  const g = grp(x, z, Math.atan2(nx, nz), parent);
+  for (const k of ['k_win_l', 'k_win_r', 'k_win_t', 'k_win_b', 'k_win_mv', 'k_win_mh', 'k_win_sill', 'k_win_sill_out']) g.add(KM(k, KIT_C.trim, 0.6));
+  const gl = new THREE.Mesh(RKIT.k_win_glass, mat(KIT_C.glass, { r: 0.15, e: '#A9D3F2', ei: 0.4 })); g.add(gl); return g;
 }
 function archWindow(parent, x, z, rot, th) { // tall window with a round top, slim cream frame, sky glass through the whole wall, a sill on both faces
   const g = grp(x, z, rot, parent), fm = '#FBF4E8', W = 1.05, Hr = 1.0, y0 = 0.85, R = W / 2, d = th + 0.04;
@@ -1163,7 +1189,7 @@ function buildRoom(r) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) wallG.push(dioCorner(g, RS, q, sx, sz, ow(sx, 0), ow(0, sz))); }
   if (RS && RS.v2) { const opts = [[0, -1, mx, q.z0, 0, near(dp.z, q.z0)], [-1, 0, q.x0, mz, Math.PI / 2, near(dp.x, q.x0)], [0, 1, mx, q.z1, 0, near(dp.z, q.z1)], [1, 0, q.x1, mz, Math.PI / 2, near(dp.x, q.x1)]];
     for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || (sg.userData.outer && !RS.winOuter) || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
-      const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
+      const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = RKIT ? kitWin(g, wx + (nz ? off : 0), wz + (nx ? off : 0), nx, nz) : archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
   const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(Z.st).fill(null), cx: r.x, cz: r.z, door, g };
   if (r.dirt) setTimeout(() => { room.dirtLv = -1; applyDirt(room); }, 1800); // after the modelled furniture has been swapped in
@@ -1191,8 +1217,10 @@ function buildRoom(r) {
 // 2026 rooms: round-topped doorway (arched cream frame, flush leaf with a rounded top, brass knob, icon plate)
 function buildArchDoor(r, g, RS, H, th, dp) {
   const R = DOOR_W / 2, yS = DOOR_H - R, fm = '#FBF4E8', fw = 0.11, ow = DOOR_W + 2 * fw;
-  for (const sx of [-1, 1]) put(rbox(fw, yS, th + 0.06, fm, 0.03, { r: 0.85 }), sx * (R + fw / 2), yS / 2 + 0.1, 0, g);
-  const arc = new THREE.Mesh(GC.dArc || (GC.dArc = new THREE.TorusGeometry(R + fw / 2, fw / 2, 10, 28, Math.PI)), mat(fm, { r: 0.85 })); arc.scale.z = (th + 0.06) / fw; arc.position.y = yS + 0.1; g.add(arc);
+  let arc;
+  if (RKIT && RS.chunky) { arc = KM('k_doorframe', KIT_C.rim, 0.72); g.add(arc); } // kit: one chunky arched frame through the wall, crown colour
+  else { for (const sx of [-1, 1]) put(rbox(fw, yS, th + 0.06, fm, 0.03, { r: 0.85 }), sx * (R + fw / 2), yS / 2 + 0.1, 0, g);
+  arc = new THREE.Mesh(GC.dArc || (GC.dArc = new THREE.TorusGeometry(R + fw / 2, fw / 2, 10, 28, Math.PI)), mat(fm, { r: 0.85 })); arc.scale.z = (th + 0.06) / fw; arc.position.y = yS + 0.1; g.add(arc); }
   const sh = new THREE.Shape(); const top = H - yS + 0.02; sh.moveTo(-ow / 2, 0); sh.lineTo(-R - fw, 0); sh.absarc(0, 0, R + fw, Math.PI, 0, true); sh.lineTo(ow / 2, 0); sh.lineTo(ow / 2, top); sh.lineTo(-ow / 2, top); sh.closePath();
   const fill = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: th, bevelEnabled: false }), mat(OUT_WALL, { r: 0.95 })); fill.position.set(0, yS + 0.1, -th / 2); g.add(fill);
   const piv = grp(-R, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.04, lm = mat(RS.door, { r: 0.7 });
