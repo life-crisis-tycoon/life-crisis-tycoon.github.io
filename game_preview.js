@@ -826,6 +826,7 @@ function glbSwap(g, name, o = {}) {
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
     const sl = o.len ? o.len / Math.max(sz.x, sz.z) : null, sh = o.h ? o.h / sz.y : null;
     const k = sl || sh || 1; m.scale.set(k, sh && sl ? sh : k, k);
+    if (/rug|carpet/i.test(name) && sz.y * m.scale.y > 0.035) m.scale.y = 0.035 / sz.y; // a rug is walked on: flat, so feet stay above it
     if (o.fit) { const fx = o.fit[0] / sz.x, fz = o.fit[1] / sz.z; m.scale.set(fx, o.h ? sh : Math.min(fx, fz) * (o.hk || 1), fz); } // fit a footprint [w, d] (group axes); height follows the narrower side unless h is given
     let rid; g.traverse((c) => { if (c.userData.roomId != null && rid == null) rid = c.userData.roomId; });
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
@@ -1237,7 +1238,7 @@ function ambience(dt) {
   else if (Math.random() < 0.15) { const w = R.visitors.filter((v) => v.state === 'wait'); if (w.length) { const v = rnd(w); AU.sfx('yawn', hearVol(v.av.position) * 0.6); } }
 }
 // people on a bed lie flat on their back, head to the pillow, under a duvet (feet to chest); back upright when they get up
-const LIE_V = new THREE.Vector3(), DUVET_C = ['#F2D7B6', '#BFD8EE', '#F3C3D0', '#C9E2BC'];
+const LIE_V = new THREE.Vector3(), DUVET_C = ['#9C7BD4', '#E07FA6', '#6FA3D8', '#7FBF8E', '#E9A35B'];
 function lieUpdate() {
   const who = []; for (const v of R.visitors) who.push([v, v.state === 'treat' && v.rspot]); for (const rs of R.staff) who.push([rs, rs.mode === 'break' && rs.onBreak]);
   for (const [o, sp] of who) { const av = o.av; if (!av) continue; const on = !!(sp && sp.lie && !(o.path && o.path.length) && Math.hypot(av.position.x - sp.x, av.position.z - sp.z) < 1.2);
@@ -1247,8 +1248,9 @@ function lieUpdate() {
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
       let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.76, 0.24, 1, rnd(DUVET_C), 0.11); dv.castShadow = true; dv.userData.swap = true; }
-      if (!dv.parent) scene.add(dv); const len = L * 0.8; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.45; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
-    else { if (av.rotation.x) av.rotation.x = 0; const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
+      av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 30) av.userData.sleep = true; // a moment to settle, then still
+      if (!dv.parent) scene.add(dv); const len = L * 0.86; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.45; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
+    else { av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x) av.rotation.x = 0; const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
 }
 function doorsUpdate(dt) {
   ambience(dt); lieUpdate();
@@ -1553,7 +1555,7 @@ function budgetKit(g, cx, cz, room) {
   const L = [{ p: '@rug', len: S ? 1.9 : 2.3, x: dx, z: dz + 0.25, solid: false }, { p: 'k_desk', len: 1.85 * sc, x: dx, z: dz, rot: 0 },
     { p: 'k_chair', h: 1.05, x: coach.x, z: coach.z, rot: 0, solid: false }, { p: 'k_chair', h: 1.05, x: client.x, z: client.z, rot: Math.PI, solid: false }];
   if (first) L.push({ p: 'k_bookcase', h: S ? 1.75 : 1.95, wall: 'back', u: 'L' });
-  if (last) { L.push({ p: '@plant', s: 1.5, wall: 'back', u: 'R' }); L.push({ p: 'k_easel', h: S ? 1.3 : 1.55, wall: 'back', u: S ? 0.75 : two ? 0.7 : 1.35 }); }
+  if (last) { L.push({ p: '@plant', s: 1.4, x: w / 2 - 0.55, z: D / 2 - 0.75 }); /* front corner: the chart easel on the back wall stays in view */ L.push({ p: 'k_easel', h: S ? 1.3 : 1.55, wall: 'back', u: S ? 0.75 : two ? 0.7 : 1.35 }); }
   if (!S && first) L.push({ p: 'k_armchair', h: 1.0, x: -w / 2 + 0.62, z: 0.55, rot: H * 0.75 }, { p: 'k_table', len: 0.7, x: -w / 2 + 0.75, z: 1.55, rot: 0 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.budget.model, L, BUDGET_DIMS);
   room.staffSpot = { x: cx + coach.x, z: cz + coach.z, rot: 0, sit: true, y: 0.02 };
@@ -2014,6 +2016,7 @@ function goStaff(rs, spot) { rs.target = spot; rs.path = findPath(rs.av.position
 function routerMesh() {
   if (world.router && world.router.parent) return world.router;
   const g = grp(4.2, 0.62, 0); g.position.y = 1.45; put(rbox(0.42, 0.1, 0.26, '#F4F2EE', 0.03), 0, 0, 0, g);
+  put(rbox(0.6, 0.05, 0.34, '#C98F5A', 0.02), 0, -0.08, -0.02, g); for (const x of [-0.22, 0.22]) put(rbox(0.04, 0.2, 0.26, '#B07A48', 0.01), x, -0.2, -0.06, g); // on a little wall shelf, not floating
   for (const x of [-0.14, 0.14]) put(cyl(0.015, 0.015, 0.26, '#2F3640'), x, 0.16, -0.06, g);
   const led = sph(0.03, '#3BD16F', { e: '#3BD16F', ei: 1 }); put(led, 0.12, 0.03, 0.14, g); g.userData.led = led; world.router = g; return g;
 }
@@ -2176,7 +2179,7 @@ function addGag(av, prob, look) {
   if (prob === 'burn') { const f = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 10), mat('#FF7A2E', { e: '#FF7A2E', ei: 1.2 })); put(f, 0, top - 0.05, 0, gg); }
   if (prob === 'ghosted') { const gh = new THREE.Group(); put(sph(0.16, '#FFFFFF', { op: 0.85 }), 0, 0.15, 0, gh); const c = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.25, 12), mat('#FFFFFF', { op: 0.85 })); c.rotation.x = Math.PI; put(c, 0, -0.02, 0, gh); gh.position.set(0.55, 1.6, 0); gg.add(gh); }
   if (prob === 'overthink') { const r = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.03, 6, 16), mat('#B57BE8', { e: '#B57BE8', ei: 0.6 })); r.rotation.x = Math.PI / 2; put(r, 0, top - 0.1, 0, gg); }
-  if (prob === 'moving') put(rbox(0.5, 0.38, 0.38, '#C9A06B', 0.03), 0, 1.0, 0.36, gg);
+  if (prob === 'moving') { put(rbox(0.5, 0.38, 0.38, '#C9A06B', 0.03), 0, 1.0, 0.36, gg); if (av.userData.p.glb) av.userData.carry = { y: 1.0, z: 0.36 }; } // both hands hold it (carryPose in chars.js)
   const wantKid = look.kid || prob === 'toddler' || prob === 'schoolrun';
   if (wantKid && av.userData.p.glb) { const kk = ['v25', 'v26', 'v27', 'v28'].filter((k) => CHAR.A.full[k]); if (kk.length) { const key = CHAR.A.full[look.kid] ? look.kid : kk[(look.vm || 'v').charCodeAt(2) % kk.length]; const kid = person({ vm: key }, 'visitor'); kid.position.set(0.6, 0, 0.15); av.add(kid); kid.traverse((m) => { if (m.isMesh) m.userData.owner = av; }); gg.userData.kid = kid; return gg; } }
   if (wantKid) { const kid = person({ skin: look.skin, hair: crnd(HAIR.slice(0, 5)), style: crnd(['short', 'curly', 'bun']), shirt: crnd(SHIRTS), pants: '#5AB8F0', tall: 0.55, wide: 0.75, shoes: '#E9785F' }); kid.scale.setScalar(0.62); kid.position.set(0.55, 0, 0.1); av.add(kid); kid.traverse((m) => { if (m.isMesh) m.userData.owner = av; }); if (prob === 'schoolrun') put(rbox(0.3, 0.35, 0.15, '#E9785F', 0.05), 0, 0.95, -0.22, kid.userData.p.body); }

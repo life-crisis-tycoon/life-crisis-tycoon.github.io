@@ -225,5 +225,21 @@ function fullAvatar(root, gltf, look, man) {
   return root;
 }
 export function updateCharacters(dt, held) {
-  for (const a of CHAR.active) { if (!a.root.parent) { CHAR.active.delete(a); continue; } if (held && /walk/.test(a.state || '')) continue; a.update(dt); }
+  for (const a of CHAR.active) { if (!a.root.parent) { CHAR.active.delete(a); continue; } const ud = a.root.userData;
+    if (ud.sleep) continue; // asleep under the duvet: the pose stays still (no idle fidgeting)
+    if (held && /walk/.test(a.state || '')) continue; a.update(dt); if (ud.carry) carryPose(a.root, ud.carry); }
+}
+// carrying a box: both arms reach forward to the box sides (two-bone aim after the clip, so legs still walk)
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
+function aimBone(bone, child, targetW) {
+  bone.getWorldPosition(_v1); child.getWorldPosition(_v2); _v2.sub(_v1).normalize(); _v3.copy(targetW).sub(_v1).normalize();
+  _q1.setFromUnitVectors(_v2, _v3); bone.getWorldQuaternion(_q2); _q2.premultiply(_q1); bone.parent.getWorldQuaternion(_q3); bone.quaternion.copy(_q3.invert().multiply(_q2)); bone.updateMatrixWorld(true);
+}
+function carryPose(root, box) {
+  let B = root.userData.armB; if (!B) { const f = (n) => { let r = null; root.traverse((o) => { if (!r && o.isBone && o.name === n) r = o; }); return r; };
+    B = root.userData.armB = ['Left', 'Right'].map((s) => [f(s + 'Arm'), f(s + 'ForeArm'), f(s + 'Hand')]); }
+  root.updateMatrixWorld(true);
+  for (let k = 0; k < 2; k++) { const [up, fo, ha] = B[k]; if (!up || !fo || !ha) continue; const sx = k ? -1 : 1; // Left = +x in the avatar's own frame
+    const elbow = root.localToWorld(_v3.set(sx * 0.26, box.y - 0.12, box.z - 0.22).clone()), hand = root.localToWorld(new THREE.Vector3(sx * 0.25, box.y - 0.02, box.z));
+    aimBone(up, fo, elbow); aimBone(fo, ha, hand); }
 }
