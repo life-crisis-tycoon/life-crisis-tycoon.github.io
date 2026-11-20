@@ -1225,7 +1225,7 @@ function buildArchDoor(r, g, RS, H, th, dp) {
   else { for (const sx of [-1, 1]) put(rbox(fw, yS, th + 0.06, fm, 0.03, { r: 0.85 }), sx * (R + fw / 2), yS / 2 + 0.1, 0, g);
   arc = new THREE.Mesh(GC.dArc || (GC.dArc = new THREE.TorusGeometry(R + fw / 2, fw / 2, 10, 28, Math.PI)), mat(fm, { r: 0.85 })); arc.scale.z = (th + 0.06) / fw; arc.position.y = yS + 0.1; g.add(arc); }
   const sh = new THREE.Shape(); const top = H - yS + 0.02; sh.moveTo(-ow / 2, 0); sh.lineTo(-R - fw, 0); sh.absarc(0, 0, R + fw, Math.PI, 0, true); sh.lineTo(ow / 2, 0); sh.lineTo(ow / 2, top); sh.lineTo(-ow / 2, top); sh.closePath();
-  const fill = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: th, bevelEnabled: false }), mat(OUT_WALL, { r: 0.95 })); fill.position.set(0, yS + 0.1, -th / 2); g.add(fill);
+  const fill = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: th, bevelEnabled: false }), mat(RKIT && RS.chunky ? RS.wall : OUT_WALL, { r: 0.95 })); fill.position.set(0, yS + 0.1, -th / 2); g.add(fill);
   const piv = grp(-R, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.04, lm = mat(RS.door, { r: 0.7 });
   put(rbox(lw, yS, 0.06, RS.door, 0.012, { r: 0.7 }), lw / 2, yS / 2, 0, piv);
   const hs = new THREE.Shape(); hs.absarc(0, 0, lw / 2, 0, Math.PI, false); hs.closePath();
