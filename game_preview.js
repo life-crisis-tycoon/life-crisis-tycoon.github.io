@@ -1012,7 +1012,7 @@ ROOM_STYLE.therapy = { v2: true, model: 'therapy_kit', kit: true, winSide: '-1,0
 ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0', winOuter: true, floorMap: () => TERRAZZO(), wall: '#EFA7AE', inBase: '#D9858F', floor: '#F2C2C4', door: '#E98C98', panel: '#E98C98', pop: '#E7B04A', posts: true, h: ROOM_H };
 ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', floorM: () => mat('#FFFFFF', { map: CHECKER_M(), mapK: 'cafeM', r: 0.6 }), model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER_SOFT(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_kit', kit: true, wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
-ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, wall: '#3E1F4E', inBase: '#2A1233', floor: '#E2AEC0', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
+ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, archWin: true, wall: '#7C58BC', inBase: '#5E3F99', floor: '#A88BDA', door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 // diorama look (validated on the café) for every room built from Tripo/Meshy pieces: rounded walls and floor, sage plinth, soft contact shadows, pieces ×1.1
 // the older rooms (code-built furniture, interiors not redone yet) get the same walls and floors: their pastel tint inside, cream outside, arched door
 for (const k of ['detox', 'lab', 'parent', 'moving', 'jjim', 'yoga', 'lucha', 'ahwa', 'roda', 'garage', 'shop', 'staffroom', 'toilet']) { const st = ROOM_STYLE[k]; if (!st || st.v2) continue;
@@ -1089,6 +1089,9 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; parent.add(rim); pc('k_rim', KIT_C.rim, rim, 0, 1, 0.72); parent.userData.rim = rim;
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; parent.add(base); pc('k_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
     if (S.ao && parent.parent) aoStrip(parent.parent, cx, cz, len, n, 0.12);
+    if (S.stars && len > 1) { let sd = Math.round((x0 * 7 + z0 * 13) * 10); const rr = () => ((sd = (sd * 16807 + 11) % 2147483647) / 2147483647);
+      for (let u = 0.3; u < len - 0.2; u += 0.32) { const px = alongX ? Math.min(x0, x1) + u : cx, pz = alongX ? cz : Math.min(z0, z1) + u, y = h - 0.15 - rr() * 0.55;
+        put(leaf(0.04 + rr() * 0.035, '#FFF1B8', { e: '#FFE38A', ei: 2.2 }), px - n[0] * 0.13, y, pz - n[1] * 0.13, parent); } }
     if (len > 0.6) put(rbox(alongX ? len - 0.1 : 0.03, 0.05, alongX ? 0.03 : len - 0.1, '#FFE6B0', 0.01, { e: '#FFD58A', ei: 1.6 }), cx - n[0] * 0.14, h - 0.02, cz - n[1] * 0.14, parent);
     return;
   }
@@ -1189,7 +1192,7 @@ function buildRoom(r) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) wallG.push(dioCorner(g, RS, q, sx, sz, ow(sx, 0), ow(0, sz))); }
   if (RS && RS.v2) { const opts = [[0, -1, mx, q.z0, 0, near(dp.z, q.z0)], [-1, 0, q.x0, mz, Math.PI / 2, near(dp.x, q.x0)], [0, 1, mx, q.z1, 0, near(dp.z, q.z1)], [1, 0, q.x1, mz, Math.PI / 2, near(dp.x, q.x1)]];
     for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || (sg.userData.outer && !RS.winOuter) || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
-      const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = RKIT ? kitWin(g, wx + (nz ? off : 0), wz + (nx ? off : 0), nx, nz) : archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
+      const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = RKIT && !RS.archWin ? kitWin(g, wx + (nz ? off : 0), wz + (nx ? off : 0), nx, nz) : archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
   const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(Z.st).fill(null), cx: r.x, cz: r.z, door, g };
   if (r.dirt) setTimeout(() => { room.dirtLv = -1; applyDirt(room); }, 1800); // after the modelled furniture has been swapped in
@@ -1560,12 +1563,13 @@ const NAP_DIMS = {"k_bed": [0.5835, 0.5566, 0.9946], "k_armchair": [0.9434, 0.82
 // cloud rug in front, a dresser on the side wall, the round armchair with the mushroom lamp in the front corner
 function napKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, H = Math.PI / 2;
-  const n = 3, bw = 0.6 * 1.9, sp = Math.min(1.35, (w - 0.3) / n), bed = 1.9; // beds 1.9 m long (0.6 wide per metre of length in the model)
+  const n = 3, bw = 0.6 * 1.9, sp = Math.min(1.62, (w - 0.3) / n), bed = 1.9; // beds 1.9 m long (0.6 wide per metre of length in the model)
   const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp });
   if (first) L.push({ p: 'k_moon', h: 0.9, wall: 'back', u: 0, hang: true, y: 1.15, glow: true });
+  if (sp > 1.45) for (let i = 0; i < n - 1; i++) L.push({ p: 'k_lamp', h: 0.62, wall: 'back', u: (i + 0.5 - (n - 1) / 2) * sp, solid: false, glow: true }); // target image: a glowing mushroom lamp between the beds
   if (!S) L.push({ p: 'k_rug', len: 2.0, x: 0, z: D / 2 - 1.4, solid: false });
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
-  if (first && !S) L.push(two ? null : { p: 'k_lamp', h: 0.9, wall: 'back', u: 'L' }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.6 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.0, r: -H }); // armchair model faces +x
+  if (first && !S) L.push(two ? null : { p: '@plant', s: 1.6, wall: 'back', u: 'L' }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.6 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.0, r: -H }); // armchair model faces +x
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
