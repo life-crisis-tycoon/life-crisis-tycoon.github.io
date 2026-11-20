@@ -477,7 +477,7 @@ function roomRect(r) { const z = SIZES[r.size]; const side = Math.abs(Math.sin(r
 const toW = (r, lx, lz) => ({ x: r.x + lx * Math.cos(r.a) + lz * Math.sin(r.a), z: r.z - lx * Math.sin(r.a) + lz * Math.cos(r.a) });
 const doorPt = (r, out = 0) => toW(r, 0, SIZES[r.size].D / 2 + out);
 // --- walk grid (0.5 m cells) + A* ---
-const G0x = -30, G0z = -32, GCs = 0.5, GW = 120, GH = 92;
+const G0x = -30, G0z = -32, GCs = 0.25, GW = 240, GH = 184; // 25 cm cells: fine enough to walk round a desk instead of clipping its corner
 let gridBlk = new Uint8Array(GW * GH);
 // which room each cell is in (0 = hall/corridor) and where each room's door is: a step may only change room through a door, so nobody walks through a wall
 let gridRid = new Int16Array(GW * GH), gridDoors = [null];
@@ -529,15 +529,24 @@ function reachIn(blk, a, b, q) { // flood fill limited to the room rectangle
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di, nj = j + dj, k = ni + nj * GW; if (ni < i0 || nj < j0 || ni > i1 || nj > j1 || seen.has(k) || blk[k]) continue; seen.add(k); st.push([ni, nj]); } }
   return false;
 }
+// cheapest way in from the door when furniture boxes a spot in: Dijkstra over the room, a furniture cell costs 25, returns the furniture cells to clear
+function carveLane(blk, a, b, q, own = []) { // own: the seat/bed's own boxes, cheap to cross (you climb onto your own bed, not over your neighbour's)
+  const [si, sj] = ci(a.x, a.z), [ti, tj] = ci(b.x, b.z), [i0, j0] = ci(q.x0 + 0.3, q.z0 + 0.3), [i1, j1] = ci(q.x1 - 0.3, q.z1 - 0.3), dist = new Map(), prev = new Map(), open = [[0, si + sj * GW]];
+  dist.set(si + sj * GW, 0);
+  while (open.length) { let bi = 0; for (let k = 1; k < open.length; k++) if (open[k][0] < open[bi][0]) bi = k; const [dc, n] = open.splice(bi, 1)[0]; if (dc > dist.get(n)) continue;
+    const i = n % GW, j = (n - i) / GW; if (i === ti && j === tj) break;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di, nj = j + dj, m = ni + nj * GW; if (ni < i0 || nj < j0 || ni > i1 || nj > j1) continue; const p = cc(ni, nj), c = dc + (!blk[m] ? 1 : own.some((o) => p.x > o[0] - 0.15 && p.x < o[1] + 0.15 && p.z > o[2] - 0.15 && p.z < o[3] + 0.15) ? 3 : 25); if (c < (dist.has(m) ? dist.get(m) : 1e9)) { dist.set(m, c); prev.set(m, n); open.push([c, m]); } } }
+  const out = []; let n = ti + tj * GW; while (prev.has(n)) { if (blk[n]) out.push(n); n = prev.get(n); } return out;
+}
 function markRoom(r, blk) {
   const q = roomRect(r), dp = doorPt(r, 0), rm = R.rooms && R.rooms[r.id];
   if (rm && rm.obs) { const keep = rm.spots.concat(rm.staffSpots.filter(Boolean)).concat([doorPt(r, -0.6)]);
     for (const b of rm.obs) { const [i0, j0] = ci(b[0] - 0.12, b[2] - 0.12), [i1, j1] = ci(b[1] + 0.12, b[3] + 0.12);
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j); if (keep.some((k) => Math.hypot(k.x - p.x, k.z - p.z) < 0.5)) continue; blk[j * GW + i] = 1; } }
-    // never wall a seat off: if a spot can't be reached from the door, open a lane straight to it
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j); if (keep.some((k) => Math.hypot(k.x - p.x, k.z - p.z) < 0.36)) continue; blk[j * GW + i] = 1; } }
+    // never wall a seat off: if a spot can't be reached from the door, clear the cheapest lane to it
     const din = doorPt(r, -0.6);
-    for (const k of keep) { if (reachIn(blk, din, k, q)) continue; const n = Math.ceil(Math.hypot(k.x - din.x, k.z - din.z) / 0.2);
-      for (let t = 0; t <= n; t++) { const x = din.x + (k.x - din.x) * t / n, z = din.z + (k.z - din.z) * t / n; for (const [ox, oz] of [[0, 0], [0.25, 0], [-0.25, 0], [0, 0.25], [0, -0.25]]) { const [i, j] = ci(x + ox, z + oz); if (i >= 0 && j >= 0 && i < GW && j < GH) { const p = cc(i, j); if (p.x > q.x0 + 0.3 && p.x < q.x1 - 0.3 && p.z > q.z0 + 0.3 && p.z < q.z1 - 0.3) blk[j * GW + i] = 0; } } } } }
+    for (const k of keep) { if (reachIn(blk, din, k, q)) continue; const own = rm.obs.filter((o) => k.x > o[0] - 0.05 && k.x < o[1] + 0.05 && k.z > o[2] - 0.05 && k.z < o[3] + 0.05); for (const n of carveLane(blk, din, k, q, own)) blk[n] = 0; // the fewest furniture cells, not a straight line through the desk
+    } }
   const [i0, j0] = ci(q.x0 + 0.01, q.z0 + 0.01), [i1, j1] = ci(q.x1 - 0.01, q.z1 - 0.01);
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     if (i < 0 || j < 0 || i >= GW || j >= GH) continue;
@@ -589,7 +598,7 @@ function walkCells(ax, az, bx, bz, cb) {
   let [i, j] = ci(ax, az); const [ti, tj] = ci(bx, bz), dx = bx - ax, dz = bz - az, sx = Math.sign(dx), sz = Math.sign(dz);
   const tdx = dx ? GCs / Math.abs(dx) : Infinity, tdz = dz ? GCs / Math.abs(dz) : Infinity;
   let tmx = dx ? (sx > 0 ? G0x + (i + 1) * GCs - ax : ax - (G0x + i * GCs)) / Math.abs(dx) : Infinity, tmz = dz ? (sz > 0 ? G0z + (j + 1) * GCs - az : az - (G0z + j * GCs)) / Math.abs(dz) : Infinity;
-  for (let n = 0; n < 600 && (i !== ti || j !== tj); n++) {
+  for (let n = 0; n < 2400 && (i !== ti || j !== tj); n++) {
     const pi = i, pj = j;
     if (Math.abs(tmx - tmz) < 1e-9) { if (!cb(i + sx, j, pi, pj) || !cb(i, j + sz, pi, pj)) return false; i += sx; j += sz; tmx += tdx; tmz += tdz; }
     else if (tmx < tmz) { i += sx; tmx += tdx; } else { j += sz; tmz += tdz; }
@@ -618,7 +627,7 @@ function findPath(from, to, loose) {
   const hpush = (e) => { open.push(e); let i = open.length - 1; while (i) { const p = (i - 1) >> 1; if (open[p][0] <= open[i][0]) break; [open[p], open[i]] = [open[i], open[p]]; i = p; } };
   const hpop = () => { const top = open[0], last = open.pop(); if (open.length) { open[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < open.length && open[l][0] < open[m][0]) m = l; if (r < open.length && open[r][0] < open[m][0]) m = r; if (m === i) break; [open[m], open[i]] = [open[i], open[m]]; i = m; } } return top; };
   // someone standing on a blocked cell (a seat against the wall, a staff spot) may step out through blocked cells of their own room; same to reach a blocked target
-  const sB = gridBlk[s], tB = gridBlk[tg], R0 = loose ? 3 : 2, near = (n, c) => { const a = n % GW, b = c % GW; return Math.abs(a - b) <= R0 && Math.abs((n - a) / GW - (c - b) / GW) <= R0; };
+  const sB = gridBlk[s], tB = gridBlk[tg], R0 = loose ? 6 : 3, near = (n, c) => { const a = n % GW, b = c % GW; return Math.abs(a - b) <= R0 && Math.abs((n - a) / GW - (c - b) / GW) <= R0; };
   const ok = (i, j, from) => { if (!inB(i, j)) return false; const n = j * GW + i; if (from != null && !crossOK(from, n)) return false;
     return !gridBlk[n] || n === tg || n === s || (loose && sB && gridRid[n] && gridRid[n] === gridRid[s]) || (loose && tB && gridRid[n] && gridRid[n] === gridRid[tg]) || (sB && near(n, s)) || (tB && near(n, tg)); };
   let found = false, best = s, bh = 1e9;
@@ -800,6 +809,7 @@ function glbSwap(g, name, o = {}) {
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
     const sl = o.len ? o.len / Math.max(sz.x, sz.z) : null, sh = o.h ? o.h / sz.y : null;
     const k = sl || sh || 1; m.scale.set(k, sh && sl ? sh : k, k);
+    if (/rug|carpet/i.test(name) && sz.y * m.scale.y > 0.035) m.scale.y = 0.035 / sz.y; // a rug is walked on: flat, so feet stay above it
     if (o.fit) { const fx = o.fit[0] / sz.x, fz = o.fit[1] / sz.z; m.scale.set(fx, o.h ? sh : Math.min(fx, fz) * (o.hk || 1), fz); } // fit a footprint [w, d] (group axes); height follows the narrower side unless h is given
     let rid; g.traverse((c) => { if (c.userData.roomId != null && rid == null) rid = c.userData.roomId; });
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
@@ -1188,7 +1198,7 @@ function ambience(dt) {
   else if (Math.random() < 0.15) { const w = R.visitors.filter((v) => v.state === 'wait'); if (w.length) { const v = rnd(w); AU.sfx('yawn', hearVol(v.av.position) * 0.6); } }
 }
 // people on a bed lie flat on their back, head to the pillow, under a duvet (feet to chest); back upright when they get up
-const LIE_V = new THREE.Vector3(), DUVET_C = ['#F2D7B6', '#BFD8EE', '#F3C3D0', '#C9E2BC'];
+const LIE_V = new THREE.Vector3(), DUVET_C = ['#9C7BD4', '#E07FA6', '#6FA3D8', '#7FBF8E', '#E9A35B'];
 function lieUpdate() {
   const who = []; for (const v of R.visitors) who.push([v, v.state === 'treat' && v.rspot]); for (const rs of R.staff) who.push([rs, rs.mode === 'break' && rs.onBreak]);
   for (const [o, sp] of who) { const av = o.av; if (!av) continue; const on = !!(sp && sp.lie && !(o.path && o.path.length) && Math.hypot(av.position.x - sp.x, av.position.z - sp.z) < 1.2);
@@ -1197,9 +1207,10 @@ function lieUpdate() {
       const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
-      let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.76, 0.24, 1, rnd(DUVET_C), 0.11); dv.castShadow = true; dv.userData.swap = true; }
-      if (!dv.parent) scene.add(dv); const len = L * 0.8; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.45; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
-    else { if (av.rotation.x) av.rotation.x = 0; const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
+      let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; }
+      av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
+      if (!dv.parent) scene.add(dv); const len = L * 0.88; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.3; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
+    else { av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x) av.rotation.x = 0; const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
 }
 function doorsUpdate(dt) {
   ambience(dt); lieUpdate();
@@ -1377,7 +1388,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
     glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p;
-    if (!it.hang && it.p !== '@rug' && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
+    if (!it.hang && !/rug/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
 }
@@ -1504,7 +1515,7 @@ function budgetKit(g, cx, cz, room) {
   const L = [{ p: '@rug', len: S ? 1.9 : 2.3, x: dx, z: dz + 0.25, solid: false }, { p: 'k_desk', len: 1.85 * sc, x: dx, z: dz, rot: 0 },
     { p: 'k_chair', h: 1.05, x: coach.x, z: coach.z, rot: 0, solid: false }, { p: 'k_chair', h: 1.05, x: client.x, z: client.z, rot: Math.PI, solid: false }];
   if (first) L.push({ p: 'k_bookcase', h: S ? 1.75 : 1.95, wall: 'back', u: 'L' });
-  if (last) { L.push({ p: '@plant', s: 1.5, wall: 'back', u: 'R' }); L.push({ p: 'k_easel', h: S ? 1.3 : 1.55, wall: 'back', u: S ? 0.75 : two ? 0.7 : 1.35 }); }
+  if (last) { L.push({ p: '@plant', s: 1.4, x: w / 2 - 0.55, z: D / 2 - 0.75 }); /* front corner: the chart easel on the back wall stays in view */ L.push({ p: 'k_easel', h: S ? 1.3 : 1.55, wall: 'back', u: S ? 0.75 : two ? 0.7 : 1.35 }); }
   if (!S && first) L.push({ p: 'k_armchair', h: 1.0, x: -w / 2 + 0.62, z: 0.55, rot: H * 0.75 }, { p: 'k_table', len: 0.7, x: -w / 2 + 0.75, z: 1.55, rot: 0 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.budget.model, L, BUDGET_DIMS);
   room.staffSpot = { x: cx + coach.x, z: cz + coach.z, rot: 0, sit: true, y: 0.02 };
@@ -1711,7 +1722,7 @@ const furniture = {
     if (ROOM_STYLE.therapy && ROOM_STYLE.therapy.kit && PROPS_ON) { therapyKit(g, cx, cz, room); return; }
     const cs = grp(cx + 0.6 * K, cz - 0.6 * K, -Math.PI / 2, g);
     put(rbox(1.9, 0.4, 0.75, '#2E7D4F', 0.16), 0, 0.32, 0, cs); put(rbox(0.5, 0.45, 0.75, '#2E7D4F', 0.16), -0.75, 0.6, 0, cs); glbSwap(cs, 'daybed', { len: 1.95, h: 0.8, rot: -Math.PI / 2, y: 0.12 });
-    const ac = grp(cx - 1.0 * K, cz - 1.4 * K, Math.PI / 4, g); put(rbox(0.8, 0.45, 0.75, '#F2C14E', 0.14), 0, 0.32, 0, ac); put(rbox(0.8, 0.6, 0.2, '#F2C14E', 0.1), 0, 0.7, -0.3, ac); glbSwap(ac, 'armchair', { len: 0.85, h: 1.0, y: 0.12 });
+    const ac = grp(cx - 1.0 * K, cz - 1.4 * K, Math.PI / 4, g); put(rbox(0.8, 0.45, 0.75, '#F2C14E', 0.14), 0, 0.32, 0, ac); put(rbox(0.8, 0.6, 0.2, '#F2C14E', 0.1), 0, 0.7, -0.3, ac); glbSwap(ac, 'armchair', { len: 0.85, h: 1.0, y: 0.12, rot: Math.PI });
     const lp = grp(cx - 1.9 * K, cz - 2.4 * K, 0, g); put(cyl(0.03, 0.03, 1.5, '#3B4A6B'), 0, 0.85, 0, lp); put(cyl(0.18, 0.28, 0.3, '#FFF3CF', { e: '#FFE7A8', ei: 0.8 }), 0, 1.65, 0, lp);
     { const tt = grp(cx + 0.6 * K - 1.1, cz - 0.6 * K, 0, g); put(rbox(0.25, 0.15, 0.18, '#FFFFFF', 0.03), 0, 0.58, 0, tt); glbSwap(tt, 'sidetable', { h: 0.78, y: 0.1 }); }
     room.spots.push({ x: cx + 0.6 * K, z: cz - 0.6 * K, rot: -Math.PI / 2, sit: true, y: 0.05, busy: null });
@@ -1837,7 +1848,7 @@ const furniture = {
   staffroom(g, cx, cz, room, K = 1) { // every seat is a real piece: sofa (2), armchairs (1 each), beanbags (1 each); a big room's 2nd half is a games corner
     const seat = (x, z, rot, y = 0.05) => room.spots.push({ x, z, rot, sit: true, y, busy: null });
     const sofa = (x, z, rot = 0) => { const so = grp(x, z, rot, g); put(rbox(2.4, 0.42, 0.85, '#FFB067', 0.15), 0, 0.32, 0, so); put(rbox(2.4, 0.6, 0.25, '#FFB067', 0.1), 0, 0.68, -0.33, so); glbSwap(so, 'sofa', { len: 2.5, h: 1.0, y: 0.12 }); for (const ox of [-0.7, 0.7]) seat(x + ox * Math.cos(rot), z - ox * Math.sin(rot) + 0.05, rot); };
-    const arm = (x, z, rot) => { const a = grp(x, z, rot, g); put(rbox(0.9, 0.45, 0.85, '#7ACB4E', 0.15), 0, 0.3, 0, a); put(rbox(0.9, 0.55, 0.2, '#7ACB4E', 0.1), 0, 0.7, -0.33, a); glbSwap(a, 'armchair', { len: 1.0, y: 0.1 }); seat(x, z, rot); };
+    const arm = (x, z, rot) => { const a = grp(x, z, rot, g); put(rbox(0.9, 0.45, 0.85, '#7ACB4E', 0.15), 0, 0.3, 0, a); put(rbox(0.9, 0.55, 0.2, '#7ACB4E', 0.1), 0, 0.7, -0.33, a); glbSwap(a, 'armchair', { len: 1.0, y: 0.1, rot: Math.PI }); seat(x, z, rot); }; // the model faces -z: turn it so its seat opens where the sitter faces
     const bag = (x, z, rot, c) => { const b = grp(x, z, rot, g); const bb = sph(0.48, c); bb.scale.set(1, 0.6, 1); put(bb, 0, 0.3, 0, b); glbSwap(b, 'beanbag', { len: 0.95, y: 0.1 }); seat(x, z, rot, 0); };
     const table = (x, z) => { const tb = grp(x, z, 0, g); put(cyl(0.45, 0.45, 0.06, '#FFFFFF'), 0, 0.45, 0, tb); put(cyl(0.06, 0.06, 0.4, '#7A8088'), 0, 0.23, 0, tb); put(cyl(0.07, 0.06, 0.14, '#E9785F'), 0.1, 0.55, 0, tb); glbSwap(tb, 'sidetable', { h: 0.55, y: 0.1 }); };
     const H = Math.PI / 2, half = room.nst === 2 && room.st === 1;
@@ -1965,6 +1976,7 @@ function goStaff(rs, spot) { rs.target = spot; rs.path = findPath(rs.av.position
 function routerMesh() {
   if (world.router && world.router.parent) return world.router;
   const g = grp(4.2, 0.62, 0); g.position.y = 1.45; put(rbox(0.42, 0.1, 0.26, '#F4F2EE', 0.03), 0, 0, 0, g);
+  put(rbox(0.6, 0.05, 0.34, '#C98F5A', 0.02), 0, -0.08, -0.02, g); for (const x of [-0.22, 0.22]) put(rbox(0.04, 0.2, 0.26, '#B07A48', 0.01), x, -0.2, -0.06, g); // on a little wall shelf, not floating
   for (const x of [-0.14, 0.14]) put(cyl(0.015, 0.015, 0.26, '#2F3640'), x, 0.16, -0.06, g);
   const led = sph(0.03, '#3BD16F', { e: '#3BD16F', ei: 1 }); put(led, 0.12, 0.03, 0.14, g); g.userData.led = led; world.router = g; return g;
 }
@@ -2127,7 +2139,7 @@ function addGag(av, prob, look) {
   if (prob === 'burn') { const f = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 10), mat('#FF7A2E', { e: '#FF7A2E', ei: 1.2 })); put(f, 0, top - 0.05, 0, gg); }
   if (prob === 'ghosted') { const gh = new THREE.Group(); put(sph(0.16, '#FFFFFF', { op: 0.85 }), 0, 0.15, 0, gh); const c = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.25, 12), mat('#FFFFFF', { op: 0.85 })); c.rotation.x = Math.PI; put(c, 0, -0.02, 0, gh); gh.position.set(0.55, 1.6, 0); gg.add(gh); }
   if (prob === 'overthink') { const r = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.03, 6, 16), mat('#B57BE8', { e: '#B57BE8', ei: 0.6 })); r.rotation.x = Math.PI / 2; put(r, 0, top - 0.1, 0, gg); }
-  if (prob === 'moving') put(rbox(0.5, 0.38, 0.38, '#C9A06B', 0.03), 0, 1.0, 0.36, gg);
+  if (prob === 'moving') { put(rbox(0.5, 0.38, 0.38, '#C9A06B', 0.03), 0, 1.0, 0.36, gg); if (av.userData.p.glb) av.userData.carry = { y: 1.0, z: 0.36 }; } // both hands hold it (carryPose in chars.js)
   const wantKid = look.kid || prob === 'toddler' || prob === 'schoolrun';
   if (wantKid && av.userData.p.glb) { const kk = ['v25', 'v26', 'v27', 'v28'].filter((k) => CHAR.A.full[k]); if (kk.length) { const key = CHAR.A.full[look.kid] ? look.kid : kk[(look.vm || 'v').charCodeAt(2) % kk.length]; const kid = person({ vm: key }, 'visitor'); kid.position.set(0.6, 0, 0.15); av.add(kid); kid.traverse((m) => { if (m.isMesh) m.userData.owner = av; }); gg.userData.kid = kid; return gg; } }
   if (wantKid) { const kid = person({ skin: look.skin, hair: crnd(HAIR.slice(0, 5)), style: crnd(['short', 'curly', 'bun']), shirt: crnd(SHIRTS), pants: '#5AB8F0', tall: 0.55, wide: 0.75, shoes: '#E9785F' }); kid.scale.setScalar(0.62); kid.position.set(0.55, 0, 0.1); av.add(kid); kid.traverse((m) => { if (m.isMesh) m.userData.owner = av; }); if (prob === 'schoolrun') put(rbox(0.3, 0.35, 0.15, '#E9785F', 0.05), 0, 0.95, -0.22, kid.userData.p.body); }
@@ -2202,9 +2214,11 @@ function stepWalker(o, dt, speed) {
   if (nw) speed = Math.min(speed * clamp(nw / 1.25, 0.5, 1.3), nw * (speed > 2.6 ? 2.2 : 1.9));
   if (doomers.length && !doomers.includes(o)) for (const u of doomers) if (Math.hypot(u.av.position.x - o.av.position.x, u.av.position.z - o.av.position.z) < 0.8) { speed *= 0.45; break; } // stuck behind someone staring at their phone
   const p = o.path[0], pos = o.av.position;
-  const dx = p.x - pos.x, dz = p.z - pos.z, d = Math.hypot(dx, dz), step = speed * dt;
+  const dx = p.x - pos.x, dz = p.z - pos.z, d = Math.hypot(dx, dz);
+  // turn before walking off: a big heading change slows the step until the body faces the way it goes (no crab-walking at path corners)
+  const tw = d > 0.001 ? Math.abs((((Math.atan2(dx, dz) - o.av.rotation.y) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) : 0, step = speed * dt * (tw > 0.5 ? Math.max(0.12, Math.cos(Math.min(tw, 1.45))) : 1);
   if (d <= step) { pos.x = p.x; pos.z = p.z; o.path.shift(); } else { pos.x += dx / d * step; pos.z += dz / d * step; }
-  if (d > 0.001) { const a = Math.atan2(dx, dz); let r = o.av.rotation.y; r += ((((a - r) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10); o.av.rotation.y = ((r + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }
+  if (d > 0.001) { const a = Math.atan2(dx, dz); let r = o.av.rotation.y; r += ((((a - r) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 14); o.av.rotation.y = ((r + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }
   o.ph += dt * speed * 4.2; poseWalk(o.av.userData.p, o.ph, 0.55, speed); pos.y = 0.1;
   return !o.path.length;
 }
@@ -2224,7 +2238,8 @@ function settle(o, spot) {
   o.av.position.set(spot.x, 0.1 + (spot.y || 0), spot.z); o.av.rotation.y = spot.rot || 0; const p = o.av.userData.p; poseStand(p);
   if (!spot.sit) return;
   poseSit(p, spot.lie); o.av.position.y -= 0.05;
-  if (!spot.lie && p.anim) { const top = seatTop(spot.x, spot.z, o.av, o.av.position.y + HIP_SIT * o.av.scale.y - HIP_PAD); if (top != null) o.av.position.y = top + HIP_PAD - HIP_SIT * o.av.scale.y; }
+  if (!spot.lie && p.anim) { const top = seatTop(spot.x, spot.z, o.av, o.av.position.y + HIP_SIT * o.av.scale.y - HIP_PAD); if (top != null) o.av.position.y = top + HIP_PAD - HIP_SIT * o.av.scale.y;
+    const fw = 0.55 * (o.av.scale.y - 1) + 0.04, r = spot.rot || 0; o.av.position.x += Math.sin(r) * fw; o.av.position.z += Math.cos(r) * fw; } // bigger-than-life people: sit forward on the cushion, back against the backrest instead of inside it
 }
 // group rooms (nap, social…) already seat 2/4/6; one-on-one rooms (budget, career…) seat one client per station, so their
 // bigger sizes work faster instead: M ≈ +70 %, L ≈ +50 % per station (two stations), so upgrading pays like it does for groups
