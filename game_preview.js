@@ -1062,7 +1062,7 @@ function dioCorner(g, RS, q, sx, sz, owA, owB) {
   const px = sx < 0 ? q.x0 : q.x1, pz = sz < 0 ? q.z0 : q.z1, R = DIO_RC, cx = px - sx * R, cz = pz - sz * R, h = RS.h, ow = owA && owB, IN = ow ? 0.135 : 0.09, OUT = ow ? 0 : 0.06;
   const cg = new THREE.Group(); g.add(cg); cg.userData.n = [sx * Math.SQRT1_2, sz * Math.SQRT1_2]; cg.userData.p = [px, pz]; cg.userData.corner = true;
   if (RKIT) { const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(cx, y, cz); m.scale.set(sx, sy, sz); par.add(m); return m; };
-    pc('k_c_wall_in', RS.wall, cg, 0.1, h, 0.95); if (!ow) pc('k_c_wall_out', _mix(RS.wall, '#7A5546', 0.14), cg, 0.1, h, 0.95); pc('k_c_skirt', KIT_C.trim, cg, 0.1, 1, 0.6);
+    pc('k_c_wall_in', RS.wall, cg, 0.1, h, 0.95); if (!ow) pc('k_c_wall_out', RS.wall, cg, 0.1, h, 0.95); pc('k_c_skirt', KIT_C.trim, cg, 0.1, 1, 0.6);
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; cg.add(rim); pc('k_c_rim', KIT_C.rim, rim, 0, 1, 0.72);
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; cg.add(base); pc('k_c_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
     return cg; }
@@ -1085,7 +1085,7 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
   if (S.chunky && RKIT) { // kit wall: paint layer, outer layer (a shade deeper), skirting; crown and plinth keep their shape under the cutaway
     const yaw = Math.atan2(n[0], n[1]), paint = parent.userData.wall || S.wall;
     const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(cx, y, cz); m.rotation.y = yaw; m.scale.set(len, sy, 1); par.add(m); return m; };
-    pc('k_wall_in', paint, parent, 0.1, h, 0.95); if (!ow) pc('k_wall_out', _mix(paint, '#7A5546', 0.14), parent, 0.1, h, 0.95); pc('k_skirt', KIT_C.trim, parent, 0.1, 1, 0.6);
+    pc('k_wall_in', paint, parent, 0.1, h, 0.95); if (!ow) pc('k_wall_out', paint, parent, 0.1, h, 0.95); pc('k_skirt', KIT_C.trim, parent, 0.1, 1, 0.6);
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; parent.add(rim); pc('k_rim', KIT_C.rim, rim, 0, 1, 0.72); parent.userData.rim = rim;
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; parent.add(base); pc('k_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
     if (S.ao && parent.parent) aoStrip(parent.parent, cx, cz, len, n, 0.12);
