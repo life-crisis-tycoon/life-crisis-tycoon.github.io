@@ -1762,7 +1762,7 @@ const furniture = {
     if (ROOM_STYLE.therapy && ROOM_STYLE.therapy.kit && PROPS_ON) { therapyKit(g, cx, cz, room); return; }
     const cs = grp(cx + 0.6 * K, cz - 0.6 * K, -Math.PI / 2, g);
     put(rbox(1.9, 0.4, 0.75, '#2E7D4F', 0.16), 0, 0.32, 0, cs); put(rbox(0.5, 0.45, 0.75, '#2E7D4F', 0.16), -0.75, 0.6, 0, cs); glbSwap(cs, 'daybed', { len: 1.95, h: 0.8, rot: -Math.PI / 2, y: 0.12 });
-    const ac = grp(cx - 1.0 * K, cz - 1.4 * K, Math.PI / 4, g); put(rbox(0.8, 0.45, 0.75, '#F2C14E', 0.14), 0, 0.32, 0, ac); put(rbox(0.8, 0.6, 0.2, '#F2C14E', 0.1), 0, 0.7, -0.3, ac); glbSwap(ac, 'armchair', { len: 0.85, h: 1.0, y: 0.12 });
+    const ac = grp(cx - 1.0 * K, cz - 1.4 * K, Math.PI / 4, g); put(rbox(0.8, 0.45, 0.75, '#F2C14E', 0.14), 0, 0.32, 0, ac); put(rbox(0.8, 0.6, 0.2, '#F2C14E', 0.1), 0, 0.7, -0.3, ac); glbSwap(ac, 'armchair', { len: 0.85, h: 1.0, y: 0.12, rot: Math.PI });
     const lp = grp(cx - 1.9 * K, cz - 2.4 * K, 0, g); put(cyl(0.03, 0.03, 1.5, '#3B4A6B'), 0, 0.85, 0, lp); put(cyl(0.18, 0.28, 0.3, '#FFF3CF', { e: '#FFE7A8', ei: 0.8 }), 0, 1.65, 0, lp);
     { const tt = grp(cx + 0.6 * K - 1.1, cz - 0.6 * K, 0, g); put(rbox(0.25, 0.15, 0.18, '#FFFFFF', 0.03), 0, 0.58, 0, tt); glbSwap(tt, 'sidetable', { h: 0.78, y: 0.1 }); }
     room.spots.push({ x: cx + 0.6 * K, z: cz - 0.6 * K, rot: -Math.PI / 2, sit: true, y: 0.05, busy: null });
@@ -1888,7 +1888,7 @@ const furniture = {
   staffroom(g, cx, cz, room, K = 1) { // every seat is a real piece: sofa (2), armchairs (1 each), beanbags (1 each); a big room's 2nd half is a games corner
     const seat = (x, z, rot, y = 0.05) => room.spots.push({ x, z, rot, sit: true, y, busy: null });
     const sofa = (x, z, rot = 0) => { const so = grp(x, z, rot, g); put(rbox(2.4, 0.42, 0.85, '#FFB067', 0.15), 0, 0.32, 0, so); put(rbox(2.4, 0.6, 0.25, '#FFB067', 0.1), 0, 0.68, -0.33, so); glbSwap(so, 'sofa', { len: 2.5, h: 1.0, y: 0.12 }); for (const ox of [-0.7, 0.7]) seat(x + ox * Math.cos(rot), z - ox * Math.sin(rot) + 0.05, rot); };
-    const arm = (x, z, rot) => { const a = grp(x, z, rot, g); put(rbox(0.9, 0.45, 0.85, '#7ACB4E', 0.15), 0, 0.3, 0, a); put(rbox(0.9, 0.55, 0.2, '#7ACB4E', 0.1), 0, 0.7, -0.33, a); glbSwap(a, 'armchair', { len: 1.0, y: 0.1 }); seat(x, z, rot); };
+    const arm = (x, z, rot) => { const a = grp(x, z, rot, g); put(rbox(0.9, 0.45, 0.85, '#7ACB4E', 0.15), 0, 0.3, 0, a); put(rbox(0.9, 0.55, 0.2, '#7ACB4E', 0.1), 0, 0.7, -0.33, a); glbSwap(a, 'armchair', { len: 1.0, y: 0.1, rot: Math.PI }); seat(x, z, rot); }; // the model faces -z: turn it so its seat opens where the sitter faces
     const bag = (x, z, rot, c) => { const b = grp(x, z, rot, g); const bb = sph(0.48, c); bb.scale.set(1, 0.6, 1); put(bb, 0, 0.3, 0, b); glbSwap(b, 'beanbag', { len: 0.95, y: 0.1 }); seat(x, z, rot, 0); };
     const table = (x, z) => { const tb = grp(x, z, 0, g); put(cyl(0.45, 0.45, 0.06, '#FFFFFF'), 0, 0.45, 0, tb); put(cyl(0.06, 0.06, 0.4, '#7A8088'), 0, 0.23, 0, tb); put(cyl(0.07, 0.06, 0.14, '#E9785F'), 0.1, 0.55, 0, tb); glbSwap(tb, 'sidetable', { h: 0.55, y: 0.1 }); };
     const H = Math.PI / 2, half = room.nst === 2 && room.st === 1;
