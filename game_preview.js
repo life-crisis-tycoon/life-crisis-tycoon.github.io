@@ -560,11 +560,10 @@ function markRoom(r, blk) {
     for (const b of rm.obs) { if (keep.some((k) => k.x > b[0] - 0.05 && k.x < b[1] + 0.05 && k.z > b[2] - 0.05 && k.z < b[3] + 0.05)) continue; // the seat/bed someone uses is walked onto, not around
       const [i0, j0] = ci(b[0] - 0.12, b[2] - 0.12), [i1, j1] = ci(b[1] + 0.12, b[3] + 0.12);
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j); if (keep.some((k) => Math.hypot(k.x - p.x, k.z - p.z) < 0.5)) continue; blk[j * GW + i] = 1; } }
-    // never wall a seat off: if a spot can't be reached from the door, open a lane straight to it
+    // never wall a seat off: if a spot can't be reached from the door, clear the cheapest lane to it
     const din = doorPt(r, -0.6);
     for (const k of keep) { if (reachIn(blk, din, k, q)) continue; for (const n of carveLane(blk, din, k, q)) blk[n] = 0; // the fewest furniture cells, not a straight line through the desk
-      if (false) { const n = 0;
-      for (let t = 0; t <= n; t++) { const x = 0, z = 0; for (const [ox, oz] of []) { const [i, j] = ci(x + ox, z + oz); if (i >= 0 && j >= 0 && i < GW && j < GH) { const p = cc(i, j); if (p.x > q.x0 + 0.3 && p.x < q.x1 - 0.3 && p.z > q.z0 + 0.3 && p.z < q.z1 - 0.3) blk[j * GW + i] = 0; } } } } }
+    } }
   const [i0, j0] = ci(q.x0 + 0.01, q.z0 + 0.01), [i1, j1] = ci(q.x1 - 0.01, q.z1 - 0.01);
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     if (i < 0 || j < 0 || i >= GW || j >= GH) continue;
