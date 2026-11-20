@@ -545,15 +545,26 @@ function reachIn(blk, a, b, q) { // flood fill limited to the room rectangle
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di, nj = j + dj, k = ni + nj * GW; if (ni < i0 || nj < j0 || ni > i1 || nj > j1 || seen.has(k) || blk[k]) continue; seen.add(k); st.push([ni, nj]); } }
   return false;
 }
+// cheapest way in from the door when furniture boxes a spot in: Dijkstra over the room, a furniture cell costs 25, returns the furniture cells to clear
+function carveLane(blk, a, b, q) {
+  const [si, sj] = ci(a.x, a.z), [ti, tj] = ci(b.x, b.z), [i0, j0] = ci(q.x0 + 0.3, q.z0 + 0.3), [i1, j1] = ci(q.x1 - 0.3, q.z1 - 0.3), dist = new Map(), prev = new Map(), open = [[0, si + sj * GW]];
+  dist.set(si + sj * GW, 0);
+  while (open.length) { let bi = 0; for (let k = 1; k < open.length; k++) if (open[k][0] < open[bi][0]) bi = k; const [dc, n] = open.splice(bi, 1)[0]; if (dc > dist.get(n)) continue;
+    const i = n % GW, j = (n - i) / GW; if (i === ti && j === tj) break;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di, nj = j + dj, m = ni + nj * GW; if (ni < i0 || nj < j0 || ni > i1 || nj > j1) continue; const c = dc + (blk[m] ? 25 : 1); if (c < (dist.has(m) ? dist.get(m) : 1e9)) { dist.set(m, c); prev.set(m, n); open.push([c, m]); } } }
+  const out = []; let n = ti + tj * GW; while (prev.has(n)) { if (blk[n]) out.push(n); n = prev.get(n); } return out;
+}
 function markRoom(r, blk) {
   const q = roomRect(r), dp = doorPt(r, 0), rm = R.rooms && R.rooms[r.id];
   if (rm && rm.obs) { const keep = rm.spots.concat(rm.staffSpots.filter(Boolean)).concat([doorPt(r, -0.6)]);
-    for (const b of rm.obs) { const [i0, j0] = ci(b[0] - 0.12, b[2] - 0.12), [i1, j1] = ci(b[1] + 0.12, b[3] + 0.12);
+    for (const b of rm.obs) { if (keep.some((k) => k.x > b[0] - 0.05 && k.x < b[1] + 0.05 && k.z > b[2] - 0.05 && k.z < b[3] + 0.05)) continue; // the seat/bed someone uses is walked onto, not around
+      const [i0, j0] = ci(b[0] - 0.12, b[2] - 0.12), [i1, j1] = ci(b[1] + 0.12, b[3] + 0.12);
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j); if (keep.some((k) => Math.hypot(k.x - p.x, k.z - p.z) < 0.5)) continue; blk[j * GW + i] = 1; } }
     // never wall a seat off: if a spot can't be reached from the door, open a lane straight to it
     const din = doorPt(r, -0.6);
-    for (const k of keep) { if (reachIn(blk, din, k, q)) continue; const n = Math.ceil(Math.hypot(k.x - din.x, k.z - din.z) / 0.2);
-      for (let t = 0; t <= n; t++) { const x = din.x + (k.x - din.x) * t / n, z = din.z + (k.z - din.z) * t / n; for (const [ox, oz] of [[0, 0], [0.25, 0], [-0.25, 0], [0, 0.25], [0, -0.25]]) { const [i, j] = ci(x + ox, z + oz); if (i >= 0 && j >= 0 && i < GW && j < GH) { const p = cc(i, j); if (p.x > q.x0 + 0.3 && p.x < q.x1 - 0.3 && p.z > q.z0 + 0.3 && p.z < q.z1 - 0.3) blk[j * GW + i] = 0; } } } } }
+    for (const k of keep) { if (reachIn(blk, din, k, q)) continue; for (const n of carveLane(blk, din, k, q)) blk[n] = 0; // the fewest furniture cells, not a straight line through the desk
+      if (false) { const n = 0;
+      for (let t = 0; t <= n; t++) { const x = 0, z = 0; for (const [ox, oz] of []) { const [i, j] = ci(x + ox, z + oz); if (i >= 0 && j >= 0 && i < GW && j < GH) { const p = cc(i, j); if (p.x > q.x0 + 0.3 && p.x < q.x1 - 0.3 && p.z > q.z0 + 0.3 && p.z < q.z1 - 0.3) blk[j * GW + i] = 0; } } } } }
   const [i0, j0] = ci(q.x0 + 0.01, q.z0 + 0.01), [i1, j1] = ci(q.x1 - 0.01, q.z1 - 0.01);
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     if (i < 0 || j < 0 || i >= GW || j >= GH) continue;
