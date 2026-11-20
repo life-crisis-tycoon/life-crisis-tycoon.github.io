@@ -637,17 +637,17 @@ export function buildCity(kind, cg, H, box) {
   // the hillside community, after the reference: the same two Meshy blocks repainted in many colours, packed side by side and stacked
   // row above row up a stepped slope (each row set back and raised, touching the one below), trees only along the ridge and the ends
   const SP_FAV_TINT = ['#FFFFFF', '#FFD2A6', '#FFB9B0', '#BFDCFF', '#CFF0B8', '#FFF0A0', '#E6CCFF', '#FFC9E4', '#B8F0E6'];
-  function spFavela(xs, z0, z1, dirX, rows = 6) { // xs: street-side edge; dirX: -1 = the slope climbs towards -x
-    const h0 = 5.2, step = 3.0, rise = 2.25, depth = rows * step + 3;
+  function spFavela(xs, z0, z1, dirX, rows = 4) { // xs: street-side edge; dirX: -1 = the slope climbs towards -x
+    const h0 = 7.2, step = 4.4, rise = 3.3, depth = rows * step + 3; // big readable houses, each row clearly sitting on top of the one in front
     const xa = dirX < 0 ? xs - depth : xs, xb = dirX < 0 ? xs : xs + depth; reserve(Math.min(xa, xb), Math.max(xa, xb), z0, z1);
     for (let r = 0; r < rows; r++) {
-      const xf = xs + dirX * (0.6 + r * step), top = r * rise, xc = xf + dirX * 2.6;
+      const xf = xs + dirX * (0.6 + r * step), top = r * rise, xc = xf + dirX * 3.6;
       if (r) { const wR = depth - 0.6 - r * step + 1; put(rbox(wR, top, z1 - z0, '#A8714A', 0.2), xf + dirX * (wR / 2 - 1), GY + top / 2, (z0 + z1) / 2, cg); } // solid stepped hill
       for (let z = z0 + (r % 2 ? 2.2 : 0.4) + R() * 0.8; z < z1 - 2;) {
-        const n = R() < 0.5 ? 'sp2_favela_a' : 'sp2_favela_b', h = h0 * (0.88 + R() * 0.24), w = SP_M[n][0] * h;
-        const g = grp(xc, z + w / 2, (dirX < 0 ? -Math.PI / 2 : Math.PI / 2) + (R() - 0.5) * 0.18, cg); g.position.y = GY + top;
+        const n = R() < 0.5 ? 'sp2_favela_a' : 'sp2_favela_b', h = h0 * (0.9 + R() * 0.2), w = SP_M[n][0] * h;
+        const g = grp(xc, z + w / 2, (dirX < 0 ? -Math.PI / 2 : Math.PI / 2) + (R() - 0.5) * 0.06, cg); g.position.y = GY + top;
         put(rbox(w * 0.9, h * 0.8, SP_M[n][1] * h * 0.9, '#D98B5F', 0.1), 0, h * 0.4, 0, g);
-        H.glb(g, n, { h, rot: Math.PI, tint: pick(SP_FAV_TINT) }); z += w * 0.8; }
+        H.glb(g, n, { h, rot: Math.PI, tint: pick(SP_FAV_TINT) }); z += w * 0.94; }
     }
     const ridge = xs + dirX * (rows * step + 1.4), rtop = rows * rise; put(rbox(3.2, rtop, z1 - z0, '#6FA34B', 0.4), ridge, GY + rtop / 2, (z0 + z1) / 2, cg);
     for (let z = z0 + 1; z < z1; z += 2.6 + R() * 1.5) { const t = grp(ridge + (R() - 0.5), z, 0, cg); t.position.y = GY + rtop; put(sph(0.9, '#4E9E58'), 0, 2, 0, t); H.glb(t, R() < 0.6 ? 'lon_plane' : 'sp2_palm', { h: 4.2 + R() * 1.2 }); }
