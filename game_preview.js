@@ -1573,7 +1573,7 @@ function napKit(g, cx, cz, room) {
   if (sp > 1.45) for (let i = 0; i < n - 1; i++) L.push({ p: 'k_lamp', h: 0.62, wall: 'back', u: (i + 0.5 - (n - 1) / 2) * sp, solid: false, glow: true }); // target image: a glowing mushroom lamp between the beds
 
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
-  if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.45, wall: 'right', u: 'F' }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.6 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.0, r: -H }); // armchair model faces +x
+  if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   if (!S) { const rg = grp(cx, cz + D / 2 - 1.45, 0, g), fm = mat('#FFFFFF', { map: FLUFF(), mapK: 'fluff', r: 1 }); // fluffy cloud rug, like the target image
     for (const [x, z, r] of [[0, 0, 0.62], [-0.62, 0.08, 0.45], [0.62, 0.05, 0.47], [-0.3, -0.38, 0.42], [0.32, -0.4, 0.44], [-0.28, 0.42, 0.42], [0.3, 0.44, 0.4]]) {
