@@ -493,7 +493,7 @@ function roomRect(r) { const z = SIZES[r.size]; const side = Math.abs(Math.sin(r
 const toW = (r, lx, lz) => ({ x: r.x + lx * Math.cos(r.a) + lz * Math.sin(r.a), z: r.z - lx * Math.sin(r.a) + lz * Math.cos(r.a) });
 const doorPt = (r, out = 0) => toW(r, 0, SIZES[r.size].D / 2 + out);
 // --- walk grid (0.5 m cells) + A* ---
-const G0x = -30, G0z = -32, GCs = 0.5, GW = 120, GH = 92;
+const G0x = -30, G0z = -32, GCs = 0.25, GW = 240, GH = 184; // 25 cm cells: fine enough to walk round a desk instead of clipping its corner
 let gridBlk = new Uint8Array(GW * GH);
 // which room each cell is in (0 = hall/corridor) and where each room's door is: a step may only change room through a door, so nobody walks through a wall
 let gridRid = new Int16Array(GW * GH), gridDoors = [null];
@@ -557,9 +557,8 @@ function carveLane(blk, a, b, q) {
 function markRoom(r, blk) {
   const q = roomRect(r), dp = doorPt(r, 0), rm = R.rooms && R.rooms[r.id];
   if (rm && rm.obs) { const keep = rm.spots.concat(rm.staffSpots.filter(Boolean)).concat([doorPt(r, -0.6)]);
-    for (const b of rm.obs) { if (keep.some((k) => k.x > b[0] - 0.05 && k.x < b[1] + 0.05 && k.z > b[2] - 0.05 && k.z < b[3] + 0.05)) continue; // the seat/bed someone uses is walked onto, not around
-      const [i0, j0] = ci(b[0] - 0.12, b[2] - 0.12), [i1, j1] = ci(b[1] + 0.12, b[3] + 0.12);
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j); if (keep.some((k) => Math.hypot(k.x - p.x, k.z - p.z) < 0.5)) continue; blk[j * GW + i] = 1; } }
+    for (const b of rm.obs) { const [i0, j0] = ci(b[0] - 0.12, b[2] - 0.12), [i1, j1] = ci(b[1] + 0.12, b[3] + 0.12);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j); if (keep.some((k) => Math.hypot(k.x - p.x, k.z - p.z) < 0.36)) continue; blk[j * GW + i] = 1; } }
     // never wall a seat off: if a spot can't be reached from the door, clear the cheapest lane to it
     const din = doorPt(r, -0.6);
     for (const k of keep) { if (reachIn(blk, din, k, q)) continue; for (const n of carveLane(blk, din, k, q)) blk[n] = 0; // the fewest furniture cells, not a straight line through the desk
@@ -615,7 +614,7 @@ function walkCells(ax, az, bx, bz, cb) {
   let [i, j] = ci(ax, az); const [ti, tj] = ci(bx, bz), dx = bx - ax, dz = bz - az, sx = Math.sign(dx), sz = Math.sign(dz);
   const tdx = dx ? GCs / Math.abs(dx) : Infinity, tdz = dz ? GCs / Math.abs(dz) : Infinity;
   let tmx = dx ? (sx > 0 ? G0x + (i + 1) * GCs - ax : ax - (G0x + i * GCs)) / Math.abs(dx) : Infinity, tmz = dz ? (sz > 0 ? G0z + (j + 1) * GCs - az : az - (G0z + j * GCs)) / Math.abs(dz) : Infinity;
-  for (let n = 0; n < 600 && (i !== ti || j !== tj); n++) {
+  for (let n = 0; n < 2400 && (i !== ti || j !== tj); n++) {
     const pi = i, pj = j;
     if (Math.abs(tmx - tmz) < 1e-9) { if (!cb(i + sx, j, pi, pj) || !cb(i, j + sz, pi, pj)) return false; i += sx; j += sz; tmx += tdx; tmz += tdz; }
     else if (tmx < tmz) { i += sx; tmx += tdx; } else { j += sz; tmz += tdz; }
@@ -644,7 +643,7 @@ function findPath(from, to, loose) {
   const hpush = (e) => { open.push(e); let i = open.length - 1; while (i) { const p = (i - 1) >> 1; if (open[p][0] <= open[i][0]) break; [open[p], open[i]] = [open[i], open[p]]; i = p; } };
   const hpop = () => { const top = open[0], last = open.pop(); if (open.length) { open[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < open.length && open[l][0] < open[m][0]) m = l; if (r < open.length && open[r][0] < open[m][0]) m = r; if (m === i) break; [open[m], open[i]] = [open[i], open[m]]; i = m; } } return top; };
   // someone standing on a blocked cell (a seat against the wall, a staff spot) may step out through blocked cells of their own room; same to reach a blocked target
-  const sB = gridBlk[s], tB = gridBlk[tg], R0 = loose ? 3 : 2, near = (n, c) => { const a = n % GW, b = c % GW; return Math.abs(a - b) <= R0 && Math.abs((n - a) / GW - (c - b) / GW) <= R0; };
+  const sB = gridBlk[s], tB = gridBlk[tg], R0 = loose ? 6 : 3, near = (n, c) => { const a = n % GW, b = c % GW; return Math.abs(a - b) <= R0 && Math.abs((n - a) / GW - (c - b) / GW) <= R0; };
   const ok = (i, j, from) => { if (!inB(i, j)) return false; const n = j * GW + i; if (from != null && !crossOK(from, n)) return false;
     return !gridBlk[n] || n === tg || n === s || (loose && sB && gridRid[n] && gridRid[n] === gridRid[s]) || (loose && tB && gridRid[n] && gridRid[n] === gridRid[tg]) || (sB && near(n, s)) || (tB && near(n, tg)); };
   let found = false, best = s, bh = 1e9;
