@@ -8,7 +8,7 @@ export function buildCity(kind, cg, H, box) {
   const [x0, x1, z0, z1] = box;
   const xW = x0 - 4.2, xE = x1 + 4.6, zN = z0 - 4.2, zS = 15.6, GY = -0.52;
   const B = [], movers = [], reserved = [];
-  const SPK = !!(H.grade && H.glb && kind === 'saopaulo'); // preview São Paulo rebuild (see spBand)
+  const SPK = !!(H.spNew && H.glb && kind === 'saopaulo'); // preview only until approved // preview São Paulo rebuild (see spBand)
   const reserve = (a, b, c, d) => reserved.push([a, b, c, d]);
   const free = (a, b, c, d) => !reserved.some((r) => a < r[1] && b > r[0] && c < r[3] && d > r[2]);
 
