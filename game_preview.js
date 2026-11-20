@@ -2254,9 +2254,11 @@ function stepWalker(o, dt, speed) {
   if (nw) speed = Math.min(speed * clamp(nw / 1.25, 0.5, 1.3), nw * (speed > 2.6 ? 2.2 : 1.9));
   if (doomers.length && !doomers.includes(o)) for (const u of doomers) if (Math.hypot(u.av.position.x - o.av.position.x, u.av.position.z - o.av.position.z) < 0.8) { speed *= 0.45; break; } // stuck behind someone staring at their phone
   const p = o.path[0], pos = o.av.position;
-  const dx = p.x - pos.x, dz = p.z - pos.z, d = Math.hypot(dx, dz), step = speed * dt;
+  const dx = p.x - pos.x, dz = p.z - pos.z, d = Math.hypot(dx, dz);
+  // turn before walking off: a big heading change slows the step until the body faces the way it goes (no crab-walking at path corners)
+  const tw = d > 0.001 ? Math.abs((((Math.atan2(dx, dz) - o.av.rotation.y) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) : 0, step = speed * dt * (tw > 0.5 ? Math.max(0.12, Math.cos(Math.min(tw, 1.45))) : 1);
   if (d <= step) { pos.x = p.x; pos.z = p.z; o.path.shift(); } else { pos.x += dx / d * step; pos.z += dz / d * step; }
-  if (d > 0.001) { const a = Math.atan2(dx, dz); let r = o.av.rotation.y; r += ((((a - r) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10); o.av.rotation.y = ((r + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }
+  if (d > 0.001) { const a = Math.atan2(dx, dz); let r = o.av.rotation.y; r += ((((a - r) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 14); o.av.rotation.y = ((r + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }
   o.ph += dt * speed * 4.2; poseWalk(o.av.userData.p, o.ph, 0.55, speed); pos.y = 0.1;
   return !o.path.length;
 }
