@@ -712,7 +712,7 @@ function lotRibbon(pts, wid, m, y, g) { // a flat path of width wid along a smoo
     for (let t = 0; t < 1; t += 0.1) { const t2 = t * t, t3 = t2 * t; P.push([0, 1].map((j) => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3))); } }
   P.push(pts[pts.length - 1]); const pos = [], idx = [];
   P.forEach((p, k) => { const a = P[Math.max(0, k - 1)], b = P[Math.min(P.length - 1, k + 1)]; let dx = b[0] - a[0], dz = b[1] - a[1]; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
-    pos.push(p[0] - dz * wid / 2, y, p[1] + dx * wid / 2, p[0] + dz * wid / 2, y, p[1] - dx * wid / 2); if (k) { const o = (k - 1) * 2; idx.push(o, o + 1, o + 2, o + 1, o + 3, o + 2); } });
+    pos.push(p[0] - dz * wid / 2, y, p[1] + dx * wid / 2, p[0] + dz * wid / 2, y, p[1] - dx * wid / 2); if (k) { const o = (k - 1) * 2; idx.push(o, o + 2, o + 1, o + 1, o + 2, o + 3); } }); // wound to face up
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
   const mesh = new THREE.Mesh(geo, m); mesh.receiveShadow = true; g.add(mesh);
   for (let k = 0; k < P.length; k += 3) { const d = new THREE.Mesh(GC.pathDot || (GC.pathDot = new THREE.CylinderGeometry(1, 1, 0.02, 16)), m); d.scale.set(wid / 2, 1, wid / 2); d.position.set(P[k][0], y, P[k][1]); g.add(d); } // round the joins
