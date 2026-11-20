@@ -1004,7 +1004,7 @@ for (const [k, c] of Object.entries(WALL_TINT)) ROOM_STYLE[k] = { wall: c, cap: 
 ROOM_STYLE.nap.posts = true; ROOM_STYLE.nap.base = _mix(ROOM_STYLE.nap.wall, '#4C5753', 0.62); ROOM_STYLE.nap.cap = '#F4E9D2';
 // 2026 room design (v2): cream outside shared by every room, the room's own colour drenched inside, arched window, sign plate over the door
 const OUT_WALL = '#F3E8D6', OUT_CAP = '#FBF4E8', OUT_BASE = '#A9C29E';
-ROOM_STYLE.career = { v2: true, model: 'career_kit', kit: true, winOuter: true, wood: ['#7A4428', '#8C5232'], winSide: '-1,0', winOff: 0, wall: '#22305A', inBase: '#151E3A', floor: '#6E3324', door: '#22305A', panel: '#22305A', pop: '#F0A830', posts: true, h: ROOM_H };
+ROOM_STYLE.career = { v2: true, model: 'career_kit', kit: true, winOuter: true, wood: ['#7A4428', '#8C5232'], winSide: '-1,0', winOff: 0, wall: '#E5826C', wallSide: { '0,-1': '#22305A' }, inBase: '#151E3A', floor: '#6E3324', door: '#22305A', panel: '#22305A', pop: '#F0A830', posts: true, h: ROOM_H };
 ROOM_STYLE.pharmacy = { v2: true, model: 'pharmacy_kit', kit: true, floorMap: () => PHARMA_FLOOR(), wall: '#CFE6D4', inBase: '#A9D3B6', floor: '#F6F3EC', door: '#8FC7A0', panel: '#8FC7A0', pop: '#5BB37A', posts: true, h: ROOM_H };
 ROOM_STYLE.social = { v2: true, model: 'social_kit', kit: true, wall: '#E9A9A4', inBase: '#D98C8A', floor: '#A45A6C', door: '#F1E2CC', panel: '#C97E86', pop: '#D4A64A', posts: true, h: ROOM_H };
 ROOM_STYLE.wedding = { v2: true, model: 'wedding_kit', kit: true, wall: '#F0A12C', inBase: '#D9861A', floor: '#EBDCC6', door: '#8E1F28', panel: '#8E1F28', pop: '#E3B341', posts: true, h: ROOM_H };
