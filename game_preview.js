@@ -2276,7 +2276,8 @@ function settle(o, spot) {
   o.av.position.set(spot.x, 0.1 + (spot.y || 0), spot.z); o.av.rotation.y = spot.rot || 0; const p = o.av.userData.p; poseStand(p);
   if (!spot.sit) return;
   poseSit(p, spot.lie); o.av.position.y -= 0.05;
-  if (!spot.lie && p.anim) { const top = seatTop(spot.x, spot.z, o.av, o.av.position.y + HIP_SIT * o.av.scale.y - HIP_PAD); if (top != null) o.av.position.y = top + HIP_PAD - HIP_SIT * o.av.scale.y; }
+  if (!spot.lie && p.anim) { const top = seatTop(spot.x, spot.z, o.av, o.av.position.y + HIP_SIT * o.av.scale.y - HIP_PAD); if (top != null) o.av.position.y = top + HIP_PAD - HIP_SIT * o.av.scale.y;
+    const fw = 0.55 * (o.av.scale.y - 1) + 0.04, r = spot.rot || 0; o.av.position.x += Math.sin(r) * fw; o.av.position.z += Math.cos(r) * fw; } // bigger-than-life people: sit forward on the cushion, back against the backrest instead of inside it
 }
 // group rooms (nap, social…) already seat 2/4/6; one-on-one rooms (budget, career…) seat one client per station, so their
 // bigger sizes work faster instead: M ≈ +70 %, L ≈ +50 % per station (two stations), so upgrading pays like it does for groups
