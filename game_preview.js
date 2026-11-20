@@ -413,7 +413,7 @@ function attachHandProps(av, key) {
       m.scale.setScalar(as.x / (ws.x || 1)); m.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.frustumCulled = false; } }); bone.add(m); }).catch(() => {}); }
 }
 function person(o, kind) {
-  if (kind && canGLB(kind, outfitKey(kind, o))) { try { const a = makeGLBAvatar(o, kind, outfitKey(kind, o)); if (o && o.vm && HAND_PROPS[o.vm]) attachHandProps(a, o.vm); return a; } catch (e) { CHAR.errors.push('avatar ' + e.message); } }
+  if (kind && canGLB(kind, outfitKey(kind, o))) { try { const a = makeGLBAvatar(o, kind, outfitKey(kind, o)); a.scale.multiplyScalar(CHAR_BOOST); if (o && o.vm && HAND_PROPS[o.vm]) attachHandProps(a, o.vm); return a; } catch (e) { CHAR.errors.push('avatar ' + e.message); } }
   return proceduralPerson(o);
 }
 function proceduralPerson(o) {
@@ -470,6 +470,8 @@ function proceduralPerson(o) {
   root.traverse((m) => { if (m.isMesh) m.userData.owner = root; });
   return root;
 }
+// people read a bit bigger than life next to the chunky diorama furniture (seat heights, naps and paths all follow av.scale)
+const CHAR_BOOST = +(new URLSearchParams(location.search).get('cs') || 1.2);
 function poseStand(p) { if (p.anim) return p.anim.set('idle'); p.legs.forEach((l) => l.rotation.x = 0); p.knees.forEach((k) => k.rotation.x = 0); p.arms.forEach((a) => { a.rotation.x = 0; a.rotation.z = 0; }); p.body.position.y = 0; p.phone.visible = false; }
 function poseSit(p, lie) { if (p.anim) return p.anim.set(lie ? 'idle' : 'sit'); // lying = the standing idle laid flat by lieUpdate (Meshy's 'lie' clip is a half-sit)
  p.legs.forEach((l) => l.rotation.x = -Math.PI / 2); p.knees.forEach((k) => k.rotation.x = Math.PI / 2); p.arms.forEach((a) => a.rotation.x = -0.5); }
