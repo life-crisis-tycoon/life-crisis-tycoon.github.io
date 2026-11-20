@@ -1062,7 +1062,7 @@ const FABRIC_N = () => GC.fabricN || (GC.fabricN = (() => { const W = 128, cv = 
   const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6); return t; })());
 // fluffy pile: the rug drawn again as stacked shells, each a little higher and sparser (classic shell fur), in one soft colour
 const FUR_A = () => GC.furA || (GC.furA = canvasTex(128, 128, (c, W) => { c.fillStyle = '#000'; c.fillRect(0, 0, W, W); let sd = 13; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 2600; i++) { const v = Math.floor(80 + rr() * 175); c.fillStyle = `rgb(${v},${v},${v})`; c.beginPath(); c.arc(rr() * W, rr() * W, 0.7 + rr() * 1.1, 0, 6.3); c.fill(); } }, [8, 8]));
+  for (let i = 0; i < 1500; i++) { const v = Math.floor(80 + rr() * 175); c.fillStyle = `rgb(${v},${v},${v})`; c.beginPath(); c.arc(rr() * W, rr() * W, 1.2 + rr() * 2.2, 0, 6.3); c.fill(); } }, [5, 5]));
 function furShells(m, col, n = 9, hgt = 0.05) {
   const meshes = []; m.traverse((c) => { if (c.isMesh) meshes.push(c); });
   for (const c of meshes) { c.material = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }); // base: the pile's colour, no flat print
@@ -1590,7 +1590,7 @@ function napKit(g, cx, cz, room) {
 
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
   if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H, fabric: '#6F6684' }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
-  if (!S) L.push({ p: 'k_rug', len: 2.0, x: 0, z: D / 2 - 1.4, solid: false, onModel: (m) => furShells(m, '#D8CCEA') }); // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
+  if (!S) L.push({ p: 'k_rug', len: 2.5, x: -0.35, z: 0.35, solid: false, onModel: (m) => furShells(m, '#EEEAF2', 12, 0.08) }); // reference: big white cloud rug in the middle of the room, long soft pile // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
   for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? null : '#A39CB2'; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   if (!GFX.low && sp > 1.45) for (let i = 0; i < n - 1; i++) { const pl = new THREE.PointLight('#FFB46A', 1.1, 1.5, 2); pl.position.set(cx + (i + 0.5 - (n - 1) / 2) * sp, 0.55, bz + 0.45); g.add(pl); } // a small pool of lamp light at each bedside, nothing on the sleepers' faces // the warm, dimmed glow of the lamps and the moon
