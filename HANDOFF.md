@@ -121,3 +121,11 @@ Read this first. The user (French or English; answer in the language she writes 
 - `roomObs(room)`: code pieces measured once before batching (`room.obs0`), 3D-model pieces (swap groups) re-measured each time one loads (`roomObsLater` from `glbSwap`), rugs (`glb` name with rug/carpet) skipped.
 - `findPath(from, to, loose)`: furniture cells crossable only within 2 cells of the start/target (getting up from a seat), cost 12; falls back to the old loose rules only when no path exists. `los` shortcuts check both shoulders for furniture too.
 - `lieUpdate()` (from `doorsUpdate`): visitors treated on a `lie` spot and staff napping on a `bed` spot lie flat (idle clip, avatar pitched -90°, hips set on the mattress) under a pastel duvet (`av.userData.duvet`); poseSit(lie) now plays idle (Meshy's Lie clip is a half-sit).
+
+## Movement audit (2026-11-20, live)
+- Walk grid is now 25 cm (`GCs 0.25, GW 240, GH 184`). A seat boxed in by furniture gets `carveLane()` (Dijkstra, own seat box cheap, other furniture 25) instead of a straight lane through the desk.
+- Audit snippet used in the browser pane: for every room type × size, `findPath` door→spot and spot→door, sampled against `room.obs`. Still flagged: tight stool/cushion rings (lucha, ahwa, roda), toilet L, garage, lab S (paths brush a neighbour's stool by ~10 cm).
+- chars.js: `anim.freeze(st)` + `userData.sleep` (no update while asleep), `userData.carry = {y,z}` → `carryPose` aims both arms at the box after the clip.
+- settle(): seated people pushed 0.04 + 0.55·(scale−1) m forward (bigger characters sank into backrests). 'armchair' GLB faces −z: glbSwap with rot π.
+- stepWalker: slows the step while the heading differs by > 0.5 rad (no crab-walk at corners).
+- Note: chars.js has no ?v= cache-buster; phones may keep the old copy for ~10 min.
