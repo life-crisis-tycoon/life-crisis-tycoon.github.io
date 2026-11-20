@@ -257,7 +257,7 @@ function updateCutaway() {
   for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = (!up || close) && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
   for (const w of world.roomCut || []) { w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
   for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
-  for (const d of world.doors || []) { const c = close && d.g.userData.n && cut(d.g.userData.n, [d.x, d.z]); // close up, a door in a wall that drops to hip height drops with it (frame cut down, leaf and arch hidden)
+  for (const d of world.doors || []) { const c = !d.kit && close && d.g.userData.n && cut(d.g.userData.n, [d.x, d.z]); // close up, a door in a wall that drops to hip height drops with it (frame cut down, leaf and arch hidden)
     d.g.scale.y = c ? WALL_HIP / ROOM_H : 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = !c; d.cut = !!c; }
   const ep = camPitch(), tan = Math.tan(ep);
   // how far toward the camera the HQ (and its plaza) reaches from the point you look at, capped by the bottom of the screen:
@@ -1230,7 +1230,7 @@ function buildArchDoor(r, g, RS, H, th, dp) {
   for (const fz of [-1, 1]) put(sph(0.045, '#D8B45A', { m: 0.6, r: 0.35 }), lw - 0.14, 1.0, fz * 0.06, piv);
   for (const fz of [-1, 1]) { put(rbox(0.36, 0.26, 0.04, fm, 0.1, { r: 0.8 }), lw / 2, yS + 0.08, fz * 0.05, piv);
     if (RS.icon === 'moon') { const m = new THREE.Mesh(GC.signMoon || (GC.signMoon = new THREE.TorusGeometry(0.08, 0.028, 8, 20, Math.PI * 1.25)), mat(RS.pop, { e: RS.pop, ei: 0.6 })); m.rotation.z = 0.9; m.position.set(lw / 2, yS + 0.08, fz * 0.075); piv.add(m); } }
-  const d = { g, leaves: [piv], top: fill, head: arc, x: dp.x, z: dp.z, open: 0 };
+  const d = { g, leaves: [piv], top: fill, head: arc, x: dp.x, z: dp.z, open: 0, kit: !!(RKIT && RS.chunky) };
   (world.doors = (world.doors || []).filter((o) => o.g.parent && o.g.parent.parent)).push(d);
   return d;
 }
