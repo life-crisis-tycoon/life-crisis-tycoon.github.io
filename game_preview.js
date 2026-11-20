@@ -874,7 +874,8 @@ function buildInst(src, list, name) {
   });
   const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4();
   for (const m of meshes) {
-    const im = new THREE.InstancedMesh(m.geometry, wind ? windify(m.material.clone(), 0.12, 4.5) : m.material, placeM.length); im.castShadow = !GFX.low; im.receiveShadow = true;
+    const mt = wind ? windify(m.material.clone(), 0.12, 4.5) : m.material; if (wind && /^lon_(oak|leafy|cypress)/.test(name)) mt.color.multiply(new THREE.Color('#CDD5C2')); // natural, less acid green
+    const im = new THREE.InstancedMesh(m.geometry, mt, placeM.length); im.castShadow = !GFX.low; im.receiveShadow = true;
     placeM.forEach((pm, i) => { tmp.multiplyMatrices(inv, pm).multiply(m.matrixWorld); im.setMatrixAt(i, tmp); });
     if (live.some(([, o]) => o.tint)) { const c = new THREE.Color(); live.forEach(([, o], i) => im.setColorAt(i, c.set(o.tint || '#FFFFFF'))); im.instanceColor.needsUpdate = true; } // per-instance repaint (e.g. São Paulo's favela blocks)
     im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); root.add(im);
@@ -901,7 +902,7 @@ function glbSwap(g, name, o = {}) {
       c.material = new THREE.MeshPhysicalMaterial({ map: s0.map, color: s0.color, vertexColors: s0.vertexColors, roughness: 0.92, metalness: 0, sheen: 1, sheenRoughness: 0.42, sheenColor: new THREE.Color(o.fabric), normalMap: FABRIC_N(), normalScale: new THREE.Vector2(0.35, 0.35) }); });
     if (o.tint) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.color.multiply(new THREE.Color(o.tint)); } });
     if (o.glow) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.emissive = new THREE.Color(o.glow); c.material.emissiveIntensity = o.gi || 0.8; if (c.material.map) c.material.emissiveMap = c.material.map; } }); // recolour a shared model for one room's palette
-    if (TREE_RX.test(name) && !GFX.low) m.traverse((c) => { if (c.isMesh && c.material) c.material = windify(c.material.clone(), name === 'nap_plant' ? 0.03 : 0.12, 4.5); }); // leaves stir in the wind
+    if (TREE_RX.test(name) && !GFX.low) m.traverse((c) => { if (c.isMesh && c.material) { c.material = windify(c.material.clone(), name === 'nap_plant' ? 0.03 : 0.12, 4.5); if (/^lon_(oak|leafy|cypress)/.test(name)) c.material.color.multiply(new THREE.Color('#CDD5C2')); } }); // leaves stir in the wind; calmer greens
     m.position.y = o.y || 0; g.add(m); g.userData.glb = name; if (o.onModel) o.onModel(m);
     if (rid != null) { m.traverse((c) => { if (c.isMesh) c.userData.roomId = rid; }); roomObsLater(rid); }
   }).catch((e) => console.warn('[props]', name, e.message));
@@ -1157,12 +1158,12 @@ function grassTuftGeo() { if (GC.tuft) return GC.tuft; const pos = [], col = [],
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
   return (GC.tuft = g); }
 function lawnGrass(g, x0, x1, z0, z1, y, avoid, seed) {
-  const dens = GFX.low || MOBILE ? 5 : 12, n = Math.floor((x1 - x0) * (z1 - z0) * dens); let sd = seed; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  const dens = GFX.low || MOBILE ? 8 : 24, n = Math.floor((x1 - x0) * (z1 - z0) * dens); let sd = seed; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   const m = GC.grassM || (GC.grassM = windify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }), 0.05, 0.32));
   const im = new THREE.InstancedMesh(grassTuftGeo(), m, n), o = new THREE.Object3D(), tint = new THREE.Color(); let k = 0;
   for (let i = 0; i < n * 1.6 && k < n; i++) { const x = x0 + rr() * (x1 - x0), z = z0 + rr() * (z1 - z0); if (avoid(x, z)) continue;
-    const s = 0.16 + rr() * 0.16; o.position.set(x, y, z); o.rotation.set(0, rr() * 6.28, 0); o.scale.set(s * 1.4, s * (0.8 + rr() * 0.6), s * 1.4); o.updateMatrix(); im.setMatrixAt(k, o.matrix);
-    im.setColorAt(k, tint.setHSL(0.24 + rr() * 0.05, 0.28 + rr() * 0.12, 0.42 + rr() * 0.12)); k++; }
+    const s = 0.2 + rr() * 0.22; o.position.set(x, y, z); o.rotation.set(0, rr() * 6.28, 0); o.scale.set(s * 1.4, s * (0.8 + rr() * 0.6), s * 1.4); o.updateMatrix(); im.setMatrixAt(k, o.matrix);
+    im.setColorAt(k, tint.setHSL(0.22 + rr() * 0.07, 0.22 + rr() * 0.14, 0.4 + rr() * 0.16)); k++; }
   im.count = k; im.receiveShadow = true; im.castShadow = false; im.userData.swap = true; g.add(im); return im;
 }
 const DIO_RC = 0.38; // corner radius of a diorama room (on the wall line)
