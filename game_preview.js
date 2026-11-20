@@ -740,7 +740,7 @@ function plant(x, z, s = 1, pot = '#E9785F', p = scene, force = null) { // force
   const g = grp(x, z, 0, p); g.position.y = 0.1;
   put(cyl(0.22 * s, 0.17 * s, 0.38 * s, pot), 0, 0.19 * s, 0, g);
   [[0, 0.6, 0, 0.26], [0.16, 0.5, 0.08, 0.2], [-0.15, 0.52, -0.05, 0.2], [0.05, 0.78, -0.06, 0.18]].forEach((q, i) => put(sph(q[3] * s, ['#4E9E58', '#6DBA63', '#3F8A4D'][i % 3], { r: 0.85 }), q[0] * s, q[1] * s, q[2] * s, g));
-  if (force) glbSwap(g, force.v, { h: force.h });
+  if (force) glbSwap(g, force.v, { h: force.h, ...(force.tint ? { tint: force.tint } : {}) });
   else if (pot !== '#E3B341') { const v = ['plant_s', 'plant_m', 'plant_l'][Math.abs(Math.round(x * 7.3 + z * 3.1)) % 3]; glbSwap(g, v, { h: { plant_s: 0.72, plant_m: 0.95, plant_l: 1.1 }[v] * s }); }
   return g;
 }
@@ -1014,7 +1014,7 @@ ROOM_STYLE.therapy = { v2: true, model: 'therapy_kit', kit: true, winSide: '-1,0
 ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0', winOuter: true, floorMap: () => TERRAZZO(), wall: '#EFA7AE', inBase: '#D9858F', floor: '#F2C2C4', door: '#E98C98', panel: '#E98C98', pop: '#E7B04A', posts: true, h: ROOM_H };
 ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', floorM: () => mat('#FFFFFF', { map: CHECKER_M(), mapK: 'cafeM', r: 0.6 }), model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER_SOFT(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_kit', kit: true, wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
-ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, archWin: true, rim: '#4E4470', wall: '#5D5382', inBase: '#463D68', floor: '#9688B4', floorM: () => mat('#FFFFFF', { map: NAP_CARPET(), mapK: 'napCarpet', r: 1 }), door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
+ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, archWin: true, rim: '#3E3560', wall: '#4A4271', inBase: '#3A325C', floor: '#7E7299', floorM: () => mat('#FFFFFF', { map: NAP_CARPET(), mapK: 'napCarpet', r: 1 }), door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 // diorama look (validated on the café) for every room built from Tripo/Meshy pieces: rounded walls and floor, sage plinth, soft contact shadows, pieces ×1.1
 // the older rooms (code-built furniture, interiors not redone yet) get the same walls and floors: their pastel tint inside, cream outside, arched door
 for (const k of ['detox', 'lab', 'parent', 'moving', 'jjim', 'yoga', 'lucha', 'ahwa', 'roda', 'garage', 'shop', 'staffroom', 'toilet']) { const st = ROOM_STYLE[k]; if (!st || st.v2) continue;
@@ -1051,7 +1051,7 @@ const CHECKER_M = () => GC.checkerM || (GC.checkerM = canvasTex(256, 256, (c, W)
 const CHECKER_SOFT = () => GC.checkerSoft || (GC.checkerSoft = canvasTex(256, 256, (c, W) => { const t = W / 2; c.fillStyle = '#D9D0BA'; c.fillRect(0, 0, W, W);
   for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const x = i * t + 3, y = j * t + 3, s = t - 6, base = (i + j) % 2 ? '#B7C69C' : '#F3EDDF';
     c.fillStyle = base; c.fillRect(x, y, s, s); const gr = c.createLinearGradient(x, y, x + s, y + s); gr.addColorStop(0, 'rgba(255,255,255,0.22)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(70,60,40,0.10)'); c.fillStyle = gr; c.fillRect(x, y, s, s); } }, [6, 6]));
-const NAP_CARPET = () => GC.napCarpet || (GC.napCarpet = canvasTex(256, 256, (c, W) => { c.fillStyle = '#9A8DB6'; c.fillRect(0, 0, W, W); let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+const NAP_CARPET = () => GC.napCarpet || (GC.napCarpet = canvasTex(256, 256, (c, W) => { c.fillStyle = '#7F7299'; c.fillRect(0, 0, W, W); let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 9000; i++) { const v = rr(); c.fillStyle = v < 0.5 ? 'rgba(70,50,110,0.10)' : 'rgba(235,225,250,0.10)'; c.fillRect(rr() * W, rr() * W, 1 + rr() * 2, 1 + rr() * 2); } }, [2, 2]));
 const FLUFF = () => GC.fluff || (GC.fluff = canvasTex(128, 128, (c, W) => { c.fillStyle = '#ECE5F2'; c.fillRect(0, 0, W, W); let sd = 9; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 4000; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(150,130,180,0.18)' : 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(rr() * W, rr() * W, 0.8 + rr() * 1.6, 0, 6.3); c.fill(); } }, [1, 1]));
@@ -1466,10 +1466,10 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     let p; if (it.hang) { const wn = it.wall === 'back' ? [0, -1] : it.wall === 'left' ? [-1, 0] : it.wall === 'right' ? [1, 0] : [0, 1], o = pd / 2 + gp; // anchor on the wall line (the cutaway judges it there), piece set into the room
       const A = W(x + wn[0] * o, z + wn[1] * o), n2 = F.T(wn[0], wn[1]); p = grp(A.x, A.z, R, g); p.userData.hang = [Math.round(n2.x), Math.round(n2.z)]; p.userData.swap = true; p = grp(0, o, 0, p); } else p = grp(P.x, P.z, R, g);
     box.at = { x: P.x, z: P.z, rot: R, pw, pd };
-    if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5) } : null); box.g = p; continue; } // the game's own potted plants
+    if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5), tint: it.tint } : null); box.g = p; continue; } // the game's own potted plants
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
-    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}) }); box.g = p;
+    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}), ...(it.tint ? { tint: it.tint } : {}) }); box.g = p;
     if (!it.hang && !/rug/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
@@ -1581,11 +1581,10 @@ function napKit(g, cx, cz, room) {
 
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
   if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H, fabric: '#E9D6FF' }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
+  if (!S) L.push({ p: 'k_rug', len: 2.0, x: 0, z: D / 2 - 1.4, solid: false }); // the owner's cloud rug, with its own fluffy texture
+  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? '#D8C8D4' : '#B8A0B0'; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
-  if (!GFX.low) { const pl = new THREE.PointLight('#FFB070', 5, 6.5, 1.6); pl.position.set(cx, 1.7, cz - D / 2 + 1.3); g.add(pl); } // the warm, dimmed glow of the lamps and the moon
-  if (!S) { const rg = grp(cx, cz + D / 2 - 1.45, 0, g), fm = mat('#FFFFFF', { map: FLUFF(), mapK: 'fluff', r: 1 }); // fluffy cloud rug, like the target image
-    for (const [x, z, r] of [[0, 0, 0.62], [-0.62, 0.08, 0.45], [0.62, 0.05, 0.47], [-0.3, -0.38, 0.42], [0.32, -0.4, 0.44], [-0.28, 0.42, 0.42], [0.3, 0.44, 0.4]]) {
-      const m = new THREE.Mesh(GC.rugDisc || (GC.rugDisc = new THREE.CylinderGeometry(1, 1, 1, 28)), fm); m.scale.set(r, 0.035, r); m.position.set(x, 0.125, z); m.receiveShadow = true; rg.add(m); } }
+  if (!GFX.low) { const pl = new THREE.PointLight('#FFA45C', 11, 7.5, 1.5); pl.position.set(cx, 1.5, cz - D / 2 + 1.2); g.add(pl); } // the warm, dimmed glow of the lamps and the moon
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
 }
