@@ -318,7 +318,7 @@ function groundTex(kind) {
   if (kind === 'saopaulo') return canvasTex(256, 256, (g) => { // calçada portuguesa: white and black stone mosaic in waves
     g.fillStyle = '#8F8A84'; g.fillRect(0, 0, 256, 256);
     for (let y = 0; y < 256; y += 8) for (let x = 0; x < 256; x += 8) { const w = Math.sin((x / 256) * Math.PI * 2) * 34 + 128, band = Math.abs(((y - w + 512) % 128) - 64) < 22;
-      rect(g, x + 1 + rr(), y + 1 + rr(), 6, 6, band ? pick(['#3A3836', '#2F2D2C', '#45423F']) : pick(['#F2EEE6', '#E9E4DA', '#F7F4EE']), 1.5); } }, [34, 34]);
+      rect(g, x + 1 + rr(), y + 1 + rr(), 6, 6, band ? pick(['#3A3836', '#2F2D2C', '#45423F']) : pick(['#F2EEE6', '#E9E4DA', '#F7F4EE']), 1.5); } }, [60, 60]);
   if (kind === 'mexico') return canvasTex(256, 256, (g) => { // dark volcanic stone slabs (recinto) of the historic centre
     g.fillStyle = '#5F5A56'; g.fillRect(0, 0, 256, 256);
     for (let row = 0; row < 4; row++) for (let i = -1; i < 3; i++) rect(g, i * 128 + (row % 2 ? 64 : 0) + 2, row * 64 + 2, 124, 60, pick(['#8A847E', '#7F7973', '#938D86', '#857F78']), 3);
@@ -800,6 +800,7 @@ function buildInst(src, list) {
   for (const m of meshes) {
     const im = new THREE.InstancedMesh(m.geometry, m.material, placeM.length); im.castShadow = !GFX.low; im.receiveShadow = true;
     placeM.forEach((pm, i) => { tmp.multiplyMatrices(inv, pm).multiply(m.matrixWorld); im.setMatrixAt(i, tmp); });
+    if (live.some(([, o]) => o.tint)) { const c = new THREE.Color(); live.forEach(([, o], i) => im.setColorAt(i, c.set(o.tint || '#FFFFFF'))); im.instanceColor.needsUpdate = true; } // per-instance repaint (e.g. São Paulo's favela blocks)
     im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); root.add(im);
   }
 }
@@ -913,7 +914,7 @@ function buildCityDecor(kind) {
   const GR = CITY_GRADE[kind]; scene.background = new THREE.Color(GR ? GR.sky : res.bg); const L = GR ? GR.light : CITY_LIGHT[kind] || CITY_LIGHT._; // preview: London lit like the reference painting (clear, bright, lavender sky)
   world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: groundTex(kind) || tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
   canvas.style.filter = GR ? GR.filter : '';
-  { const big = kind === 'saopaulo' && GR, k = big ? 1.9 : 1; world.ground.scale.set(k, 1, k); const mp = world.ground.material.map; if (mp && big) mp.repeat.set(34 * k, 34 * k); } // São Paulo's rows of towers reach further out // preview: the toy-like punch of the London reference painting
+  { const big = kind === 'saopaulo' && GR, k = big ? 1.9 : 1; world.ground.scale.set(k, 1, k); const mp = world.ground.material.map; if (mp && big) mp.repeat.set(60 * k, 60 * k); } // São Paulo's rows of towers reach further out // preview: the toy-like punch of the London reference painting
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];
   scene.fog = L.fog ? new THREE.Fog(res.bg, L.fog[0], L.fog[1]) : null;
   if (GFX.batch) { const stop = new Set([...res.buildings.map((b) => b.o), ...res.movers.filter((m) => m.o).map((m) => m.o)]); cg.traverse((o) => { if (o.userData.swap) stop.add(o); }); for (const b of res.buildings) batchNode(b.o); batchNode(cg, stop); }

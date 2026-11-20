@@ -524,12 +524,12 @@ export function buildCity(kind, cg, H, box) {
     for (const [px, pz, ps] of [[cx - 30, zN - 44, 9], [cx - 18, zN - 47, 7], [cx - 41, zN - 41, 5]]) pyramid(px, pz, ps);
     mosque(xE + 11, zS + 9); for (let i = 0; i < 8; i++) tree(-38 + i * 11, zN - 10.5, 'palm', 1.1);
   } else if (kind === 'saopaulo') {
-    water(SPK ? -27 : -44, 50, zN - 21, zN - 13, '#7E9A8A'); const eg = estaiada(cx + 4, zN - 24); if (H.glb) H.glb(eg, 'sp_lm_bridge', { len: 22, y: -0.5 }); reserve(cx - 8, cx + 16, zN - 36, zN - 12);
-    masp(cx - 4, zS + 6, 0); copan(xE + 12, zN + 6);
+    if (!SPK) { water(-44, 50, zN - 21, zN - 13, '#7E9A8A'); const eg = estaiada(cx + 4, zN - 24); if (H.glb) H.glb(eg, 'sp_lm_bridge', { len: 22, y: -0.5 }); reserve(cx - 8, cx + 16, zN - 36, zN - 12); }
+    masp(cx - 4, zS + 6, 0); if (!SPK) copan(xE + 12, zN + 6);
     // Meshy landmarks (sheet Nov 2026); a plain block stands in until each model loads
     const spLM = (x, z, r, n, o, fh, fw = 3) => { const g = C(x, z, r); g.position.y = GY; put(rbox(fw, fh, fw, '#E9E1D3', 0.1), 0, fh / 2, 0, g); if (H.glb) H.glb(g, n, o); return lm(g, x, z, fh, fw); };
     { // Ibirapuera Park on the west side: Oca, the winding Marquise, the Auditório, a pond and green trees
-      const px0 = xW - 21, px1 = xW - 3.4, pz0 = zN + 3, pz1 = zS - 3.4, pm = (px0 + px1) / 2;
+      const px0 = SPK ? xE + 3.4 : xW - 21, px1 = SPK ? xE + 21 : xW - 3.4, pz0 = zN + 3, pz1 = zS - 3.4, pm = (px0 + px1) / 2;
       strip(px0, px1, pz0, pz1, '#8DBF6A', GY + 0.05); reserve(px0, px1, pz0, pz1);
       spLM(pm, pz0 + 7, 0, 'sp_lm_oca', { len: 11 }, 3, 8);
       spLM(pm + 1, (pz0 + pz1) / 2 + 0.5, Math.PI / 2, 'sp_lm_marquise', { len: 16 }, 1.2, 4);
@@ -541,8 +541,9 @@ export function buildCity(kind, cg, H, box) {
         for (let tz = pz0 + 1.8; tz < pz1 - 1; tz += 2.9) for (let tx = px0 + 1.8; tx < px1 - 1; tx += 3.1) { const jx = tx + (R() - 0.5) * 1.4, jz = tz + (R() - 0.5) * 1.4;
           if (keep.some(([kx, kz, kr]) => Math.hypot(jx - kx, jz - kz) < kr) || R() < 0.25) continue; tree(jx, jz, R() < 0.62 ? 'green' : R() < 0.5 ? 'ipe' : 'jacaranda', 0.85 + R() * 0.3); } }
     }
-    spLM(xE + 12, zN + 21, 0, 'sp_lm_luz', { len: 15 }, 8, 10); reserve(xE + 4, xE + 20, zN + 14, zN + 28);
-    spLM(xE + 11, zN + 35, 0, 'sp_lm_pinacoteca', { len: 10 }, 7, 8); reserve(xE + 5, xE + 17, zN + 30, zN + 40);
+    const lx = SPK ? 22 : 0; // rebuild: the park takes the east side, Luz and the Pinacoteca stand beyond it
+    spLM(xE + 12 + lx, zN + 21, 0, 'sp_lm_luz', { len: 15 }, 8, 10); reserve(xE + 4 + lx, xE + 20 + lx, zN + 14, zN + 28);
+    spLM(xE + 11 + lx, zN + 35, 0, 'sp_lm_pinacoteca', { len: 10 }, 7, 8); reserve(xE + 5 + lx, xE + 17 + lx, zN + 30, zN + 40);
     spLM(xW - 9, zS + 11, 0, 'sp_lm_obelisco', { len: 7 }, 12, 4); reserve(xW - 14, xW - 4, zS + 6, zS + 16);
     spLM(xE + 9, zS + 9, 0, 'sp_lm_torii', { len: 8 }, 5, 4); reserve(xE + 4.5, xE + 13.5, zS + 4.5, zS + 13.5);
     { const g = C(xE + 18.5, zS + 9, 0); g.position.y = GY; put(rbox(6, 6, 6, '#C9483E', 0.1), 0, 3, 0, g); if (H.glb) H.glb(g, 'sp_b_liberdade', { len: 6.5, rot: Math.PI }); reserve(xE + 15, xE + 22, zS + 5.5, zS + 12.5); B.push({ o: g, x: xE + 18.5, z: zS + 9, h: 7, r: 3.5 }); }
@@ -608,28 +609,49 @@ export function buildCity(kind, cg, H, box) {
     const M = SP_M[name], g = grp(x, z, rot, cg); g.position.y = GY; const w = M[0] * h, d = M[1] * h;
     put(rbox(w * 0.9, h * 0.9, d * 0.9, '#E3DDD2', 0.1), 0, h * 0.45, 0, g);
     H.glb(g, name, { h, rot: M[3] === 'x' ? -Math.PI / 2 : Math.PI }); return g; }
+  // rows by side, after the reference: north = shop fronts then a continuous wall of towers; south (camera side) = low shops only;
+  // east = beyond the park; no gaps inside a row, a padaria or a boteco on each corner, palms in the alley at the feet of the towers
+  const SP_LOWMIX = [['sp2_shops', 3, 1], ['sp2_houses', 3, 1], ['sp2_mural', 2, 0.9], ['sp2_selfbuilt', 2, 0.85], ['sp2_depot', 1, 1]];
   function spBand(ax, bx, az, bz, dA) {
     const rot = dA === 'z-' ? Math.PI : dA === 'x-' ? -Math.PI / 2 : dA === 'x+' ? Math.PI / 2 : 0, u0 = dA[0] === 'z' ? ax : az, u1 = dA[0] === 'z' ? bx : bz;
-    let off = 2.6;
-    SP_ROWS.slice(0, H.low ? 3 : 5).forEach((RW) => {
-      for (let u = u0 + R() * 1.5; u < u1;) {
-        const m = spPick(RW.mix), M = SP_M[m[0]]; let h = M[2] * m[2] * (0.92 + R() * 0.16); h = Math.min(h, RW.D / M[1]);
+    const rows = dA === 'z+' ? SP_ROWS.slice(0, 2).map((r, k) => k ? { D: 8, mix: SP_LOWMIX.map((m) => [m[0], m[1], m[2] * 1.15]) } : r) : SP_ROWS.slice(0, H.low ? 3 : 5);
+    let off = 2.6, corner = 0;
+    rows.forEach((RW, row) => {
+      let run = false, wave = false;
+      for (let u = u0; u < u1;) {
+        const m = row === 0 && !run ? [corner++ % 2 ? 'sp2_boteco' : 'sp2_padaria', 1, 1] : row === 0 ? spPick(SP_LOWMIX) : !wave && row === 2 && dA === 'z-' && Math.abs(u - 0) < 8 ? ['sp2_wave', 1, 1.1] : spPick(RW.mix);
+        const M = SP_M[m[0]]; let h = M[2] * m[2] * (0.94 + R() * 0.12); h = Math.min(h, RW.D / M[1]);
         const w = M[0] * h, d = M[1] * h, dc = off + d / 2; let x, z, bw, bd;
         if (dA === 'z-') { x = u + w / 2; z = az - dc; bw = w; bd = d; } else if (dA === 'z+') { x = u + w / 2; z = az + dc; bw = w; bd = d; }
         else if (dA === 'x-') { x = ax - dc; z = u + w / 2; bw = d; bd = w; } else { x = ax + dc; z = u + w / 2; bw = d; bd = w; }
-        if (free(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2) && Math.abs(x - 3) < 78 && Math.abs(z - 3) < 78) { spModel(x, z, m[0], h, rot); reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2); u += w + 0.35 + R() * 0.7; }
-        else u += 1.5;
+        if (free(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2) && Math.abs(x - 3) < 78 && Math.abs(z - 3) < 78) {
+          spModel(x, z, m[0], h, rot); reserve(x - bw / 2, x + bw / 2, z - bd / 2, z + bd / 2); if (m[0] === 'sp2_wave') wave = true; run = true; u += w + 0.12; }
+        else { run = false; u += 0.8; }
       }
+      if (row === 0 && dA !== 'z+') for (let u = u0 + 2; u < u1; u += 4.5 + R() * 2) { // palms in the alley behind the shops, at the feet of the towers
+        const a = off + RW.D + 0.7, x = dA === 'z-' ? u : dA === 'x-' ? ax - a : ax + a, z = dA === 'z-' ? az - a : u;
+        if (free(x - 0.4, x + 0.4, z - 0.4, z + 0.4) && Math.abs(x - 3) < 78 && Math.abs(z - 3) < 78) tree(x, z, R() < 0.7 ? 'palm' : 'green', 0.9 + R() * 0.25); }
       off += RW.D + 1.4;
     });
   }
-  function spHill(x0, x1, z0, z1) { // terraced green hillside facing the street, stacked colourful houses on every step, palms between
-    reserve(x0, x1, z0, z1); const steps = 2, sd = (z1 - z0) / steps;
-    for (let k = 0; k < steps; k++) { const hz0 = z1 - (k + 1) * sd, top = 0.9 + k * 2.2; // first step by the street, each next one higher and further back
-      put(rbox(x1 - x0, top, sd + 0.2, '#B07A4E', 0.25), (x0 + x1) / 2, GY + top / 2, hz0 + sd / 2, cg); put(rbox(x1 - x0 - 0.2, 0.18, sd, '#78B04F', 0.08), (x0 + x1) / 2, GY + top, hz0 + sd / 2, cg);
-      for (let x = x0 + 0.6; x < x1 - 3;) { const n = R() < 0.5 ? 'sp2_favela_a' : 'sp2_favela_b', h = 6 + R() * 1.4, w = SP_M[n][0] * h;
-        if (x + w > x1 - 0.4) break; const g = spModel(x + w / 2, hz0 + sd / 2 + (R() - 0.5) * 0.4, n, Math.min(h, sd / SP_M[n][1]), Math.PI + (R() - 0.5) * 0.35); g.position.y = GY + top;
-        x += w + 0.2; if (R() < 0.45 && x < x1 - 2) { const t = grp(x + 0.6, hz0 + sd * (0.2 + R() * 0.6), 0, cg); t.position.y = GY + top; put(sph(0.8, '#4E9E58'), 0, 2.2, 0, t); H.glb(t, 'sp2_palm', { h: 4.6 + R() }); x += 1.4; } } }
+  // the hillside community, after the reference: the same two Meshy blocks repainted in many colours, packed side by side and stacked
+  // row above row up a stepped slope (each row set back and raised, touching the one below), trees only along the ridge and the ends
+  const SP_FAV_TINT = ['#FFFFFF', '#FFD2A6', '#FFB9B0', '#BFDCFF', '#CFF0B8', '#FFF0A0', '#E6CCFF', '#FFC9E4', '#B8F0E6'];
+  function spFavela(xs, z0, z1, dirX, rows = 6) { // xs: street-side edge; dirX: -1 = the slope climbs towards -x
+    const h0 = 5.2, step = 3.0, rise = 2.25, depth = rows * step + 3;
+    const xa = dirX < 0 ? xs - depth : xs, xb = dirX < 0 ? xs : xs + depth; reserve(Math.min(xa, xb), Math.max(xa, xb), z0, z1);
+    for (let r = 0; r < rows; r++) {
+      const xf = xs + dirX * (0.6 + r * step), top = r * rise, xc = xf + dirX * 2.6;
+      if (r) { const wR = depth - 0.6 - r * step + 1; put(rbox(wR, top, z1 - z0, '#A8714A', 0.2), xf + dirX * (wR / 2 - 1), GY + top / 2, (z0 + z1) / 2, cg); } // solid stepped hill
+      for (let z = z0 + (r % 2 ? 2.2 : 0.4) + R() * 0.8; z < z1 - 2;) {
+        const n = R() < 0.5 ? 'sp2_favela_a' : 'sp2_favela_b', h = h0 * (0.88 + R() * 0.24), w = SP_M[n][0] * h;
+        const g = grp(xc, z + w / 2, (dirX < 0 ? -Math.PI / 2 : Math.PI / 2) + (R() - 0.5) * 0.18, cg); g.position.y = GY + top;
+        put(rbox(w * 0.9, h * 0.8, SP_M[n][1] * h * 0.9, '#D98B5F', 0.1), 0, h * 0.4, 0, g);
+        H.glb(g, n, { h, rot: Math.PI, tint: pick(SP_FAV_TINT) }); z += w * 0.8; }
+    }
+    const ridge = xs + dirX * (rows * step + 1.4), rtop = rows * rise; put(rbox(3.2, rtop, z1 - z0, '#6FA34B', 0.4), ridge, GY + rtop / 2, (z0 + z1) / 2, cg);
+    for (let z = z0 + 1; z < z1; z += 2.6 + R() * 1.5) { const t = grp(ridge + (R() - 0.5), z, 0, cg); t.position.y = GY + rtop; put(sph(0.9, '#4E9E58'), 0, 2, 0, t); H.glb(t, R() < 0.6 ? 'lon_plane' : 'sp2_palm', { h: 4.2 + R() * 1.2 }); }
+    for (const z of [z0 - 0.6, z1 + 0.6]) for (let r = 0; r < rows; r += 2) tree(xs + dirX * (1.5 + r * step), z, R() < 0.5 ? 'green' : 'palm', 0.9);
   }
   function band(ax, bx, az, bz, depthAxis) {
     if (SPK) return spBand(ax, bx, az, bz, depthAxis);
@@ -663,7 +685,7 @@ export function buildCity(kind, cg, H, box) {
       }
     }
   }
-  if (SPK) { reserve(-27, 56, zN - 21.5, zN - 12.5); spHill(-50, -27, zN - 18, zN - 2.6); } // the river stays clear; the hillside community faces the north street, in view of the default camera
+  if (SPK) spFavela(xW - 2.6, zN - 1.5, zS + 1.5, -1); // the community climbs the whole west side, facing the plot and the default camera
   if (DENSE) { band(-74, 76, zN - 2.2, 0, 'z-'); band(-74, 76, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); denseFlush(); }
   else { band(-44, 50, zN - 2.2, 0, 'z-'); band(-44, 50, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); }
   // street trees & lamps along the inner sidewalks
