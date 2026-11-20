@@ -176,7 +176,7 @@ const GFX = (() => { let q = null; try { q = localStorage.getItem('ahq_gfx'); } 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }); renderer.localClippingEnabled = true; // London kit houses are cut open (clip plane) instead of squashed
 renderer.setPixelRatio(GFX.low ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, MOBILE ? 2 : 2.5));
 canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); try { if (inGame) save(); } catch (er) {} setTimeout(() => location.reload(), 300); });
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = GFX.low ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap; // preview: soft, blurred shadows (variance maps)
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
@@ -189,7 +189,7 @@ const fill = new THREE.DirectionalLight('#E6ECFF', 0.3); fill.position.set(-14, 
 const sun = new THREE.DirectionalLight('#FFD9AC', 3.1);
 sun.position.set(16, 24, 10); sun.castShadow = true; sun.shadow.mapSize.set(GFX.low || MOBILE ? 1024 : 2048, GFX.low || MOBILE ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -20, right: 22, top: 20, bottom: -20, near: 1, far: 80 });
-sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = GFX.low ? 4 : 7; sun.shadow.blurSamples = 14;
 scene.add(sun); sun.target.position.set(-1, 0, 2); scene.add(sun.target);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
 const view = { tx: -0.6, tz: -1.6, half: 15.5, yaw: Math.PI / 4, pitch: 0.72, yawT: null };
@@ -836,6 +836,8 @@ function glbSwap(g, name, o = {}) {
     if (o.fit) { const fx = o.fit[0] / sz.x, fz = o.fit[1] / sz.z; m.scale.set(fx, o.h ? sh : Math.min(fx, fz) * (o.hk || 1), fz); } // fit a footprint [w, d] (group axes); height follows the narrower side unless h is given
     let rid; g.traverse((c) => { if (c.userData.roomId != null && rid == null) rid = c.userData.roomId; });
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
+    if (o.fabric) m.traverse((c) => { if (!c.isMesh || !c.material) return; const s0 = c.material; // upholstery: soft velvet sheen and a fine weave instead of plastic
+      c.material = new THREE.MeshPhysicalMaterial({ map: s0.map, color: s0.color, vertexColors: s0.vertexColors, roughness: 0.92, metalness: 0, sheen: 1, sheenRoughness: 0.42, sheenColor: new THREE.Color(o.fabric), normalMap: FABRIC_N(), normalScale: new THREE.Vector2(0.35, 0.35) }); });
     if (o.tint) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.color.multiply(new THREE.Color(o.tint)); } });
     if (o.glow) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.emissive = new THREE.Color(o.glow); c.material.emissiveIntensity = o.gi || 0.8; if (c.material.map) c.material.emissiveMap = c.material.map; } }); // recolour a shared model for one room's palette
     m.position.y = o.y || 0; g.add(m); g.userData.glb = name; if (o.onModel) o.onModel(m);
@@ -1053,6 +1055,11 @@ const NAP_CARPET = () => GC.napCarpet || (GC.napCarpet = canvasTex(256, 256, (c,
   for (let i = 0; i < 9000; i++) { const v = rr(); c.fillStyle = v < 0.5 ? 'rgba(70,50,110,0.10)' : 'rgba(235,225,250,0.10)'; c.fillRect(rr() * W, rr() * W, 1 + rr() * 2, 1 + rr() * 2); } }, [2, 2]));
 const FLUFF = () => GC.fluff || (GC.fluff = canvasTex(128, 128, (c, W) => { c.fillStyle = '#ECE5F2'; c.fillRect(0, 0, W, W); let sd = 9; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 4000; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(150,130,180,0.18)' : 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(rr() * W, rr() * W, 0.8 + rr() * 1.6, 0, 6.3); c.fill(); } }, [1, 1]));
+const FABRIC_N = () => GC.fabricN || (GC.fabricN = (() => { const W = 128, cv = document.createElement('canvas'); cv.width = cv.height = W; const c = cv.getContext('2d'), im = c.createImageData(W, W); let sd = 3; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  const h = new Float32Array(W * W); for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) h[y * W + x] = 0.5 * Math.sin(x * 1.6) * Math.sin(y * 1.6) + 0.35 * rr(); // fine weave + fuzz
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const hx = h[y * W + (x + 1) % W] - h[y * W + (x + W - 1) % W], hy = h[((y + 1) % W) * W + x] - h[((y + W - 1) % W) * W + x], i = (y * W + x) * 4;
+    im.data[i] = 128 - hx * 60; im.data[i + 1] = 128 - hy * 60; im.data[i + 2] = 255; im.data[i + 3] = 255; } c.putImageData(im, 0, 0);
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6); return t; })());
 const DIO_RC = 0.38; // corner radius of a diorama room (on the wall line)
 // a quarter ring standing up: radii r0..r1 around (cx, cz), from world direction (ax, az) to (bx, bz), height h from y; optional soft bevel
 function ringQ(parent, cx, cz, ax, az, bx, bz, r0, r1, h, y, c, bev = 0, o = { r: 0.9 }) {
@@ -1462,7 +1469,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5) } : null); box.g = p; continue; } // the game's own potted plants
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
-    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p;
+    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}) }); box.g = p;
     if (!it.hang && !/rug/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
@@ -1568,13 +1575,14 @@ const NAP_DIMS = {"k_bed": [0.5835, 0.5566, 0.9946], "k_armchair": [0.9434, 0.82
 function napKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, H = Math.PI / 2;
   const n = 3, bw = 0.6 * 1.9, sp = Math.min(1.62, (w - 0.3) / n), bed = 1.9; // beds 1.9 m long (0.6 wide per metre of length in the model)
-  const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp });
+  const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp, fabric: '#E9D6FF' });
   if (first) L.push({ p: 'k_moon', h: 0.9, wall: 'back', u: 0, hang: true, y: 1.15, glow: true });
   if (sp > 1.45) for (let i = 0; i < n - 1; i++) L.push({ p: 'k_lamp', h: 0.62, wall: 'back', u: (i + 0.5 - (n - 1) / 2) * sp, solid: false, glow: true }); // target image: a glowing mushroom lamp between the beds
 
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
-  if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
+  if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H, fabric: '#E9D6FF' }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
+  if (!GFX.low) { const pl = new THREE.PointLight('#FFB070', 5, 6.5, 1.6); pl.position.set(cx, 1.7, cz - D / 2 + 1.3); g.add(pl); } // the warm, dimmed glow of the lamps and the moon
   if (!S) { const rg = grp(cx, cz + D / 2 - 1.45, 0, g), fm = mat('#FFFFFF', { map: FLUFF(), mapK: 'fluff', r: 1 }); // fluffy cloud rug, like the target image
     for (const [x, z, r] of [[0, 0, 0.62], [-0.62, 0.08, 0.45], [0.62, 0.05, 0.47], [-0.3, -0.38, 0.42], [0.32, -0.4, 0.44], [-0.28, 0.42, 0.42], [0.3, 0.44, 0.4]]) {
       const m = new THREE.Mesh(GC.rugDisc || (GC.rugDisc = new THREE.CylinderGeometry(1, 1, 1, 28)), fm); m.scale.set(r, 0.035, r); m.position.set(x, 0.125, z); m.receiveShadow = true; rg.add(m); } }
