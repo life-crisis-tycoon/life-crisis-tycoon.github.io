@@ -1247,9 +1247,9 @@ function lieUpdate() {
       const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
-      let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.76, 0.24, 1, rnd(DUVET_C), 0.11); dv.castShadow = true; dv.userData.swap = true; }
-      av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 30) av.userData.sleep = true; // a moment to settle, then still
-      if (!dv.parent) scene.add(dv); const len = L * 0.86; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.45; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
+      let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; }
+      av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
+      if (!dv.parent) scene.add(dv); const len = L * 0.88; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.3; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
     else { av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x) av.rotation.x = 0; const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
 }
 function doorsUpdate(dt) {
@@ -1428,7 +1428,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
     glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}) }); box.g = p;
-    if (!it.hang && it.p !== '@rug' && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
+    if (!it.hang && !/rug/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
 }

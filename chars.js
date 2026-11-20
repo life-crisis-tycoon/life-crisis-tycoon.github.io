@@ -147,6 +147,7 @@ export function makeGLBAvatar(look, kind, outfitKey) {
       if (prev) prev.crossFadeTo(next, man.fade || 0.25, false);
       this.state = r;
     },
+    freeze(st) { const r = resolve(st); if (!r) return; mixer.stopAllAction(); const a = acts[r]; a.reset(); a.enabled = true; a.setEffectiveWeight(1); a.play(); a.time = 0; mixer.update(0); this.state = r; }, // one clean still pose (sleeping)
     update(dt) { mixer.timeScale = this.speed * this.jit; mixer.update(dt); }, jit: 0.88 + Math.random() * 0.24,
   };
   anim.set('idle'); mixer.update(0.01);
