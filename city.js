@@ -595,7 +595,7 @@ export function buildCity(kind, cg, H, box) {
       const FL = ['#FF6F91', '#FFD25E', '#FFFFFF', '#B57BE8', '#FF4F5E'];
       for (let k = 0; k < 7; k++) { const fx = -W / 2 + 0.6 + R() * (W - 1.2), fz = D / 2 - 0.55 - R() * 0.3; put(sph(0.16, '#4FAE44'), fx, 0.18, fz, yard); put(sph(0.11, FL[k % FL.length]), fx, 0.32, fz, yard); }
       if (W > 3.2) { const b = put(sph(0.7, GR ? '#4A7D3D' : '#5DBB4E'), W * 0.22, 0.6, 0.2, yard); b.scale.y = 0.8; } };
-    H.glb(g, 'lon_' + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}), keep: (c) => c === yard, onModel: (m) => { model = m; m.visible = !g.userData.cut; } });
+    H.glb(g, (H.lonNew ? 'lon2_' : 'lon_') + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}), keep: (c) => c === yard, onModel: (m) => { model = m; m.visible = !g.userData.cut; } });
     B.push({ o: g, x, z, h: t.h, r: t.w / 2 + 1, clip: (on) => { g.userData.cut = on; if (on && !yard) mkYard(); if (yard) yard.visible = on; if (model) model.visible = !on; g.children.forEach((c) => { if (c !== yard && c !== model) c.visible = !on; }); } }); return g;
   }
   // ---------- preview São Paulo, after the reference painting: dense rows that grow from low shops by the plot to towers at the back,
