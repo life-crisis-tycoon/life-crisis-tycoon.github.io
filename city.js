@@ -171,7 +171,7 @@ export function buildCity(kind, cg, H, box) {
     const c = { round: '#5FA05A', plane: '#6DAA5A', cherry: '#F4A7C3', jacaranda: '#9B7FD6', ipe: '#F2C230', ginkgo: '#E8C547', banyan: '#3F8A4D' }[type] || '#5FA05A';
     put(cyl(0.18, 0.24, 1.8 * s, '#7A5A3A'), 0, 0.9 * s, 0, g); put(sph(1.15 * s, c, { r: 0.85 }), 0, 2.2 * s, 0, g); put(sph(0.8 * s, c, { r: 0.85 }), 0.65 * s, 1.85 * s, 0.35 * s, g); put(sph(0.75 * s, c, { r: 0.85 }), -0.6 * s, 1.9 * s, -0.3 * s, g);
     if (H.glb && type === 'plane' && H.lonNew && kind === 'london') { // preview London: four Meshy species mixed, each a little different in size
-      const r = R(), n = r < 0.36 ? 'lon_oak' : r < 0.72 ? 'lon_leafy' : r < 0.86 ? 'lon_cherry' : 'lon_cypress'; H.glb(g, n, { h: { lon_oak: 4.0, lon_leafy: 4.8, lon_cherry: 3.7, lon_cypress: 4.6 }[n] * s * (0.82 + R() * 0.36) }); }
+      const r = R(), n = r < 0.36 ? 'pt_oak' : r < 0.72 ? 'pt_lime' : r < 0.86 ? 'pt_cherry' : 'pt_fir'; H.glb(g, n, { h: { pt_oak: 4.6, pt_lime: 5.2, pt_cherry: 3.9, pt_fir: 5.0 }[n] * s * (0.82 + R() * 0.36) }); }
     else if (H.glb && type === 'plane') H.glb(g, H.cityKit && kind === 'london' ? (H.grade ? 'lon_plane' : 'lon_tree_round') : 'tree', { h: (H.cityKit && kind === 'london' ? (H.grade ? 4.3 + R() * 0.9 : 4.6) : 3.9) * s }); // London: the owner's plane tree (mottled bark, clumped canopy)
     if (H.glb && kind === 'saopaulo') H.glb(g, type === 'ipe' ? 'sp_ipe_y' : type === 'green' ? 'sp_tree_g' : 'sp_ipe_p', { h: (type === 'green' ? 4.4 : 3.9) * s });
   }

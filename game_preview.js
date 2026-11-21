@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildCity, moveCity } from './city.js';
 import { makeAudio } from './audio.js';
@@ -756,9 +757,9 @@ function lotParkLondon(L, i, g) {
   for (const [bx, bz, r] of [[fx + sgn * (fr + 1.5), fz, sgn > 0 ? -Math.PI / 2 : Math.PI / 2], [fx, fz + fr + 1.2, Math.PI]]) { const bg = grp(bx, bz, r, g); put(rbox(1.4, 0.08, 0.4, '#B5793A', 0.03), 0, 0.2, 0, bg); glbSwap(bg, 'bench', { len: 1.4, y: Y }); }
   for (const [lx, lz] of [[cx + sgn * 1.1, L[3] - 0.9], [fx + sgn * (fr + 1.1), fz - fr - 0.6]]) { const lg = grp(lx, lz, 0, g); put(cyl(0.05, 0.06, 2.2, '#2E3238'), 0, Y + 1.1, 0, lg); glbSwap(lg, 'lamp', { h: 2.4, y: Y }); }
   // groves of mixed trees on the edges away from the path, bushes under them
-  const sp = ['lon_oak', 'lon_leafy', 'lon_oak', 'lon_cypress', 'lon_cherry', 'lon_leafy'], H0 = { lon_oak: 3.8, lon_leafy: 4.6, lon_cherry: 3.5, lon_cypress: 4.3 };
+  const sp = ['pt_oak', 'pt_lime', 'pt_oak', 'pt_fir', 'pt_cherry', 'pt_lime'], H0 = { pt_oak: 4.6, pt_lime: 5.2, pt_cherry: 3.9, pt_fir: 5.0 }, M = 1.9; // crowns stay inside the lot: away from walls and hedges
   const spots = [[ox + sgn * 1.5, L[2] + 1.6], [ox + sgn * 2.9, L[2] + 1.3], [ox + sgn * 1.4, L[2] + 3.0], [sx - sgn * 1.5, L[2] + 1.5], [ox + sgn * 1.3, L[3] - 2.0], [sx - sgn * 1.4, L[3] - 2.1]];
-  spots.forEach(([tx, tz], k) => { if (k >= 4 && d < 9) return; const n = sp[(k + i) % sp.length], tg = grp(tx + (rr() - 0.5) * 0.5, tz + (rr() - 0.5) * 0.5, rr() * 6, g); put(sph(1.0, '#4E9E44'), 0, 2, 0, tg); glbSwap(tg, n, { h: H0[n] * (0.82 + rr() * 0.36), y: Y });
+  spots.forEach(([tx0, tz0], k) => { if (k >= 4 && d < 9) return; const tx = Math.min(L[1] - M, Math.max(L[0] + M, tx0)), tz = Math.min(L[3] - M, Math.max(L[2] + M, tz0)); const n = sp[(k + i) % sp.length], tg = grp(tx + (rr() - 0.5) * 0.3, tz + (rr() - 0.5) * 0.3, rr() * 6, g); put(sph(1.0, '#4E9E44'), 0, 2, 0, tg); glbSwap(tg, n, { h: H0[n] * (0.82 + rr() * 0.36), y: Y });
     if (rr() < 0.6) { const b = grp(tx + 0.9 * (rr() - 0.5), tz + 0.9, rr() * 6, g); glbSwap(b, 'lon_bush', { h: 0.7 + rr() * 0.3, y: Y }); } });
 }
 function lotGarden(L, i, g, c = 'london') {
@@ -827,6 +828,7 @@ function buildWorld() {
 const PROPS_ON = new URLSearchParams(location.search).get('props') !== '0';
 const PROP_CACHE = {};
 function propModel(name) {
+  if (/^pt_/.test(name)) return PROP_CACHE[name] || (PROP_CACHE[name] = Promise.resolve(procTree(name.slice(3)))); // procedural trees (no file)
   return PROP_CACHE[name] || (PROP_CACHE[name] = (async () => {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
     const b64 = (await import('./models/props/' + name + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -854,7 +856,7 @@ const KIT_C = { rim: '#E3AD89', trim: '#FBF5EA', plinth: '#F2E7D5', glass: '#A8C
 let RKIT = null;
 try { const gl = await propModel('room_kit'); RKIT = {}; const sc = gl.scene || gl; sc.updateMatrixWorld(true); sc.traverse((o) => { if (o.isMesh) { const g2 = o.geometry.clone(); g2.applyMatrix4(o.matrixWorld); RKIT[o.name] = g2; } }); if (!RKIT.k_wall_in) RKIT = null; } catch (e) { console.warn('[room kit]', e); RKIT = null; }
 const KM = (name, c, r = 0.9) => { const m = new THREE.Mesh(RKIT[name], mat(c, { r })); m.castShadow = m.receiveShadow = true; m.userData.kitW = true; return m; };
-const INST = {}, INST_NAMES = new Set(['lon_oak', 'lon_leafy', 'lon_cherry', 'lon_cypress', ...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
+const INST = {}, INST_NAMES = new Set(['pt_oak', 'pt_lime', 'pt_cherry', 'pt_fir', 'lon_oak', 'lon_leafy', 'lon_cherry', 'lon_cypress', ...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
   if (!PROPS_ON || !g) return; g.userData.swap = true;
   let rec = INST[name]; if (!rec || rec.done) { rec = INST[name] = { list: [], done: false }; const R0 = rec; propModel(name).then((src) => { R0.done = true; buildInst(src, R0.list, name); }).catch((e) => console.warn('[props]', name, e.message)); }
@@ -875,7 +877,7 @@ function buildInst(src, list, name) {
   const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4();
   for (const m of meshes) {
     const mt = wind ? windify(m.material.clone(), 0.12, 4.5) : m.material; if (wind && /^lon_(oak|leafy|cypress)/.test(name)) mt.color.multiply(new THREE.Color('#CDD5C2')); // natural, less acid green
-    const im = new THREE.InstancedMesh(m.geometry, mt, placeM.length); im.castShadow = !GFX.low; im.receiveShadow = true;
+    const im = new THREE.InstancedMesh(m.geometry, mt, placeM.length); if (m.customDepthMaterial) im.customDepthMaterial = m.customDepthMaterial; im.castShadow = !GFX.low; im.receiveShadow = true;
     placeM.forEach((pm, i) => { tmp.multiplyMatrices(inv, pm).multiply(m.matrixWorld); im.setMatrixAt(i, tmp); });
     if (live.some(([, o]) => o.tint)) { const c = new THREE.Color(); live.forEach(([, o], i) => im.setColorAt(i, c.set(o.tint || '#FFFFFF'))); im.instanceColor.needsUpdate = true; } // per-instance repaint (e.g. São Paulo's favela blocks)
     im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); root.add(im);
@@ -1149,7 +1151,7 @@ function windify(m, amp, hgt) { // sway in world space: tips move, the base stay
       vec4 mvPosition = viewMatrix * wpos; gl_Position = projectionMatrix * mvPosition;`); };
   m.customProgramCacheKey = () => 'wind' + amp + '_' + hgt; m.needsUpdate = true; return m;
 }
-const TREE_RX = /^(lon_(oak|leafy|cherry|cypress|plane|tree)|tree|sp2?_(ipe|palm|tree)|nap_plant)/;
+const TREE_RX = /^(pt_|lon_(oak|leafy|cherry|cypress|plane|tree)|tree|sp2?_(ipe|palm|tree)|nap_plant)/;
 // living lawn: thousands of small grass tufts (three blades each, dark at the root, pale at the tip) that bend in the wind
 function grassTuftGeo() { if (GC.tuft) return GC.tuft; const pos = [], col = [], c0 = new THREE.Color('#3E5F2C'), c1 = new THREE.Color('#A9BE78');
   for (let b = 0; b < 3; b++) { const a = b * 2.1, ca = Math.cos(a), sa = Math.sin(a), lean = 0.05 + b * 0.02, hb = 1 - b * 0.15;
@@ -1165,6 +1167,47 @@ function lawnGrass(g, x0, x1, z0, z1, y, avoid, seed) {
     const s = 0.2 + rr() * 0.22; o.position.set(x, y, z); o.rotation.set(0, rr() * 6.28, 0); o.scale.set(s * 1.4, s * (0.8 + rr() * 0.6), s * 1.4); o.updateMatrix(); im.setMatrixAt(k, o.matrix);
     im.setColorAt(k, tint.setHSL(0.22 + rr() * 0.07, 0.22 + rr() * 0.14, 0.4 + rr() * 0.16)); k++; }
   im.count = k; im.receiveShadow = true; im.castShadow = false; im.userData.swap = true; g.add(im); return im;
+}
+// ---- procedural trees, built like game trees: a barked trunk and branches, and a crown made of many small leaf-cluster cards
+// (alpha-cut leaf textures, normals bent away from the crown centre so the crown shades softly like a real canopy)
+function leafTex(kind) { const key = 'leafT_' + kind; if (GC[key]) return GC[key];
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d'); let sd = kind.length * 977 + 3; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  const pal = { oak: ['#4D7A34', '#5E8C3D', '#6E9B46', '#3F6A2C', '#7FA851'], lime: ['#5C8A38', '#6F9C42', '#83AE52', '#4C7830', '#94BC60'], cherry: ['#F4C6D6', '#EFB2C7', '#FBE1EA', '#E79DB8', '#FFFFFF'], fir: ['#2F5A33', '#3A6A3C', '#2A4E2E', '#447848'] }[kind];
+  for (let i = 0; i < (kind === 'fir' ? 260 : 150); i++) { const x = 128 + (rr() - 0.5) * 220 * Math.sqrt(rr()), y = 128 + (rr() - 0.5) * 220 * Math.sqrt(rr()); if (Math.hypot(x - 128, y - 128) > 118) continue;
+    c.save(); c.translate(x, y); c.rotate(rr() * 6.28); c.fillStyle = pal[Math.floor(rr() * pal.length)];
+    if (kind === 'fir') { c.fillRect(-1.2, -11, 2.4, 22); } else if (kind === 'cherry' && rr() < 0.7) { for (let k = 0; k < 5; k++) { c.rotate(1.2566); c.beginPath(); c.ellipse(0, -5, 3.4, 5.4, 0, 0, 6.3); c.fill(); } }
+    else { c.beginPath(); c.ellipse(0, 0, 6 + rr() * 3, 11 + rr() * 4, 0, 0, 6.3); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, -11); c.lineTo(0, 11); c.stroke(); }
+    c.restore(); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return (GC[key] = t); }
+function barkTex() { if (GC.bark) return GC.bark; const cv = document.createElement('canvas'); cv.width = 64; cv.height = 256; const c = cv.getContext('2d'); c.fillStyle = '#6B5240'; c.fillRect(0, 0, 64, 256); let sd = 7; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 90; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(40,28,20,0.45)' : 'rgba(150,125,100,0.35)'; c.fillRect(rr() * 64, rr() * 256, 2 + rr() * 4, 20 + rr() * 60); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return (GC.bark = t); }
+function procTree(kind) {
+  let sd = kind.length * 131 + 17; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); const g = new THREE.Group();
+  const geos = [], V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const limb = (a, b, r0, r1) => { const d = b.clone().sub(a), L = d.length(), cg = new THREE.CylinderGeometry(r1, r0, L, 7, 1, true); cg.translate(0, L / 2, 0);
+    cg.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), d.normalize())); cg.translate(a.x, a.y, a.z); geos.push(cg); };
+  const crown = { oak: [0.62, 0.36, 0.3], lime: [0.64, 0.27, 0.36], cherry: [0.58, 0.4, 0.24], fir: [0.55, 0.2, 0.45] }[kind]; const C = V(0, crown[0], 0);
+  // trunk and limbs reaching into the crown
+  const top = kind === 'fir' ? 0.95 : 0.42 + rr() * 0.06; limb(V(0, 0, 0), V(0.01, top, 0), 0.045, 0.03);
+  const tips = [];
+  if (kind !== 'fir') for (let i = 0; i < 6; i++) { const a = i * 1.047 + rr() * 0.5, tip = V(Math.cos(a) * crown[1] * 0.75, crown[0] + (rr() - 0.3) * crown[2] * 0.9, Math.sin(a) * crown[1] * 0.75); limb(V(0, top - 0.02, 0), tip, 0.026, 0.008); tips.push(tip); }
+  const trunk = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshStandardMaterial({ map: barkTex(), roughness: 0.95 })); trunk.castShadow = trunk.receiveShadow = true; g.add(trunk);
+  // leaf cards
+  const pos = [], nrm = [], uv = [], col = [], tint = new THREE.Color();
+  const card = (p, s, ry, tilt, shade) => { const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt, ry, (rr() - 0.5) * 0.6));
+    const cs = [[-1, -1, 0, 0], [1, -1, 1, 0], [1, 1, 1, 1], [-1, 1, 0, 1]].map(([x, y, u, v]) => ({ p: V(x * s, y * s, 0).applyQuaternion(q).add(p), u, v }));
+    for (const i of [0, 1, 2, 0, 2, 3]) { const P = cs[i].p; pos.push(P.x, P.y, P.z); const n = P.clone().sub(C).multiply(V(1, kind === 'fir' ? 0.4 : 0.8, 1)).normalize(); nrm.push(n.x, n.y + 0.25, n.z); uv.push(cs[i].u, cs[i].v); col.push(shade, shade, shade); } };
+  if (kind === 'fir') { for (let y = 0.16; y < 1.0; y += 0.045) { const R = 0.26 * (1 - (y - 0.16) / 0.9) + 0.03, n = Math.max(4, Math.round(R * 40));
+      for (let k = 0; k < n; k++) { const a = (k / n) * 6.28 + y * 7, p = V(Math.cos(a) * R * 0.7, y, Math.sin(a) * R * 0.7); card(p, 0.08 + R * 0.35, -a + Math.PI / 2, 0.9, 0.75 + 0.3 * (y + rr() * 0.3)); } } }
+  else { const n = { oak: 230, lime: 210, cherry: 200 }[kind];
+    for (let i = 0; i < n; i++) { const u = rr() * 6.28, w = Math.acos(2 * rr() - 1), r = Math.pow(rr(), 0.35); const p = V(Math.sin(w) * Math.cos(u) * crown[1] * r, Math.cos(w) * crown[2] * r, Math.sin(w) * Math.sin(u) * crown[1] * r).add(C);
+      if (tips.length && rr() < 0.35) { const t = tips[Math.floor(rr() * tips.length)]; p.lerp(t, 0.5); }
+      const shade = 0.62 + 0.45 * ((p.y - C.y) / crown[2] * 0.5 + 0.5) + (rr() - 0.5) * 0.12; for (let k = 0; k < 2; k++) card(p, 0.075 + rr() * 0.05, rr() * 6.28, (rr() - 0.5) * 1.4, shade); } }
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); lg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); lg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); lg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const lm = new THREE.MeshStandardMaterial({ map: leafTex(kind), alphaTest: 0.45, side: THREE.DoubleSide, vertexColors: true, roughness: 0.85 });
+  const leaves = new THREE.Mesh(lg, lm); leaves.castShadow = leaves.receiveShadow = true; leaves.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: lm.map, alphaTest: 0.45 }); g.add(leaves);
+  return g;
 }
 const DIO_RC = 0.38; // corner radius of a diorama room (on the wall line)
 // a quarter ring standing up: radii r0..r1 around (cx, cz), from world direction (ax, az) to (bx, bz), height h from y; optional soft bevel
