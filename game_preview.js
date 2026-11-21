@@ -177,7 +177,11 @@ const GFX = (() => { let q = null; try { q = localStorage.getItem('ahq_gfx'); } 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }); renderer.localClippingEnabled = true; // London kit houses are cut open (clip plane) instead of squashed
 renderer.setPixelRatio(GFX.low ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, MOBILE ? 2 : 2.5));
 canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); try { if (inGame) save(); } catch (er) {} setTimeout(() => location.reload(), 300); });
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = GFX.low ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap; // preview: soft, blurred shadows (variance maps)
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = GFX.low || MOBILE ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap; // phones: classic soft shadows (variance maps broke the drawing on iPhone)
+// if a material fails to compile on this device, say so on screen (phones can't open a console) and keep a copy for support
+renderer.debug.onShaderError = (gl, prog, vs, fs) => { try { const log = [gl.getProgramInfoLog(prog), gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs)].filter(Boolean).join(' | ').slice(0, 400); window.__shaderErr = (window.__shaderErr || []).concat(log);
+  let el = document.getElementById('shaderErr'); if (!el) { el = document.createElement('div'); el.id = 'shaderErr'; el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:96px;z-index:99999;background:#fff3f0;color:#8a1f11;font:12px/1.3 monospace;padding:8px;border-radius:8px;max-height:30vh;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.2)'; el.onclick = () => el.remove(); document.body.appendChild(el); }
+  el.textContent = 'Erreur graphique (capture d\'écran pour le support, touche pour fermer) : ' + window.__shaderErr.join(' || '); } catch (e) {} }; // preview: soft, blurred shadows (variance maps)
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
@@ -1733,7 +1737,7 @@ function napKit(g, cx, cz, room) {
   if (!S) L.push({ p: 'k_rug', len: 2.5, x: -0.35, z: 0.35, solid: false, onModel: (m) => furShells(m, '#EEEAF2', 12, 0.08) }); // reference: big white cloud rug in the middle of the room, long soft pile // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
   for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? null : '#A39CB2'; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
-  if (!GFX.low && sp > 1.45) for (let i = 0; i < n - 1; i++) { const pl = new THREE.PointLight('#FFB46A', 1.1, 1.5, 2); pl.position.set(cx + (i + 0.5 - (n - 1) / 2) * sp, 0.55, bz + 0.45); g.add(pl); } // a small pool of lamp light at each bedside, nothing on the sleepers' faces // the warm, dimmed glow of the lamps and the moon
+  if (!GFX.low && !MOBILE && sp > 1.45) for (let i = 0; i < n - 1; i++) { const pl = new THREE.PointLight('#FFB46A', 1.1, 1.5, 2); pl.position.set(cx + (i + 0.5 - (n - 1) / 2) * sp, 0.55, bz + 0.45); g.add(pl); } // a small pool of lamp light at each bedside, nothing on the sleepers' faces // the warm, dimmed glow of the lamps and the moon
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
 }
