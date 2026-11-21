@@ -588,12 +588,13 @@ export function buildCity(kind, cg, H, box) {
     // and leaves its little back garden: lawn, clipped hedge, a few flowers (built the first time it is needed)
     let yard = null, model = null;
     const mkYard = () => { yard = new THREE.Group(); g.add(yard); const W = t.w * 0.98, D = t.d * 1.0;
-      const lawn = put(rbox(W, 0.1, D, '#74B84F', 0.04), 0, 0.05, 0, yard); lawn.castShadow = false;
-      put(rbox(W, 0.55, 0.32, '#4AA343', 0.15), 0, 0.3, D / 2 - 0.16, yard); put(rbox(0.32, 0.55, D, '#4AA343', 0.15), -W / 2 + 0.16, 0.3, 0, yard);
+      const GR = !!H.grass, lawn = put(rbox(W, 0.1, D, GR ? '#6F9450' : '#74B84F', 0.04), 0, 0.05, 0, yard); lawn.castShadow = false; const HC = GR ? '#3D6E33' : '#4AA343';
+      if (GR) H.grass(yard, -W / 2 + 0.4, W / 2 - 0.4, -D / 2 + 1.0, D / 2 - 0.4, 0.1, (x, z) => Math.abs(x - W * 0.12) < W * 0.27 && z < -D / 2 + 1.0, Math.round(Math.abs(x * 13 + z * 7)) + 3); // living grass in the back garden
+      put(rbox(W, 0.55, 0.32, HC, 0.15), 0, 0.3, D / 2 - 0.16, yard); put(rbox(0.32, 0.55, D, HC, 0.15), -W / 2 + 0.16, 0.3, 0, yard);
       put(rbox(W * 0.5, 0.06, 0.7, '#E6D3AE', 0.03), W * 0.12, 0.11, -D / 2 + 0.6, yard);
       const FL = ['#FF6F91', '#FFD25E', '#FFFFFF', '#B57BE8', '#FF4F5E'];
       for (let k = 0; k < 7; k++) { const fx = -W / 2 + 0.6 + R() * (W - 1.2), fz = D / 2 - 0.55 - R() * 0.3; put(sph(0.16, '#4FAE44'), fx, 0.18, fz, yard); put(sph(0.11, FL[k % FL.length]), fx, 0.32, fz, yard); }
-      if (W > 3.2) { const b = put(sph(0.7, '#5DBB4E'), W * 0.22, 0.6, 0.2, yard); b.scale.y = 0.8; } };
+      if (W > 3.2) { const b = put(sph(0.7, GR ? '#4A7D3D' : '#5DBB4E'), W * 0.22, 0.6, 0.2, yard); b.scale.y = 0.8; } };
     H.glb(g, 'lon_' + t.k, { h: t.h, rot: Math.PI, ...(t.tint ? { tint: t.tint } : {}), keep: (c) => c === yard, onModel: (m) => { model = m; m.visible = !g.userData.cut; } });
     B.push({ o: g, x, z, h: t.h, r: t.w / 2 + 1, clip: (on) => { g.userData.cut = on; if (on && !yard) mkYard(); if (yard) yard.visible = on; if (model) model.visible = !on; g.children.forEach((c) => { if (c !== yard && c !== model) c.visible = !on; }); } }); return g;
   }
