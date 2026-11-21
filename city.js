@@ -580,7 +580,11 @@ export function buildCity(kind, cg, H, box) {
   const CK = !!(H.lively && H.cityKit && H.glb && kind === 'london');
   const KITS = { house_pastel: [0.42, 9, 0.48], house_brick: [0.72, 7.5, 0.56], shop_corner: [0.76, 6.5, 0.64], cafe_bakery: [0.70, 7, 0.56], townhouse_tall: [0.60, 11, 0.44], flats_block: [0.64, 14, 0.68] }; // [width/height, height, depth/height]
   const TINTS = ['#FFB7C5', '#B9EBD3', '#FFE79A', '#B9D3FF', '#E2C2FF', '#FFC9A3', '#FFFFFF'];
-  function pickKit(row) { const r = R(), k = row === 0 ? (r < 0.35 ? 'house_pastel' : r < 0.55 ? 'house_brick' : r < 0.7 ? 'shop_corner' : r < 0.85 ? 'cafe_bakery' : 'townhouse_tall') : row === 1 ? (r < 0.4 ? 'house_pastel' : r < 0.65 ? 'house_brick' : 'townhouse_tall') : (r < 0.5 ? 'flats_block' : 'townhouse_tall');
+  Object.assign(KITS, { terrace_red: [0.58, 9, 0.66], georgian_cream: [0.65, 12, 0.53], mews_pastel: [0.98, 6, 0.64], pub_corner: [0.82, 8.5, 0.81], mansion_block: [1.0, 15, 0.62], shop_row: [1.07, 7.5, 0.6] }); // preview London: six more Meshy buildings
+  const NEWMIX = [['house_pastel', 'house_brick', 'shop_corner', 'cafe_bakery', 'townhouse_tall', 'terrace_red', 'terrace_red', 'georgian_cream', 'mews_pastel', 'pub_corner', 'shop_row'],
+    ['house_pastel', 'house_brick', 'townhouse_tall', 'terrace_red', 'terrace_red', 'georgian_cream', 'georgian_cream', 'mews_pastel'], ['flats_block', 'townhouse_tall', 'mansion_block', 'mansion_block', 'georgian_cream']];
+  function pickKit(row) { if (H.lonNew) { const k = pick(NEWMIX[Math.min(row, 2)]), hh = KITS[k][1] * (0.92 + R() * 0.16); return { k, h: hh, w: KITS[k][0] * hh, d: KITS[k][2] * hh, tint: k === 'house_pastel' ? pick(TINTS) : null }; }
+    const r = R(), k = row === 0 ? (r < 0.35 ? 'house_pastel' : r < 0.55 ? 'house_brick' : r < 0.7 ? 'shop_corner' : r < 0.85 ? 'cafe_bakery' : 'townhouse_tall') : row === 1 ? (r < 0.4 ? 'house_pastel' : r < 0.65 ? 'house_brick' : 'townhouse_tall') : (r < 0.5 ? 'flats_block' : 'townhouse_tall');
     const hh = KITS[k][1] * (0.92 + R() * 0.16); return { k, h: hh, w: KITS[k][0] * hh, d: KITS[k][2] * hh, tint: k === 'house_pastel' ? pick(TINTS) : null }; }
   function kitModel(x, z, t, rot) {
     const g = grp(x, z, rot, cg); g.position.y = GY; const ph = put(rbox(t.w * 0.95, t.h * 0.9, t.w * 0.6, t.tint || '#E9DCCB', 0.1), 0, t.h * 0.45, 0, g); // stand-in until the model loads
