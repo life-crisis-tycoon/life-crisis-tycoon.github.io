@@ -176,7 +176,10 @@ export function buildCity(kind, cg, H, box) {
     if (H.glb && kind === 'saopaulo') H.glb(g, type === 'ipe' ? 'sp_ipe_y' : type === 'green' ? 'sp_tree_g' : 'sp_ipe_p', { h: (type === 'green' ? 4.4 : 3.9) * s });
   }
   const lamp = (x, z, c = '#2F3A44') => { const g = grp(x, z, 0, cg); g.position.y = GY; put(cyl(0.06, 0.08, 3, c), 0, 1.5, 0, g); put(sph(0.2, '#FFE7A8', { e: '#FFD98A', ei: 1.2 }), 0, 3.1, 0, g); if (H.glb) H.glb(g, kind === 'saopaulo' ? 'sp_lamp' : 'lamp', { h: kind === 'saopaulo' ? 3.8 : 3.2 }); };
-  function strip(a, b, c, d, col, y = GY + 0.03) { const m = new THREE.Mesh(new THREE.BoxGeometry(b - a, 0.06, d - c), mat(col, { r: 0.95 })); m.position.set((a + b) / 2, y, (c + d) / 2); m.receiveShadow = true; cg.add(m); return m; }
+  function strip(a, b, c, d, col, y = GY + 0.03) {
+    if (H.grass && kind === 'london' && typeof col === 'string' && /^#[0-9a-f]{6}$/i.test(col)) { const r = parseInt(col.slice(1, 3), 16), g = parseInt(col.slice(3, 5), 16), bl = parseInt(col.slice(5, 7), 16);
+      if (g > r + 20 && g > bl + 20) { col = '#6F9450'; H.grass(cg, a + 0.15, b - 0.15, c + 0.15, d - 0.15, y + 0.03, () => false, Math.round(Math.abs(a * 31 + c * 17)) + 1); } } // preview London: every lawn gets the living grass
+    const m = new THREE.Mesh(new THREE.BoxGeometry(b - a, 0.06, d - c), mat(col, { r: 0.95 })); m.position.set((a + b) / 2, y, (c + d) / 2); m.receiveShadow = true; cg.add(m); return m; }
   function water(a, b, c, d, col = '#5FB3C9') { const m = new THREE.Mesh(new THREE.BoxGeometry(b - a, 0.1, d - c), mat(col, { r: 0.2, m: 0.1 })); m.position.set((a + b) / 2, GY - 0.02, (c + d) / 2); cg.add(m); reserve(a, b, c, d); }
 
   // ---------- roads ----------
