@@ -1172,7 +1172,7 @@ function lawnGrass(g, x0, x1, z0, z1, y, avoid, seed) {
 // (alpha-cut leaf textures, normals bent away from the crown centre so the crown shades softly like a real canopy)
 function leafTex(kind) { const key = 'leafT_' + kind; if (GC[key]) return GC[key];
   const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d'); let sd = kind.length * 977 + 3; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
-  const pal = { oak: ['#4D7A34', '#5E8C3D', '#6E9B46', '#3F6A2C', '#7FA851'], lime: ['#5C8A38', '#6F9C42', '#83AE52', '#4C7830', '#94BC60'], cherry: ['#F4C6D6', '#EFB2C7', '#FBE1EA', '#E79DB8', '#FFFFFF'], fir: ['#2F5A33', '#3A6A3C', '#2A4E2E', '#447848'] }[kind];
+  const pal = { oak: ['#4F6B36', '#5C7740', '#68834A', '#425C2E', '#748C55'], lime: ['#5A7438', '#678242', '#768F4E', '#4B6430', '#82985C'], cherry: ['#F4C6D6', '#EFB2C7', '#FBE1EA', '#E79DB8', '#FFFFFF'], fir: ['#34523A', '#3E5F42', '#2D4733', '#486A4C'] }[kind];
   for (let i = 0; i < (kind === 'fir' ? 260 : 150); i++) { const x = 128 + (rr() - 0.5) * 220 * Math.sqrt(rr()), y = 128 + (rr() - 0.5) * 220 * Math.sqrt(rr()); if (Math.hypot(x - 128, y - 128) > 118) continue;
     c.save(); c.translate(x, y); c.rotate(rr() * 6.28); c.fillStyle = pal[Math.floor(rr() * pal.length)];
     if (kind === 'fir') { c.fillRect(-1.2, -11, 2.4, 22); } else if (kind === 'cherry' && rr() < 0.7) { for (let k = 0; k < 5; k++) { c.rotate(1.2566); c.beginPath(); c.ellipse(0, -5, 3.4, 5.4, 0, 0, 6.3); c.fill(); } }
@@ -1189,9 +1189,9 @@ function procTree(kind) {
     cg.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), d.normalize())); cg.translate(a.x, a.y, a.z); geos.push(cg); };
   const crown = { oak: [0.62, 0.36, 0.3], lime: [0.64, 0.27, 0.36], cherry: [0.58, 0.4, 0.24], fir: [0.55, 0.2, 0.45] }[kind]; const C = V(0, crown[0], 0);
   // trunk and limbs reaching into the crown
-  const top = kind === 'fir' ? 0.95 : 0.42 + rr() * 0.06; limb(V(0, 0, 0), V(0.01, top, 0), 0.045, 0.03);
+  const top = kind === 'fir' ? 0.95 : 0.4 + rr() * 0.06; limb(V(0, 0, 0), V(0.01, top, 0), kind === 'fir' ? 0.04 : 0.06, 0.042);
   const tips = [];
-  if (kind !== 'fir') for (let i = 0; i < 6; i++) { const a = i * 1.047 + rr() * 0.5, tip = V(Math.cos(a) * crown[1] * 0.75, crown[0] + (rr() - 0.3) * crown[2] * 0.9, Math.sin(a) * crown[1] * 0.75); limb(V(0, top - 0.02, 0), tip, 0.026, 0.008); tips.push(tip); }
+  if (kind !== 'fir') for (let i = 0; i < 6; i++) { const a = i * 1.047 + rr() * 0.5, tip = V(Math.cos(a) * crown[1] * (0.55 + rr() * 0.35), crown[0] + (rr() - 0.35) * crown[2] * 1.1, Math.sin(a) * crown[1] * (0.55 + rr() * 0.35)), mid = V(0, top, 0).lerp(tip, 0.45).add(V(0, 0.04, 0)); limb(V(0, top - 0.03, 0), mid, 0.034, 0.022); limb(mid, tip, 0.022, 0.008); tips.push(tip); }
   const trunk = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshStandardMaterial({ map: barkTex(), roughness: 0.95 })); trunk.castShadow = trunk.receiveShadow = true; g.add(trunk);
   // leaf cards
   const pos = [], nrm = [], uv = [], col = [], tint = new THREE.Color();
@@ -1200,10 +1200,10 @@ function procTree(kind) {
     for (const i of [0, 1, 2, 0, 2, 3]) { const P = cs[i].p; pos.push(P.x, P.y, P.z); const n = P.clone().sub(C).multiply(V(1, kind === 'fir' ? 0.4 : 0.8, 1)).normalize(); nrm.push(n.x, n.y + 0.25, n.z); uv.push(cs[i].u, cs[i].v); col.push(shade, shade, shade); } };
   if (kind === 'fir') { for (let y = 0.16; y < 1.0; y += 0.045) { const R = 0.26 * (1 - (y - 0.16) / 0.9) + 0.03, n = Math.max(4, Math.round(R * 40));
       for (let k = 0; k < n; k++) { const a = (k / n) * 6.28 + y * 7, p = V(Math.cos(a) * R * 0.7, y, Math.sin(a) * R * 0.7); card(p, 0.08 + R * 0.35, -a + Math.PI / 2, 0.9, 0.75 + 0.3 * (y + rr() * 0.3)); } } }
-  else { const n = { oak: 230, lime: 210, cherry: 200 }[kind];
-    for (let i = 0; i < n; i++) { const u = rr() * 6.28, w = Math.acos(2 * rr() - 1), r = Math.pow(rr(), 0.35); const p = V(Math.sin(w) * Math.cos(u) * crown[1] * r, Math.cos(w) * crown[2] * r, Math.sin(w) * Math.sin(u) * crown[1] * r).add(C);
-      if (tips.length && rr() < 0.35) { const t = tips[Math.floor(rr() * tips.length)]; p.lerp(t, 0.5); }
-      const shade = 0.62 + 0.45 * ((p.y - C.y) / crown[2] * 0.5 + 0.5) + (rr() - 0.5) * 0.12; for (let k = 0; k < 2; k++) card(p, 0.075 + rr() * 0.05, rr() * 6.28, (rr() - 0.5) * 1.4, shade); } }
+  else { const n = { oak: 260, lime: 240, cherry: 220 }[kind];
+    const cl = tips.map((t) => [t.clone().add(V(0, 0.05, 0)), 0.13 + rr() * 0.08]); cl.push([C.clone().add(V(0, crown[2] * 0.55, 0)), crown[1] * 0.55]);
+    for (let i = 0; i < n; i++) { const [cc, cr] = cl[Math.floor(rr() * cl.length)], u = rr() * 6.28, w = Math.acos(2 * rr() - 1), r = Math.pow(rr(), 0.4) * cr; const p = V(Math.sin(w) * Math.cos(u) * r * 1.15, Math.cos(w) * r * 0.85, Math.sin(w) * Math.sin(u) * r * 1.15).add(cc);
+      const shade = 0.5 + 0.42 * Math.min(1, Math.max(0, (p.y - C.y) / crown[2] * 0.5 + 0.5)) + (rr() - 0.5) * 0.14; for (let k = 0; k < 2; k++) card(p, 0.075 + rr() * 0.05, rr() * 6.28, (rr() - 0.5) * 1.4, shade); } }
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); lg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); lg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); lg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   const lm = new THREE.MeshStandardMaterial({ map: leafTex(kind), alphaTest: 0.45, side: THREE.DoubleSide, vertexColors: true, roughness: 0.85 });
   const leaves = new THREE.Mesh(lg, lm); leaves.castShadow = leaves.receiveShadow = true; leaves.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: lm.map, alphaTest: 0.45 }); g.add(leaves);
