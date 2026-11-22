@@ -726,8 +726,8 @@ export function buildCity(kind, cg, H, box) {
         else kitModel(x, z, kt, rot);
         reserve(x - hx, x + hx, z - hz, z + hz); break; } } }
   // street trees & lamps along the inner sidewalks
-  for (let x = xW + 3; x < xE - 2; x += 5.5) if (free(x - 0.5, x + 0.5, zS + 1.6, zS + 2.4) || true) tree(x, zS - 2.0, RC.trees, 0.8);
-  for (let z = zN + 3; z < zS - 2; z += 6) { if (z < 6 || z > 13) { tree(xW + 2.0, z, RC.trees, 0.8); tree(xE - 2.0, z, RC.trees, 0.8); } }
+  for (let x = xW + 3; x < xE - 2; x += LGK ? 11 : 5.5) if (free(x - 0.5, x + 0.5, zS + 1.6, zS + 2.4) || true) tree(x, zS - 2.0, RC.trees, 0.8);
+  for (let z = zN + 3; z < zS - 2; z += LGK ? 12 : 6) { if (z < 6 || z > 13) { tree(xW + 2.0, z, RC.trees, 0.8); tree(xE - 2.0, z, RC.trees, 0.8); } }
   for (let x = xW + 5.5; x < xE - 2; x += 8) lamp(x, zN + 2.0);
 
   if (H.lively && kind === 'london') { // greenery in every gap between buildings + boats on the river

@@ -708,10 +708,12 @@ const GARDEN = { // lawn, hedge greens, flowers, tree model and its stand-in col
 // preview London: every buyable lot is a small London park, after the reference painting: natural lawn, a winding gravel path from the
 // gate, a centrepiece that changes from lot to lot (duck pond, fountain, flower roundel, bandstand), flower beds by the path, groves of
 // mixed trees on the edges, benches and lamps, a low hedge with openings
+const LAWN_BLADES = false;
 const LAWN_NAT = () => GC.lawnNat || (GC.lawnNat = canvasTex(256, 256, (c, W) => { c.fillStyle = '#6F9450'; c.fillRect(0, 0, W, W); let sd = 21; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 70; i++) { const g = c.createRadialGradient(0, 0, 0, 0, 0, 1); const dark = rr() < 0.5; g.addColorStop(0, dark ? 'rgba(70,120,50,0.22)' : 'rgba(170,210,110,0.2)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  for (let i = 0; i < 70; i++) { const g = c.createRadialGradient(0, 0, 0, 0, 0, 1); const dark = rr() < 0.5; g.addColorStop(0, dark ? 'rgba(70,120,50,0.09)' : 'rgba(170,210,110,0.08)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     c.save(); c.translate(rr() * W, rr() * W); c.scale(20 + rr() * 40, 20 + rr() * 40); c.fillStyle = g; c.beginPath(); c.arc(0, 0, 1, 0, 6.3); c.fill(); c.restore(); }
-  for (let i = 0; i < 2500; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(60,110,40,0.18)' : 'rgba(200,235,150,0.16)'; c.fillRect(rr() * W, rr() * W, 1, 2 + rr() * 2); } }, [1, 1]));
+  for (let i = 0; i < 2500; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(60,110,40,0.18)' : 'rgba(200,235,150,0.16)'; c.fillRect(rr() * W, rr() * W, 1, 2 + rr() * 2); }
+  c.fillStyle = 'rgba(255,255,235,0.07)'; c.fillRect(0, 0, W, W / 2); }, [1, 1])); // faint mowing bands, 2 m wide
 function lotRibbon(pts, wid, m, y, g) { // a flat path of width wid along a smooth curve through pts ([x, z] in g space)
   const P = []; for (let k = 0; k < pts.length - 1; k++) { const p0 = pts[Math.max(0, k - 1)], p1 = pts[k], p2 = pts[k + 1], p3 = pts[Math.min(pts.length - 1, k + 2)];
     for (let t = 0; t < 1; t += 0.1) { const t2 = t * t, t3 = t2 * t; P.push([0, 1].map((j) => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3))); } }
@@ -772,7 +774,7 @@ function lotGarden(L, i, g, c = 'london') {
   put(rbox(w - 0.2, 0.3, d - 0.2, '#8C6B4E', 0.06), cx, -0.4, cz, g); // soil edge
   const lm = mat('#FFFFFF', { r: 0.95, map: LAWN_TEX([Math.max(1, w / 3), Math.max(1, d / 3)]), mapK: 'lawn' + i + '|' + w + '|' + d });
   if (GD.dry) { floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, mat('#E6D3AC', { r: 1 }), -0.24, g); floorPlane(cx - w * 0.3, cx + w * 0.3, cz - d * 0.3, cz + d * 0.05, lm, -0.235, g); } // dry climate: raked gravel garden, a small watered lawn
-  else if (GD.nat) { floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, mat('#6F9450', { r: 1 }), -0.24, g); // natural lawn with living grass (kept off the path and plaza)
+  else if (GD.nat) { const lf = floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, mat('#FFFFFF', { r: 0.95, map: LAWN_NAT(), mapK: 'lawnNat' }), -0.24, g); { const uv = lf.geometry.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 4, uv.getY(k) * d / 4); } // natural lawn with living grass (kept off the path and plaza)
     lawnGrass(g, L[0] + 0.7, L[1] - 0.7, L[2] + 0.7, L[3] - 0.7, -0.22, (x, z) => (Math.abs(x - cx) < 1.1 && z > cz) || Math.hypot(x - cx, z - cz) < 1.8 || Math.hypot(x - cx, z - cz + 1.9) < 1.1, i * 97 + 5); }
   else floorPlane(L[0] + 0.1, L[1] - 0.1, L[2] + 0.1, L[3] - 0.1, lm, -0.24, g);
   // hedge border: a rounded clipped box with soft bumps in three greens, gaps for the path
@@ -798,7 +800,7 @@ function lotGarden(L, i, g, c = 'london') {
   for (const px of [gate[0] - 0.75, gate[1] + 0.75]) { const p = grp(px, L[3] - 0.95, 0, g); put(rbox(1.0, 0.45, 0.45, '#F4F1EA', 0.05), 0, 0, 0, p); glbSwap(p, 'lon_planter', { len: 1.1, y: -0.24 }); }
   // two trees (tropical cities: palms) and a bench by the plaza
   const tg = grp(cx + (i % 2 ? -1 : 1) * Math.min(3.2, w / 2 - 1.8), cz - Math.min(2.2, d / 2 - 1.8), 0, g); put(sph(1.2, GD.tc), 0, 2.2, 0, tg); glbSwap(tg, GD.tree, { h: GD.tree === 'pt_palm' ? 6.2 : GD.tree === 'sp_palm' ? 5.2 : 4.2, y: -0.24 });
-  if (w >= 6 && d >= 6) { const t2 = grp(cx - (i % 2 ? -1 : 1) * Math.min(3.4, w / 2 - 2), cz + Math.min(1.8, d / 2 - 2.4), 0, g); put(sph(1.0, GD.tc), 0, 2, 0, t2); glbSwap(t2, GD.tree2 || GD.tree, { h: GD.tree2 ? 4.8 : GD.tree === 'sp_palm' ? 4.6 : 3.6, y: -0.24 }); }
+  if (w >= 6 && d >= 6 && !GD.nat) { const t2 = grp(cx - (i % 2 ? -1 : 1) * Math.min(3.4, w / 2 - 2), cz + Math.min(1.8, d / 2 - 2.4), 0, g); put(sph(1.0, GD.tc), 0, 2, 0, t2); glbSwap(t2, GD.tree2 || GD.tree, { h: GD.tree2 ? 4.8 : GD.tree === 'sp_palm' ? 4.6 : 3.6, y: -0.24 }); }
   const bg = grp(cx, cz - 1.9, 0, g); put(rbox(1.5, 0.08, 0.42, '#B5793A', 0.03), 0, 0.2, 0, bg); glbSwap(bg, 'bench', { len: 1.5, y: -0.24 });
 }
 function floorPlane(x0, x1, z0, z1, m, y = 0.1, parent = scene) {
@@ -1000,7 +1002,7 @@ function cityWalker(cb) {
 function buildCityDecor(kind) {
   if (cityScene === kind) { buildShell(kind); buildAnnexLot(kind); return; } cityScene = kind;
   if (world.cityG) scene.remove(world.cityG); const cg = new THREE.Group(); scene.add(cg); world.cityG = cg;
-  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, lively: kind === 'london', cityKit: kind === 'london' && PROPS_ON, grade: true, spNew: true, lonNew: true, lgNew: true, grass: kind === 'london' || kind === 'lagos' ? lawnGrass : null, walker: cityWalker, glb: kind === 'london' || kind === 'saopaulo' || kind === 'lagos' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
+  const res = buildCity(kind, cg, { THREE, put, rbox, cyl, sph, grp, mat, canvasTex, low: GFX.low, lively: kind === 'london', cityKit: kind === 'london' && PROPS_ON, grade: true, spNew: true, lonNew: true, lgNew: true, grass: kind === 'london' || kind === 'lagos' ? lawnSkin : null, walker: cityWalker, glb: kind === 'london' || kind === 'saopaulo' || kind === 'lagos' ? (g, n, o) => (INST_NAMES.has(n) ? glbInst : glbSwap)(g, n, o) : null, model: kind === 'london' && PROPS_ON ? propModel : null }, plotBox(kind));
   const GR = CITY_GRADE[kind]; scene.background = new THREE.Color(GR ? GR.sky : res.bg); const L = GR ? GR.light : CITY_LIGHT[kind] || CITY_LIGHT._; // preview: London lit like the reference painting (clear, bright, lavender sky)
   world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: groundTex(kind) || tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
   canvas.style.filter = GR ? GR.filter : '';
@@ -1166,7 +1168,12 @@ function grassTuftGeo() { if (GC.tuft) return GC.tuft; const pos = [], col = [],
     for (const [i, j, k] of [[0, 1, 3], [0, 3, 2], [2, 3, 4]]) for (const q of [i, j, k]) { pos.push(...P[q]); const t = P[q][1]; const c = c0.clone().lerp(c1, t); col.push(c.r, c.g, c.b); } }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
   return (GC.tuft = g); }
+function lawnSkin(g, x0, x1, z0, z1, y) { // smooth textured turf over a lawn strip (the city's lawns), same 4 m scale as the parks
+  x0 -= 0.15; x1 += 0.15; z0 -= 0.15; z1 += 0.15; const w = x1 - x0, d = z1 - z0, pg = new THREE.PlaneGeometry(w, d); pg.rotateX(-Math.PI / 2);
+  const uv = pg.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 4, uv.getY(k) * d / 4);
+  const m = new THREE.Mesh(pg, mat('#FFFFFF', { r: 0.95, map: LAWN_NAT(), mapK: 'lawnNat' })); m.position.set((x0 + x1) / 2, y + 0.004, (z0 + z1) / 2); m.receiveShadow = true; g.add(m); }
 function lawnGrass(g, x0, x1, z0, z1, y, avoid, seed) {
+  if (!LAWN_BLADES) return; // lawns are smooth textured turf now: cleaner to read, lighter on phones
   const dens = GFX.low || MOBILE ? 8 : 24, n = Math.floor((x1 - x0) * (z1 - z0) * dens); let sd = seed; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   const m = GC.grassM || (GC.grassM = windify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }), 0.05, 0.32));
   const im = new THREE.InstancedMesh(grassTuftGeo(), m, n), o = new THREE.Object3D(), tint = new THREE.Color(); let k = 0;
@@ -1184,11 +1191,12 @@ function cardTex(cv, fill) { const W = cv.width, H = cv.height, d = cv.getContex
   const t = new THREE.DataTexture(o, W, H); t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = 4; t.needsUpdate = true; return t; }
 function leafTex(kind) { const key = 'leafT_' + kind; if (GC[key]) return GC[key];
   const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d'); let sd = kind.length * 977 + 3; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
-  const pal = { flame: ['#C9281F', '#DA3A24', '#B81F1A', '#E2502C', '#4F7A34', '#5E8A3C', '#4A7030'], oak: ['#4F6B36', '#5C7740', '#68834A', '#425C2E', '#748C55'], lime: ['#5A7438', '#678242', '#768F4E', '#4B6430', '#82985C'], cherry: ['#F4C6D6', '#EFB2C7', '#FBE1EA', '#E79DB8', '#FFFFFF'], fir: ['#34523A', '#3E5F42', '#2D4733', '#486A4C'] }[kind];
+  const pal = { flame: ['#5E8A3C', '#4F7A34', '#577F39', '#669447', '#53783A'], oak: ['#4F6B36', '#5C7740', '#68834A', '#425C2E', '#748C55'], lime: ['#5A7438', '#678242', '#768F4E', '#4B6430', '#82985C'], cherry: ['#F4C6D6', '#EFB2C7', '#FBE1EA', '#E79DB8', '#FFFFFF'], fir: ['#34523A', '#3E5F42', '#2D4733', '#486A4C'] }[kind];
   for (let i = 0; i < (kind === 'fir' ? 260 : 150); i++) { const x = 128 + (rr() - 0.5) * 220 * Math.sqrt(rr()), y = 128 + (rr() - 0.5) * 220 * Math.sqrt(rr()); if (Math.hypot(x - 128, y - 128) > 118) continue;
     c.save(); c.translate(x, y); c.rotate(rr() * 6.28); c.fillStyle = pal[Math.floor(rr() * pal.length)];
-    if (kind === 'fir') { c.fillRect(-1.2, -11, 2.4, 22); } else if (kind === 'cherry' && rr() < 0.7) { for (let k = 0; k < 5; k++) { c.rotate(1.2566); c.beginPath(); c.ellipse(0, -5, 3.4, 5.4, 0, 0, 6.3); c.fill(); } }
-    else { c.beginPath(); c.ellipse(0, 0, 6 + rr() * 3, 11 + rr() * 4, 0, 0, 6.3); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, -11); c.lineTo(0, 11); c.stroke(); }
+    if (kind === 'flame' && rr() < 0.22) { c.fillStyle = rr() < 0.5 ? '#D9452B' : '#E8603A'; for (let k = 0; k < 5; k++) { c.rotate(1.2566); c.beginPath(); c.ellipse(0, -4.5, 3.2, 5, 0, 0, 6.3); c.fill(); } } // a few flame-red flowers in green leaves
+    else if (kind === 'fir') { c.fillRect(-1.2, -11, 2.4, 22); } else if (kind === 'cherry' && rr() < 0.7) { for (let k = 0; k < 5; k++) { c.rotate(1.2566); c.beginPath(); c.ellipse(0, -5, 3.4, 5.4, 0, 0, 6.3); c.fill(); } }
+    else { c.beginPath(); c.ellipse(0, 0, (6 + rr() * 3) * (kind === 'flame' ? 1.5 : 1), (11 + rr() * 4) * (kind === 'flame' ? 1.3 : 1), 0, 0, 6.3); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, -11); c.lineTo(0, 11); c.stroke(); }
     c.restore(); }
   return (GC[key] = cardTex(cv, pal[0])); }
 function barkTex() { if (GC.bark) return GC.bark; const cv = document.createElement('canvas'); cv.width = 64; cv.height = 256; const c = cv.getContext('2d'); c.fillStyle = '#6B5240'; c.fillRect(0, 0, 64, 256); let sd = 7; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
@@ -1237,7 +1245,7 @@ function procTree(kind) {
   else { const n = { oak: 260, lime: 240, cherry: 220, flame: 300 }[kind];
     const cl = tips.map((t) => [t.clone().add(V(0, 0.05, 0)), 0.13 + rr() * 0.08]); cl.push([C.clone().add(V(0, crown[2] * 0.55, 0)), crown[1] * 0.55]);
     for (let i = 0; i < n; i++) { const [cc, cr] = cl[Math.floor(rr() * cl.length)], u = rr() * 6.28, w = Math.acos(2 * rr() - 1), r = Math.pow(rr(), 0.4) * cr; const p = V(Math.sin(w) * Math.cos(u) * r * 1.15, Math.cos(w) * r * 0.85, Math.sin(w) * Math.sin(u) * r * 1.15).add(cc);
-      const shade = (kind === 'flame' ? 0.6 : 0.5) + 0.42 * Math.min(1, Math.max(0, (p.y - C.y) / crown[2] * 0.5 + 0.5)) + (rr() - 0.5) * 0.14; for (let k = 0; k < 2; k++) card(p, 0.075 + rr() * 0.05, rr() * 6.28, (rr() - 0.5) * 1.4, shade); } }
+      const shade = (kind === 'flame' ? 0.58 : 0.5) + (kind === 'flame' ? 0.3 : 0.42) * Math.min(1, Math.max(0, (p.y - C.y) / crown[2] * 0.5 + 0.5)) + (rr() - 0.5) * (kind === 'flame' ? 0.05 : 0.14); for (let k = 0; k < 2; k++) card(p, 0.075 + rr() * 0.05, rr() * 6.28, (rr() - 0.5) * 1.4, shade); } }
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); lg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); lg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); lg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   const lm = new THREE.MeshStandardMaterial({ map: leafTex(kind), alphaTest: 0.45, side: THREE.DoubleSide, vertexColors: true, roughness: 0.85 });
   const leaves = new THREE.Mesh(lg, lm); leaves.castShadow = leaves.receiveShadow = true; leaves.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: lm.map, alphaTest: 0.45 }); g.add(leaves);
