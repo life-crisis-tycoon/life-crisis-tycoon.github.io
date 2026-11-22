@@ -267,7 +267,18 @@ export function buildCity(kind, cg, H, box) {
 
   function lekkiBridge(x, z) {
     const g = C(x, z); g.position.y = GY;
-    put(rbox(2.4, 0.4, 40, '#E9E1D3', 0.05), 0, 1.6, 0, g); if (LGK) { H.glb(g, 'lg_lm_bridge', { len: 40, rot: Math.PI / 2 }); lm(g, x, z, 11, 2); return; }
+    put(rbox(2.4, 0.4, 40, '#E9E1D3', 0.05), 0, 1.6, 0, g); if (LGK) { // the deck stands over the water on its piers; on land a ramp carries the avenue up to it, so road and bridge are one continuous carriageway
+      const D = 1.13; H.glb(g, 'lg_lm_bridge', { len: 40, rot: Math.PI / 2, y: D - 3.94 }); lm(g, x, z, 11, 2);
+      const za = zN - 2.6, zb = zN - 8 + 0.3, Lr = za - zb, a = Math.atan2(D, Lr), Ls = Math.hypot(D, Lr), sh = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(Lr, 0), new THREE.Vector2(Lr, D), new THREE.Vector2(0, 0)]);
+      const wg = new THREE.ExtrudeGeometry(sh, { depth: 5.4, bevelEnabled: false }); wg.rotateY(Math.PI / 2); wg.translate(-2.7, 0, 0);
+      const wedge = new THREE.Mesh(wg, mat('#D9CFC0', { r: 0.9 })); wedge.position.set(xE, GY + 0.02, za); wedge.castShadow = wedge.receiveShadow = true; cg.add(wedge);
+      const rp = new THREE.Group(); rp.position.set(xE, GY + 0.06 + D / 2, (za + zb) / 2); rp.rotation.x = a; cg.add(rp);
+      put(new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.08, Ls + 0.1), mat(ROADC, { r: 0.9 })), 0, 0.02, 0, rp);
+      for (const sx of [-1, 1]) { put(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, Ls + 0.1), mat(SIDE, { r: 0.9 })), sx * 2.05, 0.03, 0, rp); put(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, Ls), mat('#ECE6DC', { r: 0.8 })), sx * 2.64, 0.36, 0, rp); }
+      for (let t = -Ls / 2 + 0.4; t < Ls / 2 - 0.6; t += 2.4) put(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 1.1), mat('#F4EFE6', { r: 0.8 })), 0, 0.07, t + 0.55, rp);
+      { const lz = zb - 0.9; put(new THREE.Mesh(new THREE.BoxGeometry(5.4, D + 0.3, 1.8), mat('#D9CFC0', { r: 0.9 })), xE, GY + (D - 0.3) / 2, lz, cg); put(new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.08, 1.8), mat(ROADC, { r: 0.9 })), xE, GY + D + 0.06, lz, cg); // abutment: a flat landing that runs onto the deck, so the joint does not show
+        for (const sx of [-1, 1]) { put(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 1.8), mat(SIDE, { r: 0.9 })), xE + sx * 2.05, GY + D + 0.07, lz, cg); put(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 1.8), mat('#ECE6DC', { r: 0.8 })), xE + sx * 2.64, GY + D + 0.4, lz, cg); } }
+      reserve(xE - 2.8, xE + 2.8, zb, za); return; }
     put(rbox(0.9, 11, 0.9, '#F4EFE6', 0.1), 0, 5.5, 0, g); put(rbox(1.4, 0.6, 1.4, '#F4EFE6', 0.1), 0, 11, 0, g);
     for (let i = 1; i <= 7; i++) for (const sgn of [-1, 1]) { const dz = i * 2.4, len = Math.hypot(dz, 9); const c = cyl(0.03, 0.03, len, '#9AA4AE'); c.position.set(0, 1.8 + 4.5, sgn * dz / 2); c.rotation.x = sgn * Math.atan2(dz, 9); g.add(c); }
     lm(g, x, z, 11, 2);
@@ -504,8 +515,8 @@ export function buildCity(kind, cg, H, box) {
     }
     { const g = C(cx + 3, zS + 2.05, Math.PI); g.position.y = GY; for (const x of [-1.1, 1.1]) put(cyl(0.05, 0.05, 2.2, '#4C7774'), x, 1.1, 0, g); put(rbox(2.4, 0.08, 1.0, '#CFE9F2', 0.03), 0, 2.25, 0, g); if (H.glb) H.glb(g, 'busstop', { len: 2.4 }); }
   } else if (kind === 'lagos') {
-    water(-44, 50, -48, zN - 8, '#4FA3B8'); lekkiBridge(cx + 6, zN - 26); ekoTowers(cx - 10, -44);
-    natTheatre(xE + 11, -2); market(xW - 10, zS - 4, 11, 12);
+    water(-44, 50, LGK ? -96 : -48, zN - 8, '#4FA3B8'); if (LGK) lekkiBridge(xE + 1.8, zN - 8 - 20 + 0.3); else lekkiBridge(cx + 6, zN - 26); /* preview: the bridge carries the east avenue out to sea from the shore */ ekoTowers(cx - 10, -44);
+    if (LGK) natTheatre(xW - 13, zN + 10); else natTheatre(xE + 11, -2); market(xW - 10, zS - 4, 11, 12); // preview: the theatre stands behind the plot (north-west), so it never has to vanish to keep the HQ in view
     for (let i = 0; i < 8; i++) tree(xW - 3 + R() * 2, zN + 4 + i * 3.2, 'palm', 1);
   } else if (kind === 'mumbai') {
     water(-44, 50, -48, zN - 10, '#4F9FC0'); seaLink(cx - 8, zN - 26);
@@ -705,6 +716,15 @@ export function buildCity(kind, cg, H, box) {
   if (SPK) spFavela(xW - 2.6, zN - 1.5, zS + 1.5, -1); // the community climbs the whole west side, facing the plot and the default camera
   if (DENSE) { band(-74, 76, zN - 2.2, 0, 'z-'); band(-74, 76, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); denseFlush(); }
   else { band(-44, 50, zN - 2.2, 0, 'z-'); band(-44, 50, zS + 2.2, 0, 'z+'); band(xW - 2.2, 0, zN - 2, zS + 2, 'x-'); band(xE + 2.2, 0, zN - 2, zS + 2, 'x+'); }
+  if (LGK) { // preview Lagos: fill the empty paved blocks behind the bands with the same buildings at their real size, taller further from the plot, now and then a garden
+    const pcx = (x0 + x1) / 2, pcz = (z0 + z1) / 2, mk = (k) => { const hh = LGM[k][1] * (0.94 + R() * 0.12); return { k, n: 'lg_' + k, h: hh, w: LGM[k][0] * hh + 0.4, d: LGM[k][2] * hh }; };
+    for (let z = zN + 3; z < 47; z += 2) for (let x = -46; x < 49; x += 2) { const far = Math.hypot(x - pcx, z - pcz);
+      const ks = far > 34 ? ['res_blue', 'res_white', 'glass_office', 'res_terrace', 'house_cream'] : ['res_yellow', 'res_terrace', 'house_cream'], st = Math.floor(R() * ks.length);
+      for (let q = 0; q < ks.length; q++) { const kt = mk(ks[(st + q) % ks.length]), rot = [0, Math.PI / 2, Math.PI, -Math.PI / 2][Math.floor(R() * 4)], sw = Math.abs(Math.sin(rot)) > 0.5, hx = (sw ? kt.d : kt.w) / 2 + 0.4, hz = (sw ? kt.w : kt.d) / 2 + 0.4;
+        if (z - hz < zN + 2.4 || x + hx > 49 || x - hx < -47 || z + hz > 48 || !free(x - hx, x + hx, z - hz, z + hz)) continue;
+        if (R() < 0.14) { strip(x - hx + 0.4, x + hx - 0.4, z - hz + 0.4, z + hz - 0.4, '#7CC653', GY + 0.04); tree(x - hx * 0.4, z, 'flame', 1); tree(x + hx * 0.45, z + (R() - 0.5) * hz, 'palm', 0.9); }
+        else kitModel(x, z, kt, rot);
+        reserve(x - hx, x + hx, z - hz, z + hz); break; } } }
   // street trees & lamps along the inner sidewalks
   for (let x = xW + 3; x < xE - 2; x += 5.5) if (free(x - 0.5, x + 0.5, zS + 1.6, zS + 2.4) || true) tree(x, zS - 2.0, RC.trees, 0.8);
   for (let z = zN + 3; z < zS - 2; z += 6) { if (z < 6 || z > 13) { tree(xW + 2.0, z, RC.trees, 0.8); tree(xE - 2.0, z, RC.trees, 0.8); } }

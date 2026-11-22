@@ -1196,8 +1196,8 @@ function barkTex() { if (GC.bark) return GC.bark; const cv = document.createElem
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return (GC.bark = t); }
 function frondTex() { if (GC.frond) return GC.frond; const cv = document.createElement('canvas'); cv.width = 64; cv.height = 256; const c = cv.getContext('2d'); let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   c.strokeStyle = '#7C8A4A'; c.lineWidth = 3; c.beginPath(); c.moveTo(32, 256); c.lineTo(32, 0); c.stroke();
-  for (let y = 250; y > 6; y -= 5) { const L = 28 * Math.sin(Math.PI * (1 - y / 256) * 0.95 + 0.15); for (const sg of [-1, 1]) { c.strokeStyle = ['#7A9E4A', '#88AC52', '#93B65C', '#6C9142'][Math.floor(rr() * 4)]; c.lineWidth = 3.2; c.beginPath(); c.moveTo(32, y); c.quadraticCurveTo(32 + sg * L * 0.5, y - 6, 32 + sg * L, y - 14 + rr() * 4); c.stroke(); } }
-  return (GC.frond = cardTex(cv, '#7C9A4E')); }
+  for (let y = 250; y > 6; y -= 5) { const L = 28 * Math.sin(Math.PI * (1 - y / 256) * 0.95 + 0.15); for (const sg of [-1, 1]) { c.strokeStyle = ['#8AAE52', '#98BC5C', '#A4C668', '#7EA24A'][Math.floor(rr() * 4)]; c.lineWidth = 3.2; c.beginPath(); c.moveTo(32, y); c.quadraticCurveTo(32 + sg * L * 0.5, y - 6, 32 + sg * L, y - 14 + rr() * 4); c.stroke(); } }
+  return (GC.frond = cardTex(cv, '#90B458')); }
 function procPalm() { // coconut palm: a curved ringed trunk and a crown of arching fronds (alpha-cut leaflets)
   let sd = 991; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); const g = new THREE.Group(), V = (x, y, z) => new THREE.Vector3(x, y, z), geos = [];
   const P = []; for (let i = 0; i <= 10; i++) { const t = i / 10; P.push(V(0.13 * t * t, 0.86 * t, 0.03 * Math.sin(t * 3))); }
@@ -1206,7 +1206,7 @@ function procPalm() { // coconut palm: a curved ringed trunk and a crown of arch
   const trunk = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshStandardMaterial({ map: bt, color: '#C9B89A', roughness: 0.95 })); trunk.castShadow = trunk.receiveShadow = true; g.add(trunk);
   const top = P[10]; const pos = [], nrm = [], uv = [], col = [];
   const N = 15; for (let f = 0; f < N; f++) { const az = (f / N) * Math.PI * 2 + rr() * 0.3, up = f % 3 === 0 ? 0.75 : f % 3 === 1 ? 0.25 : -0.15, len = 0.36 + rr() * 0.1, wd = 0.075, S = 8, dir = V(Math.cos(az), 0, Math.sin(az)), side = V(-Math.sin(az), 0, Math.cos(az));
-    let prev = null; for (let k = 0; k <= S; k++) { const t = k / S, p = top.clone().add(dir.clone().multiplyScalar(len * t)).add(V(0, (up * t - 1.1 * t * t) * len * 0.75, 0)), w = wd * Math.sin(Math.PI * Math.min(1, t * 1.1 + 0.05)), l = p.clone().add(side.clone().multiplyScalar(w)), r = p.clone().sub(side.clone().multiplyScalar(w)), n = V(0, 1, 0).add(dir.clone().multiplyScalar(0.3)).normalize(), sh = 0.85 + 0.2 * (1 - t);
+    let prev = null; for (let k = 0; k <= S; k++) { const t = k / S, p = top.clone().add(dir.clone().multiplyScalar(len * t)).add(V(0, (up * t - 1.1 * t * t) * len * 0.75, 0)), w = wd * Math.sin(Math.PI * Math.min(1, t * 1.1 + 0.05)), l = p.clone().add(side.clone().multiplyScalar(w)), r = p.clone().sub(side.clone().multiplyScalar(w)), n = V(0, 1, 0).add(dir.clone().multiplyScalar(0.3)).normalize(), sh = 0.95 + 0.15 * (1 - t);
       if (prev) for (const [q, u, v] of [[prev[0], 0, prev[2]], [prev[1], 1, prev[2]], [r, 1, t], [prev[0], 0, prev[2]], [r, 1, t], [l, 0, t]]) { pos.push(q.x, q.y, q.z); nrm.push(n.x, n.y, n.z); uv.push(u, v); col.push(sh, sh, sh); }
       prev = [l, r, t]; } }
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); lg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); lg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); lg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
