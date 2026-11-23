@@ -47,7 +47,8 @@ const PROBLEMS = {
   ahorita: { e: '⏳', room: 'career', fee: 270, city: 'mexico' }, quake: { e: '🫨', room: 'therapy', fee: 300, city: 'mexico' }, antojo: { e: '🌮', room: 'pharmacy', fee: 220, city: 'mexico' }, coraje: { e: '😤', room: 'lucha', fee: 290, city: 'mexico' },
   quarter: { e: '🫠', room: 'therapy', fee: 340, myst: true }, thirty: { e: '🎂', room: 'career', fee: 320, myst: true }, situation: { e: '🫤', room: 'social', fee: 300, myst: true }, mercury: { e: '🪐', room: 'nap', fee: 310, myst: true },
   lowmood: { e: '🪫', room: 'therapy', fee: 300, care: true },
-  flu: { e: '🤒', room: 'pharmacy', fee: 180, epi: true }, flurest: { e: '🤧', room: 'nap', fee: 200, epi: true }, // epidemic waves only impostor: { e: '🎭', room: 'therapy', fee: 290 }, overthink: { e: '🌀', room: 'therapy', fee: 280 },
+  flu: { e: '🤒', room: 'pharmacy', fee: 180, epi: true }, flurest: { e: '🤧', room: 'nap', fee: 200, epi: true }, // flu/flurest: epidemic waves only
+  impostor: { e: '🎭', room: 'therapy', fee: 290 }, overthink: { e: '🌀', room: 'therapy', fee: 280 }, // were lost inside the comment above
 };
 const ROOMS = {
   budget: { e: '💸', cost: 2500, role: 'coach', time: 8, pill: '#A86A1E', floor: '#E7C08C' },
@@ -2278,8 +2279,9 @@ function staffAttend(rs, dt) {
     if (u) { busy = rt.shop ? 'till' : 'work'; const dx = u.av.position.x - rs.av.position.x, dz = u.av.position.z - rs.av.position.z; if (dx * dx + dz * dz > 0.04 && !sit) turnTo(rs.av, Math.atan2(dx, dz), dt, 4); } } // the barista serves, the cashier rings up
   if (!busy && room && room.type === 'lab' && S.research && S.research.active) busy = 'work'; // researching: working at the bench
   if (busy === true && rt && rt.shop) busy = 'till';
+  if (rs.ixPose && v && v.state === 'treat') busy = rs.ixPose; // playing a beat of the treatment scene
   if (busy) rs.fid = null;
-  if (busy !== rs.busyPose) { rs.busyPose = busy; rs.fid = null; if (busy === 'till' && p.anim) p.anim.set('till'); else if (busy) poseWork(p, sit); else if (sit) poseSit(p); else poseStand(p); }
+  if (busy !== rs.busyPose) { rs.busyPose = busy; rs.fid = null; if (typeof busy === 'string' && busy.startsWith('ix:') && p.anim) p.anim.set(busy.slice(3)); else if (busy === 'till' && p.anim) p.anim.set('till'); else if (busy) poseWork(p, sit); else if (sit) poseSit(p); else poseStand(p); }
   if (!busy && !sit && p.anim && !rs.lesPose && rs.at !== 'train') { // standing staff don't stand frozen: a breath, a look at the phone, then back
     rs.fidT = (rs.fidT ?? 6 + RNG() * 14) - dt;
     if (rs.fidT <= 0) { if (rs.fid) { rs.fid = null; poseStand(p); rs.fidT = 10 + RNG() * 16; } else { rs.fid = RNG() < 0.5 ? 'phone' : 'idle2'; p.anim.set(rs.fid); rs.fidT = 4 + RNG() * 3; } }
@@ -2458,8 +2460,176 @@ function addGag(av, prob, look) {
   if (prob === 'moving') { put(rbox(0.5, 0.38, 0.38, '#C9A06B', 0.03), 0, 1.0, 0.36, gg); if (av.userData.p.glb) av.userData.carry = { y: 1.0, z: 0.36 }; } // both hands hold it (carryPose in chars.js)
   const wantKid = look.kid || prob === 'toddler' || prob === 'schoolrun';
   if (wantKid && av.userData.p.glb) { const kk = ['v25', 'v26', 'v27', 'v28'].filter((k) => CHAR.A.full[k]); if (kk.length) { const key = CHAR.A.full[look.kid] ? look.kid : kk[(look.vm || 'v').charCodeAt(2) % kk.length]; const kid = person({ vm: key }, 'visitor'); kid.position.set(0.6, 0, 0.15); av.add(kid); kid.traverse((m) => { if (m.isMesh) m.userData.owner = av; }); gg.userData.kid = kid; return gg; } }
-  if (wantKid) { const kid = person({ skin: look.skin, hair: crnd(HAIR.slice(0, 5)), style: crnd(['short', 'curly', 'bun']), shirt: crnd(SHIRTS), pants: '#5AB8F0', tall: 0.55, wide: 0.75, shoes: '#E9785F' }); kid.scale.setScalar(0.62); kid.position.set(0.55, 0, 0.1); av.add(kid); kid.traverse((m) => { if (m.isMesh) m.userData.owner = av; }); if (prob === 'schoolrun') put(rbox(0.3, 0.35, 0.15, '#E9785F', 0.05), 0, 0.95, -0.22, kid.userData.p.body); }
+  if (wantKid) { const kid = person({ skin: look.skin, hair: crnd(HAIR.slice(0, 5)), style: crnd(['short', 'curly', 'bun']), shirt: crnd(SHIRTS), pants: '#5AB8F0', tall: 0.55, wide: 0.75, shoes: '#E9785F' }); kid.scale.setScalar(0.62); kid.position.set(0.55, 0, 0.1); av.add(kid); kid.traverse((m) => { if (m.isMesh) m.userData.owner = av; }); gg.userData.kid = kid; if (prob === 'schoolrun') put(rbox(0.3, 0.35, 0.15, '#E9785F', 0.05), 0, 0.95, -0.22, kid.userData.p.body); }
   return gg;
+}
+// ---- treatment scenes (preview): what the client, the carer (and a parent's kid) do during a session, per problem.
+// Each scene is a list of beats [progress 0..1, actions], played as the session's progress passes them:
+//   v / s / k : what the client / carer / kid does (a verb, mapped to a seated or standing clip below; kid: own verbs)
+//   vp / sp : an object in the client's / carer's right hand ('-' = put it down)
+//   fv / fs / fk : a floating emoji over the client / carer / kid      gag: 'off' hides the problem's 3D gag (ring, cloud, flame, ghost…)
+//   shake / melt : the client trembles / melts (1 on, 0 off)          box: 'tidy' = the moving box gets taped shut
+// seated: TrSitAnswer / TrSitThumb make the person stand up (class clips), so a seated person talks with the listening clip and cheers by clapping
+const IXV = { talk: ['listen', 'talk'], talk2: ['listen', 'talk2'], listen: ['listen', 'idle'], phone: ['sitphone', 'phone'], drink: ['drinksit', 'drink'], doze: ['SitDoze', 'IdleDoze'],
+  happy: ['clap', 'cheer'], clap: ['clap', 'cheer'], think: ['SitCross', 'IdleConfused'], show: ['listen', 'show'], pickup: ['worksit', 'pickup'], angry: ['sit', 'IdleAngry'],
+  head: ['sit', 'IdleHead'], breath: ['sit', 'IdleBreath'], work: ['worksit', 'work'], idle: ['sit', 'idle'] };
+const IXP = { // hand props (metres, in the right hand)
+  card: (g) => put(rbox(0.09, 0.006, 0.056, '#3E7BD6', 0.003), 0, 0.07, 0.04, g),
+  scissors: (g) => { for (const s of [-1, 1]) { const b = put(rbox(0.012, 0.13, 0.006, '#C9D1DC', 0.003), 0.012 * s, 0.13, 0.03, g); b.rotation.z = 0.25 * s; put(cyl(0.022, 0.022, 0.012, '#E5484D'), 0.025 * s, 0.05, 0.03, g); } },
+  bills: (g) => { put(rbox(0.2, 0.025, 0.14, '#FFFFFF', 0.004), 0, 0.07, 0.05, g); put(rbox(0.2, 0.008, 0.03, '#F2C14E', 0.002), 0, 0.087, 0.09, g); },
+  paper: (g) => put(rbox(0.16, 0.006, 0.2, '#FFFFFF', 0.003), 0, 0.07, 0.06, g),
+  tea: (g) => { put(cyl(0.04, 0.032, 0.1, '#F4EFE6'), 0, 0.09, 0.03, g); put(cyl(0.036, 0.036, 0.01, '#7ACB4E'), 0, 0.135, 0.03, g); },
+  glass: (g) => put(cyl(0.032, 0.026, 0.11, '#BFE3F7'), 0, 0.09, 0.03, g),
+  bottle: (g) => { put(cyl(0.025, 0.025, 0.08, '#2BB5A6'), 0, 0.09, 0.03, g); put(cyl(0.012, 0.012, 0.03, '#FFFFFF'), 0, 0.145, 0.03, g); },
+  sachet: (g) => { put(rbox(0.11, 0.13, 0.04, '#FFFFFF', 0.01), 0, 0.09, 0.04, g); put(rbox(0.112, 0.03, 0.042, '#2BB5A6', 0.005), 0, 0.12, 0.04, g); },
+  ball: (g) => put(sph(0.05, '#E5484D'), 0, 0.06, 0.04, g),
+  book: (g) => put(rbox(0.13, 0.17, 0.03, '#5B6CC9', 0.008), 0, 0.1, 0.04, g),
+  marker: (g) => put(cyl(0.012, 0.012, 0.15, '#2F3A52'), 0, 0.08, 0.03, g),
+  hourglass: (g) => { const a = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.07, 10), mat('#F2C14E')); put(a, 0, 0.12, 0.03, g); const b = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.07, 10), mat('#F2C14E')); b.rotation.x = Math.PI; put(b, 0, 0.06, 0.03, g); },
+  muffin: (g) => { put(cyl(0.045, 0.035, 0.05, '#C98A4B'), 0, 0.07, 0.04, g); put(sph(0.048, '#FF8FAB'), 0, 0.1, 0.04, g); put(cyl(0.006, 0.006, 0.06, '#5AB8F0'), 0, 0.16, 0.04, g); put(sph(0.012, '#FFB000', { e: '#FFB000', ei: 1.5 }), 0, 0.2, 0.04, g); },
+  map: (g) => { put(rbox(0.24, 0.006, 0.17, '#E9F1D8', 0.003), 0, 0.07, 0.06, g); put(sph(0.015, '#E5484D'), 0.04, 0.08, 0.05, g); },
+  jerry: (g) => put(rbox(0.14, 0.2, 0.08, '#D63A2F', 0.02), 0, 0.02, 0.05, g),
+  lamp: (g) => put(cyl(0.05, 0.05, 0.11, '#FFD25E', { e: '#FFD25E', ei: 0.8 }), 0, 0.1, 0.04, g),
+  piggy: (g) => { put(sph(0.07, '#FF8FAB'), 0, 0.1, 0.05, g); put(cyl(0.025, 0.025, 0.03, '#FF8FAB'), 0, 0.1, 0.12, g); },
+  mask: (g) => { const m = put(sph(0.09, '#FFFFFF'), 0, 0.12, 0.05, g); m.scale.z = 0.35; put(sph(0.015, '#2F3A52'), -0.03, 0.14, 0.085, g); put(sph(0.015, '#2F3A52'), 0.03, 0.14, 0.085, g); },
+  lmask: (g) => { const m = put(sph(0.1, '#D63A7A'), 0, 0.12, 0.05, g); m.scale.z = 0.4; put(sph(0.02, '#FFD25E'), -0.035, 0.14, 0.09, g); put(sph(0.02, '#FFD25E'), 0.035, 0.14, 0.09, g); },
+  pad: (g) => put(rbox(0.3, 0.32, 0.1, '#FF8FAB', 0.04), 0, 0.12, 0.08, g),
+  fan: (g) => put(rbox(0.2, 0.13, 0.01, '#E9785F', 0.01), 0, 0.12, 0.04, g),
+  taco: (g) => { const t = put(cyl(0.07, 0.07, 0.05, '#F2C14E'), 0, 0.09, 0.04, g); t.rotation.x = Math.PI / 2; t.scale.y = 1; },
+  trophy: (g) => { put(cyl(0.05, 0.03, 0.08, '#F2C14E'), 0, 0.13, 0.04, g); put(cyl(0.02, 0.02, 0.05, '#F2C14E'), 0, 0.07, 0.04, g); },
+  cards: (g) => put(rbox(0.13, 0.17, 0.01, '#FFD25E', 0.008), 0, 0.1, 0.04, g),
+  brush: (g) => { put(cyl(0.012, 0.012, 0.14, '#D4537E'), 0, 0.07, 0.03, g); put(rbox(0.05, 0.08, 0.025, '#D4537E', 0.01), 0, 0.17, 0.03, g); },
+  scroll: (g) => { const r = put(cyl(0.03, 0.03, 0.3, '#FFF8E6'), 0, 0.08, 0.05, g); r.rotation.z = Math.PI / 2; },
+  egg: (g) => { const e = put(sph(0.035, '#F4EAD0'), 0, 0.08, 0.04, g); e.scale.y = 1.3; },
+  drum: (g) => put(cyl(0.12, 0.12, 0.16, '#C2703A'), 0, 0.05, 0.1, g),
+  pen: (g) => put(cyl(0.01, 0.01, 0.13, '#3B4A6B'), 0, 0.08, 0.03, g),
+};
+const NOISE = [[0.05, { fv: '🚗📯🔊' }], [0.3, { s: 'show', fs: '🎧' }], [0.45, { fv: '🎧' }], [0.6, { fv: '💤' }], [0.85, { fv: '💤' }]];
+const APPS = [[0.05, { v: 'phone', fv: '👈👉👈' }], [0.35, { s: 'talk', fs: '👋' }], [0.55, { v: 'talk', fv: '👋🙂' }], [0.85, { v: 'happy', fv: '💬' }]];
+const IX = {
+  // 💸 Budget Booth
+  rent: [[0.04, { v: 'show', vp: 'bills', fv: '🧾🧾🧾' }], [0.35, { s: 'work', fs: '📂📂' }], [0.62, { vp: '-', v: 'listen', fv: '✅' }], [0.85, { v: 'happy', fv: '😮‍💨' }]],
+  subs: [[0.04, { v: 'phone', fv: '💳💳💳' }], [0.3, { s: 'show', fs: '📊' }], [0.5, { v: 'show', vp: 'card' }], [0.62, { sp: 'scissors', fs: '✂️' }], [0.78, { vp: '-', sp: '-', fv: '✂️💳' }], [0.9, { v: 'happy' }]],
+  flat: [[0.04, { v: 'head', fv: '🛏️🛏️' }], [0.3, { s: 'show', fs: '📈' }], [0.6, { sp: 'piggy', fs: '🐷' }], [0.8, { sp: '-', vp: 'piggy', v: 'happy', fv: '💰' }]],
+  fuel: [[0.02, { vp: 'jerry', fv: '⛽❓' }], [0.35, { s: 'show', sp: 'lamp', fs: '☀️💡' }], [0.7, { vp: '-', sp: '-' }], [0.74, { vp: 'lamp', v: 'happy', fv: '☀️' }]],
+  rentshock: [[0.02, { vp: 'paper', fv: '🏙️💸' }], [0.2, { v: 'head' }], [0.45, { s: 'show', sp: 'map', fs: '🗺️📍' }], [0.8, { vp: '-', sp: '-', v: 'happy', fv: '🏠👍' }]],
+  // 😴 Nap Room (the client lies under the duvet: floats only)
+  sunday: [[0.05, { fv: '😰📅' }], [0.3, { s: 'pickup', fs: '📵' }], [0.5, { fs: '⏰' }], [0.75, { fv: '💤' }]],
+  burn: [[0.05, { fv: '🔥' }], [0.3, { s: 'pickup', fs: '👟👟' }], [0.5, { gag: 'off', fv: '💤' }], [0.8, { fv: '💤' }]],
+  gloom: [[0.1, { s: 'show', fs: '💡' }], [0.35, { gag: 'off', fv: '☀️' }], [0.7, { fv: '💤' }]],
+  flurest: [[0.05, { fv: '🤧' }], [0.3, { s: 'drink', sp: 'tea', fs: '🍵' }], [0.5, { sp: '-', fv: '💤' }], [0.8, { fv: '💤' }]],
+  train: NOISE, commute: NOISE, goslow: NOISE, honk: NOISE,
+  mercury: [[0.1, { s: 'show', fs: '🪐✨' }], [0.4, { fv: '🌙' }], [0.7, { fv: '💤' }]],
+  // 📵 Digital Detox
+  doom: [[0.04, { fv: '📱🔒' }], [0.25, { v: 'phone', fv: '👆👆' }], [0.45, { s: 'show', sp: 'ball', fs: '🔴' }], [0.58, { sp: '-', vp: 'ball', v: 'listen', fv: '😌' }], [0.88, { vp: '-' }]],
+  group: [[0.04, { fv: '📱🔒' }], [0.25, { fv: '📳📳📳' }], [0.45, { s: 'show', fs: '🔕' }], [0.6, { v: 'clap', s: 'clap', fv: '🎲' }], [0.85, { v: 'happy' }]],
+  novela: [[0.04, { v: 'show', fv: '🎭📺' }], [0.35, { s: 'show', sp: 'book', fs: '📖' }], [0.5, { sp: '-', vp: 'book', v: 'listen' }], [0.78, { fv: '😭📖' }], [0.92, { vp: '-' }]],
+  // 💼 Career Coach
+  boss: [[0.04, { v: 'talk', fv: '😤👹' }], [0.35, { s: 'show', fs: '🧽' }], [0.6, { v: 'talk', fv: '🛑🙂' }], [0.85, { v: 'happy' }]],
+  ladder: [[0.1, { fv: '🪜😵' }], [0.35, { s: 'show', sp: 'marker', fs: '📶' }], [0.62, { sp: '-', v: 'think' }], [0.85, { v: 'happy', fv: '🪜👍' }]],
+  topper: [[0.04, { v: 'show', vp: 'paper', fv: '📚💯' }], [0.35, { vp: '-', s: 'work', fs: '🗄️' }], [0.6, { s: 'talk', fs: '❤️❓' }], [0.85, { v: 'happy', fv: '🎨' }]],
+  ahorita: [[0.04, { v: 'doze', fv: '⏳😴' }], [0.35, { s: 'show', sp: 'hourglass', fs: '⏳' }], [0.55, { v: 'talk', sp: '-' }], [0.85, { v: 'happy', fv: '✅' }]],
+  thirty: [[0.1, { s: 'show', sp: 'muffin', fs: '🧁' }], [0.4, { v: 'talk', fv: '🌬️🕯️' }], [0.55, { sp: '-', fs: '✅' }], [0.85, { v: 'happy', fv: '🎂' }]],
+  // 🥂 Social Club
+  ghosted: [[0.04, { v: 'phone', fv: '👻📱' }], [0.35, { s: 'show', fs: '📵' }], [0.5, { gag: 'off', v: 'listen' }], [0.68, { v: 'drink', vp: 'glass', s: 'drink', sp: 'glass', fv: '🥂' }], [0.88, { vp: '-', sp: '-', v: 'happy' }]],
+  apps: APPS, swipe: APPS,
+  lonely: [[0.04, { v: 'head', fv: '🫥' }], [0.35, { s: 'talk' }], [0.55, { v: 'talk', fv: '😄' }], [0.75, { v: 'clap', fv: '🫂' }]],
+  nunchi: [[0.1, { s: 'show', fs: '😐' }], [0.3, { v: 'think', fv: '❓' }], [0.45, { s: 'show', fs: '😬' }], [0.6, { v: 'talk', fv: '💡' }], [0.85, { v: 'happy', fv: '👀✅' }]],
+  aunty: [[0.1, { s: 'talk', fs: '💍❓' }], [0.35, { v: 'talk', fv: '🙂🍛' }], [0.6, { s: 'talk2', fs: '💍❓❓' }], [0.75, { v: 'talk', fv: '😄☕' }], [0.9, { v: 'happy' }]],
+  situation: [[0.1, { s: 'show', fs: '🥂 / 🫙' }], [0.4, { v: 'think', fv: '🤔' }], [0.7, { v: 'show', fv: '🥂' }], [0.88, { v: 'happy' }]],
+  // 🧸 Parent Pod (the kid plays its own part)
+  toddler: [[0.02, { k: 'floor', fk: '😭' }], [0.25, { s: 'show', fs: '🧎' }], [0.45, { v: 'talk', fv: '🤗' }], [0.6, { k: 'sitfloor', fk: '😌' }], [0.8, { k: 'play', fk: '🧸' }]],
+  schoolrun: [[0.04, { s: 'show', sp: 'cards', fs: '🗓️' }], [0.25, { k: 'sad', fk: '🎒😩' }], [0.5, { k: 'happy', fk: '🎒👟' }], [0.75, { sp: '-', v: 'happy', fv: '⏰✅' }]],
+  tablet: [[0.02, { k: 'angry', fk: '🎮😤' }], [0.3, { s: 'show', fs: '🧱' }], [0.5, { k: 'play', fk: '🧱' }], [0.8, { k: 'happy', fk: '🏰' }]],
+  homework: [[0.04, { k: 'sitfloor', fk: '📝' }], [0.2, { v: 'head', fv: '😱📝' }], [0.45, { s: 'talk', fs: '🙌' }], [0.7, { v: 'listen', fv: '😮‍💨' }], [0.85, { k: 'happy', fk: '💯' }]],
+  sugar: [[0.02, { k: 'run', fk: '🍭⚡' }], [0.35, { s: 'show', sp: 'glass', fs: '💧' }], [0.5, { sp: '-', k: 'idle' }], [0.6, { k: 'sleep', fk: '💤' }], [0.85, { v: 'happy', fv: '😮‍💨' }]],
+  // 📦 Moving Desk
+  moving: [[0.04, { fv: '📦💥' }], [0.35, { s: 'work', fs: '📦🩹' }], [0.6, { box: 'tidy', fv: '📦✨' }], [0.85, { v: 'happy' }]],
+  newcity: [[0.04, { v: 'think', fv: '🗺️❓' }], [0.3, { s: 'show', fs: '📍☕' }], [0.48, { fs: '📍🏋️' }], [0.64, { fs: '📍🥂' }], [0.8, { vp: 'map', v: 'happy', fv: '🗺️✅' }]],
+  // 💊 Pharmacy (standing at the counter)
+  tummy: [[0.04, { v: 'head', fv: '🤢' }], [0.3, { s: 'pickup', fs: '🍵' }], [0.45, { vp: 'tea', v: 'drink' }], [0.85, { vp: '-', fv: '😌' }]],
+  headache: [[0.04, { v: 'head', fv: '🤕' }], [0.3, { s: 'pickup', fs: '💊💧' }], [0.45, { vp: 'glass', v: 'drink' }], [0.85, { vp: '-', fv: '😌' }]],
+  screeneyes: [[0.04, { v: 'head', fv: '🥲' }], [0.3, { s: 'pickup', sp: 'bottle', fs: '💧👁️' }], [0.5, { sp: '-', v: 'breath', fv: '💧' }], [0.85, { fv: '👀✨' }]],
+  flu: [[0.04, { fv: '🤒🤧' }], [0.3, { s: 'pickup', fs: '💊😷' }], [0.45, { vp: 'sachet', fv: '😷' }], [0.88, { vp: '-' }]],
+  heatgrump: [[0.04, { v: 'angry', fv: '🥵' }], [0.3, { s: 'pickup', fs: '🪭💧' }], [0.45, { vp: 'fan', v: 'idle', fv: '🪭' }], [0.85, { vp: '-', fv: '😎' }]],
+  antojo: [[0.02, { vp: 'taco', fv: '🌮' }], [0.3, { s: 'pickup', sp: 'sachet', fs: '🔄' }], [0.5, { vp: '-', sp: '-' }], [0.52, { vp: 'sachet', fv: '🌮➡️💊' }], [0.88, { vp: '-' }]],
+  // ✨ Glow-up Studio
+  filter: [[0.04, { v: 'phone', fv: '🤳✨' }], [0.3, { s: 'show', fs: '📵' }], [0.5, { v: 'listen', fv: '🪞' }], [0.8, { v: 'happy', fv: '😊✨' }]],
+  haircut: [[0.04, { fv: '💇😩' }], [0.3, { s: 'work', sp: 'brush', fs: '💨' }], [0.6, { fs: '✂️' }], [0.8, { sp: '-', v: 'happy', fv: '✨💇✨' }]],
+  botoxfomo: [[0.04, { fv: '💉😬' }], [0.3, { s: 'work', fs: '🧖' }], [0.6, { fv: '🧖✨' }], [0.85, { v: 'happy', fv: '✨' }]],
+  beauty: [[0.04, { fv: '🪞😔' }], [0.35, { s: 'show', fs: '🪞↩️' }], [0.6, { v: 'happy', fv: '👍😎' }]],
+  // 🛋️ Talk Room
+  lowmood: [[0.04, { fv: '🪫' }], [0.3, { s: 'work', fs: '📝' }], [0.5, { fv: '🔋' }], [0.8, { v: 'happy', fv: '🔋🔋' }]],
+  impostor: [[0.02, { vp: 'mask', fv: '🎭' }], [0.3, { s: 'work', fs: '📝' }], [0.55, { vp: '-', fv: '🎭➡️🙂' }], [0.85, { v: 'happy' }]],
+  overthink: [[0.04, { fv: '🌀🌀' }], [0.3, { s: 'talk', fs: '🌬️' }], [0.45, { v: 'breath', fv: '🌬️' }], [0.6, { gag: 'off' }], [0.85, { v: 'happy', fv: '😌' }]],
+  sharmaji: [[0.02, { vp: 'trophy', fv: '🏆👦' }], [0.35, { s: 'talk', fs: '🙃' }], [0.5, { vp: '-' }], [0.6, { s: 'talk2', fs: '⭐❓' }], [0.75, { v: 'talk', fv: '💪' }], [0.9, { v: 'happy' }]],
+  hagwon: [[0.02, { vp: 'pen', v: 'doze', fv: '✏️😴' }], [0.4, { s: 'pickup', fs: '✏️' }], [0.5, { vp: '-', v: 'listen' }], [0.85, { v: 'happy' }]],
+  roomie: [[0.04, { v: 'angry', fv: '🛋️😤' }], [0.3, { s: 'show', fs: '⚖️' }], [0.55, { v: 'talk', fv: '🗣️🙂' }], [0.85, { v: 'happy' }]],
+  quake: [[0.02, { fv: '🫨', shake: 1 }], [0.4, { s: 'talk', fs: '🦶🦶' }], [0.6, { shake: 0, fv: '🧘' }], [0.85, { v: 'happy' }]],
+  quarter: [[0.04, { melt: 1, fv: '🫠' }], [0.4, { s: 'talk' }], [0.65, { melt: 0, fv: '🙂' }], [0.85, { v: 'happy' }]],
+  // city rooms
+  hustle: [[0.04, { fv: '💼💼💼' }], [0.3, { s: 'show', fs: '📝📝📝' }], [0.5, { s: 'pickup', fs: '🗑️' }], [0.7, { fs: '📝' }], [0.85, { v: 'happy', fv: '🎯' }]],
+  wedding: [[0.02, { vp: 'scroll', fv: '📜×600' }], [0.35, { s: 'show', sp: 'scissors', fs: '✂️' }], [0.6, { sp: '-', fv: '📜➡️📃' }], [0.85, { vp: '-', v: 'happy', fv: '😮‍💨' }]],
+  overtime: [[0.04, { fv: '🌃💻' }], [0.3, { fv: '🐑' }], [0.5, { s: 'pickup', sp: 'egg', fs: '🥚' }], [0.75, { sp: '-', fv: '📵😌' }]],
+  grind: [[0.04, { fv: '☕☕☕' }], [0.3, { s: 'show', fs: '🧘' }], [0.5, { v: 'breath', fv: '🧘' }], [0.8, { fv: '😌' }]],
+  coraje: [[0.02, { vp: 'lmask', fv: '😤' }], [0.3, { s: 'show', sp: 'pad', fs: '🛡️' }], [0.45, { v: 'angry', fv: '👊💥' }], [0.6, { fv: '🗣️❗' }], [0.8, { vp: '-', sp: '-', v: 'happy', fv: '😌' }]],
+  paperwork: [[0.04, { vp: 'paper', fv: '📑📑' }], [0.3, { s: 'drink', sp: 'tea', fs: '🍵' }], [0.45, { vp: 'tea', v: 'drink', fv: '🎲' }], [0.7, { sp: 'pen', s: 'work', fs: '🖊️✅' }], [0.88, { vp: '-', sp: '-', v: 'happy' }]],
+  saudade: [[0.04, { fv: '🥹' }], [0.25, { s: 'clap', fs: '🥁🎶' }], [0.45, { v: 'clap', fv: '👏🎶' }], [0.8, { v: 'happy', fv: '🎶😊' }]],
+};
+const IX_DEF = [[0.1, { s: 'talk' }], [0.4, { v: 'talk' }], [0.7, { s: 'show' }], [0.9, { v: 'happy' }]]; // anything without its own scene
+const _ixw = new THREE.Vector3();
+function ixClip(av, verb, sit) { const p = av.userData.p; if (!p || !p.anim || !verb) return; const m = IXV[verb]; p.anim.set(m ? m[sit ? 0 : 1] : verb); }
+function ixHold(av, list, name) { // one object at a time in that hand
+  for (const k of list.splice(0)) holdProp(av, 'ix_' + k, false);
+  if (name && name !== '-' && IXP[name]) { holdProp(av, 'ix_' + name, true, IXP[name]); const g = av.userData['ix_' + name]; if (g) g.scale.multiplyScalar(1.7); list.push(name); } // larger than life, to read from the game camera
+}
+function ixKid(v, kid, what) {
+  const k = kid.userData; k.ix = what; k.ixT = 0; const pa = k.p.anim;
+  kid.rotation.set(0, 0, 0); if (k.blocks) k.blocks.visible = false;
+  const pp = k.p, anim = (st) => { if (pa) pa.set(st); else if (pp) { if (st === 'sit') poseSit(pp); else poseStand(pp); } }; // the simple (non-GLB) kid has no clips: legs only
+  if (what === 'floor' || what === 'sleep') { anim('idle'); kid.rotation.x = -Math.PI / 2; }
+  else if (what === 'sitfloor' || what === 'play') { anim('sit'); if (what === 'play') { if (!k.blocks) { const b = k.blocks = new THREE.Group(); for (let i = 0; i < 3; i++) put(rbox(0.12, 0.12, 0.12, ['#E5484D', '#5AB8F0', '#FFD25E'][i], 0.02), 0, 0.06 + i * 0.125, 0, b); kid.parent.add(b); } k.blocks.visible = true; k.blocks.position.set(kid.position.x + 0.35, 0, kid.position.z + 0.3); } }
+  else if (what === 'run') { if (pa) pa.set('walk', 1.2); else anim('idle'); }
+  else anim({ angry: 'IdleAngry', sad: 'IdleHead', happy: 'cheer' }[what] || 'idle');
+}
+function ixKidTick(v, kid, dt) { // keeps the kid on the floor (the parent may be seated, i.e. lowered) and runs it in circles
+  const k = kid.userData, av = v.av; if (!k.ix) return; k.ixT += dt;
+  if (!k.home) k.home = kid.position.clone();
+  const sy = av.scale.y || 1, kws = kid.scale.y * sy;
+  const low = k.ix === 'floor' || k.ix === 'sleep' || k.ix === 'sitfloor' || k.ix === 'play';
+  if (!low) kid.position.y = (0.02 - av.position.y) / sy;
+  else { // sitting or lying on the floor: hips just above the floor, whatever the clip and the kid's size
+    if (k.hips === undefined) { k.hips = null; kid.traverse((b) => { if (!k.hips && b.isBone && /hips/i.test(b.name)) k.hips = b; }); }
+    if (k.hips) { kid.updateMatrixWorld(true); k.hips.getWorldPosition(_ixw); kid.position.y += ((k.ix === 'sitfloor' || k.ix === 'play' ? 0.16 : 0.13) - _ixw.y) / sy; }
+    else kid.position.y = ((k.ix === 'sitfloor' || k.ix === 'play' ? -0.05 : 0.12) - av.position.y) / sy; } // simple kid: its own legs fold
+  if (k.ix === 'run') { const a = k.ixT * 2.6, r = 0.5; kid.position.x = k.home.x + 0.3 + Math.cos(a) * r; kid.position.z = k.home.z + 0.3 + Math.sin(a) * r; kid.rotation.y = -a; }
+  else { kid.position.x = k.home.x; kid.position.z = k.home.z; if (k.ix !== 'floor' && k.ix !== 'sleep') kid.rotation.y = 0; }
+}
+function ixFloat(o, txt) { if (!o || !txt) return; o.getWorldPosition(_ixw); floatAt(_ixw, txt); }
+function ixTick(v, st, room, dt) {
+  if (!v.ix) { v.ix = { i: 0, beats: IX[v.prob] || IX_DEF, vp: [], sp: [], st, sit: !!(v.rspot && v.rspot.sit && !v.rspot.lie), lie: !!(v.rspot && v.rspot.lie), ssit: !!(st.target && st.target.sit), sc: v.av.scale.y, chair: !!(v.look && VIS[v.look.vm] && VIS[v.look.vm].chair) }; }
+  const X = v.ix, kid = v.gag && v.gag.userData.kid;
+  while (X.i < X.beats.length && v.prog >= X.beats[X.i][0]) {
+    const b = X.beats[X.i++][1];
+    if (b.v && !X.lie && !X.chair) ixClip(v.av, b.v, X.sit); // (wheelchair users keep their own clip)
+    if (b.s && st.av) { st.ixPose = 'ix:' + (IXV[b.s] ? IXV[b.s][X.ssit ? 0 : 1] : b.s); }
+    if (b.vp) ixHold(v.av, X.vp, b.vp);
+    if (b.sp && st.av) ixHold(st.av, X.sp, b.sp);
+    if (b.fv) ixFloat(v.av, b.fv); if (b.fs && st.av) ixFloat(st.av, b.fs);
+    if (b.gag === 'off' && v.gag) for (const c of v.gag.children) if (c !== kid && !c.userData.ixKeep) c.visible = false;
+    if (b.box === 'tidy' && v.gag) v.gag.traverse((o) => { if (o.isMesh && o.material && !o.userData.ixTaped) { o.userData.ixTaped = true; o.material = o.material.clone(); o.material.color.set('#E3C590'); } });
+    if (b.shake != null) X.shake = b.shake; if (b.melt != null) X.melt = b.melt;
+    if (kid && b.k) ixKid(v, kid, b.k); if (kid && b.fk) ixFloat(kid, b.fk);
+  }
+  if (kid && kid.userData.ix) ixKidTick(v, kid, dt);
+  if (X.shake) v.av.rotation.z = Math.sin(performance.now() / 28) * 0.05; else if (v.av.rotation.z) v.av.rotation.z = 0;
+  if (X.melt != null) { X.m = (X.m || 0) + ((X.melt ? 1 : 0) - (X.m || 0)) * Math.min(1, dt * 3); v.av.scale.y = X.sc * (1 - 0.35 * X.m); v.av.scale.x = v.av.scale.z = X.sc * (1 + 0.15 * X.m); }
+}
+function ixEnd(v) { // session over (cured, or the carer left): everything back to normal
+  const X = v.ix; if (!X) return; v.ix = null;
+  ixHold(v.av, X.vp, null); if (X.st && X.st.av) { ixHold(X.st.av, X.sp, null); X.st.ixPose = null; }
+  v.av.rotation.z = 0; if (X.m) { v.av.scale.setScalar(X.sc); }
+  const kid = v.gag && v.gag.userData.kid; if (kid && kid.userData.ix) { const k = kid.userData; k.ix = null; kid.rotation.set(0, 0, 0); if (k.home) kid.position.copy(k.home); if (k.blocks) k.blocks.visible = false; }
 }
 function finishCheckin(v, quiet) {
   v.known = true; probSeen(v.prob); v.icon.material = iconTex(isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e); for (const q of R.deskQs) { const qi = q.indexOf(v); if (qi >= 0) q.splice(qi, 1); }
@@ -3016,6 +3186,7 @@ function patienceRate(v) {
 function roomSpeed(type) { return (type === 'nap' && done('nap')) || (type === 'detox' && done('mute')) ? 1.3 : type === 'budget' && done('sheet') ? 1.25 : 1; }
 function exitPath(v) { const x = 2 + Math.random() * 3; return findPath(v.av.position, { x, z: 11.8 }).concat([{ x, z: 13.4 }]); }
 function visitorUpdate(v, dt) {
+  if (v.ix && v.state !== 'treat') ixEnd(v);
   if (v.markAt === undefined) { const mk = v.state === 'toQueue' ? arrivalMark(v) : null; v.markAt = mk ? 1 + RNG() * 2.5 : null; v.mark = mk; }
   if (v.markAt != null && (v.markAt -= dt) <= 0) { v.markAt = null; dropMark(v.av.position.x + 0.2, v.av.position.z, v.mark[0], v.mark[1]); }
   if (v.asleep) { v.sleepT = (v.sleepT || 0) + dt; if (v.sleepT > (v.state === 'queue' ? (DQ(v.desk || 0)[0] === v && deskHost(v.desk || 0, true) ? 5 : 15) : 20) || (R.mgr && Math.hypot(R.mgr.av.position.x - v.av.position.x, R.mgr.av.position.z - v.av.position.z) < 1.6)) wakeUp(v); v.hud.position.copy(v.av.position); return; } // asleep: doesn't move, blocks the line
@@ -3134,6 +3305,7 @@ function visitorUpdate(v, dt) {
       if (!st || st.mode !== 'there') { v.aloneT = (v.aloneT || 0) + dt; if (v.aloneT > 2.5) { v.aloneT = 0; v.rspot.busy = null; v.rspot = null; v.room = null; seatVisitor(v); } break; } v.aloneT = 0;
       if (room.closed || (S.ev && S.ev.k === 'power' && (!S.ev.gen || S.ev.off.includes(room.id))) || S.quake) break;
       v.prog += dirtF(room) * dt / (ROOMS[room.type].time / (0.7 + st.data.skill * 0.12) / traitVal(st.data, 'speed') / roomSpeed(room.type) / sizeSpd(room) / incSpd(room) / boost() / energyF(st) / evSlow(room.type) * mgrRoomF(room.id) * (inAura(st.av.position) ? 1.15 : 1));
+      ixTick(v, st, room, dt);
       if (v.prog >= 1) {
         const pr = (S.price || 1) * (cityOf().hustle ? 1.1 : 1) * (isNight() ? 1.15 : 1), fee = Math.round(PROBLEMS[v.prob].fee * 1.3 * (0.7 + S.vibes / 200) * pr);
         const twoVisit = beh('stamps2') && v.prob === 'paperwork', gain = Math.round(fee * (v.vip ? 2 : 1) * (twoVisit ? 0.5 : 1)), iou = beh('iou') && BROKE.has(v.prob);
@@ -3151,7 +3323,7 @@ function visitorUpdate(v, dt) {
         if (v.gid && S.gs && S.gs[v.gid] > 0) { S.gh = S.gh || {}; S.gh[v.gid] = (S.gh[v.gid] || 0) + 1; groupStep(v, v.gid); }
         if (v.prob === 'wedding') incCnt('wedding'); if (PROBLEMS[v.prob].room === 'yoga') incCnt('yoga'); if (PROBLEMS[v.prob].room === 'lucha') incCnt('lucha'); if (PROBLEMS[v.prob].room === 'roda') incCnt('roda'); if (S.rainy) incCnt('rain'); if (v.prob === 'quake') incCnt('quake'); if (v.wave) incCnt('wave'); if (PROBLEMS[v.prob].room === 'ahwa') incCnt('tea'); if (cityOf().evening && S.t > DAY_LEN * 0.6) incCnt('evening'); if (isNight()) incCnt('night'); if (PROBLEMS[v.prob].care) vb('misc', 0 + 1);
         if (Math.random() < 0.08) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, crnd(tList('rev.good')), '⭐', { fun: true });
-        v.rspot.busy = null; v.rspot = null; v.cured = true; if (p.anim && p.anim.calm) p.anim.calm(); // cured: back to a normal walk
+        ixEnd(v); v.rspot.busy = null; v.rspot = null; v.cured = true; if (p.anim && p.anim.calm) p.anim.calm(); // cured: back to a normal walk
         v.icon.material = iconTex('😊');
         const shop = Object.values(R.rooms).filter((r) => ROOMS[r.type].shop && !r.closed).map((r) => r.spots.find((s) => !s.busy && r.staff[s.st] && r.staff[s.st].mode === 'there')).find(Boolean);
         const shopR = Object.values(R.rooms).filter((r) => ROOMS[r.type].shop && !r.closed && r.staff.some((x) => x && x.mode === 'there'));
@@ -3179,7 +3351,7 @@ function visitorUpdate(v, dt) {
     v.icon.visible = attn && !['exit', 'angry'].includes(v.state); v.fg.visible = v.bg.visible = attn && v.icon.visible; }
   { const pa = v.av.userData.p.anim, standWait = v.state === 'queue' || (v.state === 'wait' && v.spot && !v.spot.sit);
     if (pa && standWait && v.pat < 0.25) pa.set('angry'); else if (pa && standWait && pa.state === '~angry' && v.pat > 0.35) posePhone(v.av.userData.p); }
-  const kid = v.gag && v.gag.userData.kid; if (kid && kid.userData.p.anim) { const pa = v.av.userData.p.anim; kid.userData.p.anim.set(pa && /walk/.test(pa.state) ? 'walk' : 'idle', 1); }
+  const kid = v.gag && v.gag.userData.kid; if (kid && kid.userData.p.anim && !kid.userData.ix) { const pa = v.av.userData.p.anim; kid.userData.p.anim.set(pa && /walk/.test(pa.state) ? 'walk' : 'idle', 1); }
 }
 const CMP_E = { noLoo: '🚻', noRoom: '🚪', queue: '🛎️', cold: '🥶', hot: '🥵', dirty: '🐀', price: '💸', crowd: '👥', wait: '⏳' };
 function complaintOf(v) {
