@@ -1380,7 +1380,7 @@ function buildRoom(r) {
     { const ddx = dp.x - r.x, ddz = dp.z - r.z, ca = Math.cos(r.a), sa = Math.sin(r.a); tmp.door = { x: ca * ddx - sa * ddz - lx, z: sa * ddx + ca * ddz }; } // door in station coords
     furniture[r.type](sg, 0, 0, tmp, K);
     fitFurniture(sg, tmp, Z.W / Z.st, Z.D, RS ? 0.2 : 0.16);
-    const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a, ...(p.rot2 != null ? { rot2: p.rot2 + r.a } : {}) }; };
+    const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a, ...(p.rot2 != null ? { rot2: p.rot2 + r.a } : {}), ...(p.pts ? { pts: Object.fromEntries(Object.entries(p.pts).map(([k, q]) => [k, conv(q)])) } : {}) }; }; // pts: named points of a scene (kid's chair, board…)
     for (const sp of tmp.spots) room.spots.push({ ...conv(sp), st: i, busy: null });
     room.staffSpots[i] = tmp.staffSpot ? conv(tmp.staffSpot) : null;
     VIA_SPOTS = VIA_SPOTS.filter((sp) => sp.room0 && R.rooms[sp.room0.id] === sp.room0); for (const sp of room.spots) if (sp.front && !sp.via) { sp.via = { x: sp.x + Math.sin(sp.rot) * 1.35, z: sp.z + Math.cos(sp.rot) * 1.35 }; sp.room0 = room; VIA_SPOTS.push(sp); }
@@ -1458,13 +1458,18 @@ function lieUpdate() {
   for (const [o, sp] of who) { const av = o.av; if (!av) continue; const on = !!(sp && sp.lie && !(o.path && o.path.length) && Math.hypot(av.position.x - sp.x, av.position.z - sp.z) < 1.2);
     if (on) { const L = 1.55 * av.scale.y, r = sp.rot || 0, s = Math.sin(r), c = Math.cos(r), base = 0.1 + (sp.y || 0);
       av.rotation.order = 'YXZ'; av.rotation.set(-Math.PI / 2, r, 0); av.position.set(sp.x + s * L * 0.5, base + 0.13, sp.z + c * L * 0.5); // feet at +z, head toward -z (the pillow end)
+      const ud = av.userData, now = performance.now(); if (!ud.lieT) { ud.lieS = now; ud.roll = 0; ud.rollT = 0; ud.rollAt = now + 1500; }
+      if (o.prob && o.state === 'treat' && (o.prog || 0) < 0.72) { // a client tosses and turns before falling asleep (and stays still after)
+        if (now > ud.rollAt) { const side = ud.rollT > 0 ? -1 : ud.rollT < 0 ? 1 : (Math.random() < 0.5 ? -1 : 1); ud.rollT = side * 1.35; ud.rollAt = now + 900 + Math.random() * 1100; // flops from one side to the other, Theme Hospital style
+          if (Math.random() < 0.35) floatAt(av.position, Math.random() < 0.5 ? '😣' : '🔄'); } } else ud.rollT = 0;
+      ud.roll += (ud.rollT - ud.roll) * 0.16; if (Math.abs(ud.roll) > 0.01) av.quaternion.multiply(_ixq.setFromAxisAngle(_ixY, ud.roll)); // roll around the body's own axis
       const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
       let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; }
       av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
-      if (!dv.parent) scene.add(dv); const len = L * 0.88; dv.scale.z = len; dv.rotation.y = r; dv.scale.y = 1.3; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
-    else { av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x) av.rotation.x = 0; const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
+      if (!dv.parent) scene.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.order = 'YXZ'; dv.rotation.y = r; dv.rotation.z = -(ud.roll || 0) * 0.45; dv.scale.y = 1.3 + Math.abs(ud.roll || 0) * 0.35; /* the duvet follows the body's turn */ dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
+    else { av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x && !(o.ix && o.ix.mat)) { av.rotation.x = 0; av.rotation.z = 0; } const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
 }
 function doorsUpdate(dt) {
   ambience(dt); lieUpdate();
@@ -1558,7 +1563,7 @@ function careerKit(g, cx, cz, room) {
   const dx = first && N && !S ? 0.3 : 0, KIT = ROOM_STYLE.career.model, lx = cx - w / 2, rx = cx + w / 2, bz = cz - D / 2, zc = cz - (S ? 0.3 : 0.45), H = Math.PI / 2;
   const pc = (name, x, z, rot, h, fw, fd, o = {}) => { let p = grp(x, z, rot, g); if (o.hang) { p.userData.hang = o.hang; p.userData.swap = true; p = grp(0, o.inset || 0, 0, p); }
     if (fw) put(rbox(fw, Math.min(h, 1), fd, o.col || '#2A3354', 0.04), 0, Math.min(h, 1) / 2 + 0.1, 0, p);
-    glbSwap(p, KIT + '/' + name, { h, y: (o.y || 0) + 0.11 }); return p; };
+    glbSwap(p, KIT + '/' + name, { h, y: (o.y || 0) + 0.11 }); p.userData.kit = name; return p; };
   { const rg = new THREE.Mesh(new THREE.PlaneGeometry(2.9, S ? 2.4 : 2.7), mat('#FFFFFF', { map: CAREER_RUG(), r: 0.95, mapK: 'crug' })); rg.rotation.x = -H; rg.position.set(cx + dx, 0.135, zc + 0.45); g.add(rg); }
   // desk square to the walls, laptop facing the coach; coach chair behind it, both client chairs side by side facing the desk
   pc('k_desk', cx + dx, zc, 0, 1.15, 1.9, 0.9, { col: '#EFE6D6' });
@@ -1638,6 +1643,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     let p; if (it.hang) { const wn = it.wall === 'back' ? [0, -1] : it.wall === 'left' ? [-1, 0] : it.wall === 'right' ? [1, 0] : [0, 1], o = pd / 2 + gp; // anchor on the wall line (the cutaway judges it there), piece set into the room
       const A = W(x + wn[0] * o, z + wn[1] * o), n2 = F.T(wn[0], wn[1]); p = grp(A.x, A.z, R, g); p.userData.hang = [Math.round(n2.x), Math.round(n2.z)]; p.userData.swap = true; p = grp(0, o, 0, p); } else p = grp(P.x, P.z, R, g);
     box.at = { x: P.x, z: P.z, rot: R, pw, pd };
+    p.userData.kit = it.p; // treatment scenes find pieces by name (the board, the shelf…)
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5), tint: it.tint } : null); box.g = p; continue; } // the game's own potted plants
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
@@ -2237,6 +2243,7 @@ function patientOf(rs) {
 }
 function staffAttend(rs, dt) {
   if (rs.data.role === 'maint' || !rs.target) return;
+  if (ixStaffWalk(rs, dt)) return; // away for a moment of a treatment scene
   const p = rs.av.userData.p, base = (rs.lessonRot ?? rs.target.rot) || 0, sit = !!rs.target.sit, v = patientOf(rs);
   let want = base;
   if (v) { const dx = v.av.position.x - rs.av.position.x, dz = v.av.position.z - rs.av.position.z; if (dx * dx + dz * dz > 0.04) { const d = angW(Math.atan2(dx, dz) - base); want = base + (sit ? clamp(d, -0.7, 0.7) : d); } }
@@ -2476,25 +2483,25 @@ const NOISE = [[0.05, { fv: '🚗📯🔊' }], [0.3, { s: 'show', fs: '🎧' }],
 const APPS = [[0.05, { v: 'phone', fv: '👈👉👈' }], [0.35, { s: 'talk', fs: '👋' }], [0.55, { v: 'talk', fv: '👋🙂' }], [0.85, { v: 'happy', fv: '💬' }]];
 const IX = {
   // 💸 Budget Booth
-  rent: [[0.04, { v: 'show', vp: 'bills', fv: '🧾🧾🧾' }], [0.35, { s: 'work', fs: '📂📂' }], [0.62, { vp: '-', v: 'listen', fv: '✅' }], [0.85, { v: 'happy', fv: '😮‍💨' }]],
-  subs: [[0.04, { v: 'phone', fv: '💳💳💳' }], [0.3, { s: 'show', fs: '📊' }], [0.5, { v: 'show', vp: 'card' }], [0.62, { sp: 'scissors', fs: '✂️' }], [0.78, { vp: '-', sp: '-', fv: '✂️💳' }], [0.9, { v: 'happy' }]],
-  flat: [[0.04, { v: 'head', fv: '🛏️🛏️' }], [0.3, { s: 'show', fs: '📈' }], [0.6, { sp: 'piggy', fs: '🐷' }], [0.8, { sp: '-', vp: 'piggy', v: 'happy', fv: '💰' }]],
+  rent: [[0.04, { v: 'show', vp: 'bills', fv: '🧾🧾🧾' }], [0.3, { go: 'piece:easel|cork|board|chart', s: 'show', fs: '📂📂' }], [0.55, { go: 'home' }], [0.62, { vp: '-', v: 'listen', fv: '✅' }], [0.85, { v: 'happy', fv: '😮‍💨' }]],
+  subs: [[0.04, { v: 'phone', fv: '💳💳💳' }], [0.2, { go: 'piece:easel|cork|board|chart', s: 'show', fs: '📊' }], [0.45, { go: 'home', v: 'show', vp: 'card' }], [0.62, { sp: 'scissors', fs: '✂️' }], [0.78, { vp: '-', sp: '-', fv: '✂️💳' }], [0.9, { v: 'happy' }]],
+  flat: [[0.04, { v: 'head', fv: '🛏️🛏️' }], [0.25, { go: 'piece:easel|cork|board|chart', s: 'show', fs: '📈' }], [0.5, { go: 'home' }], [0.6, { sp: 'piggy', fs: '🐷' }], [0.8, { sp: '-', vp: 'piggy', v: 'happy', fv: '💰' }]],
   fuel: [[0.02, { vp: 'jerry', fv: '⛽❓' }], [0.35, { s: 'show', sp: 'lamp', fs: '☀️💡' }], [0.7, { vp: '-', sp: '-' }], [0.74, { vp: 'lamp', v: 'happy', fv: '☀️' }]],
-  rentshock: [[0.02, { vp: 'paper', fv: '🏙️💸' }], [0.2, { v: 'head' }], [0.45, { s: 'show', sp: 'map', fs: '🗺️📍' }], [0.8, { vp: '-', sp: '-', v: 'happy', fv: '🏠👍' }]],
+  rentshock: [[0.02, { vp: 'paper', fv: '🏙️💸' }], [0.2, { v: 'head' }], [0.4, { go: 'near', s: 'show', sp: 'map', fs: '🗺️📍' }], [0.72, { go: 'home', sp: '-' }], [0.8, { vp: '-', v: 'happy', fv: '🏠👍' }]],
   // 😴 Nap Room (the client lies under the duvet: floats only)
-  sunday: [[0.05, { fv: '😰📅' }], [0.3, { s: 'pickup', fs: '📵' }], [0.5, { fs: '⏰' }], [0.75, { fv: '💤' }]],
-  burn: [[0.05, { fv: '🔥' }], [0.3, { s: 'pickup', fs: '👟👟' }], [0.5, { gag: 'off', fv: '💤' }], [0.8, { fv: '💤' }]],
+  sunday: [[0.05, { fv: '😰📅' }], [0.25, { go: 'near', s: 'pickup', fs: '📵' }], [0.5, { fs: '⏰' }], [0.6, { go: 'home' }], [0.75, { fv: '💤' }]],
+  burn: [[0.05, { fv: '🔥' }], [0.25, { go: 'near', s: 'pickup', fs: '👟👟' }], [0.5, { gag: 'off', fv: '💤' }], [0.55, { go: 'home' }], [0.8, { fv: '💤' }]],
   gloom: [[0.1, { s: 'show', fs: '💡' }], [0.35, { gag: 'off', fv: '☀️' }], [0.7, { fv: '💤' }]],
-  flurest: [[0.05, { fv: '🤧' }], [0.3, { s: 'drink', sp: 'tea', fs: '🍵' }], [0.5, { sp: '-', fv: '💤' }], [0.8, { fv: '💤' }]],
+  flurest: [[0.05, { fv: '🤧' }], [0.25, { go: 'near', s: 'show', sp: 'tea', fs: '🍵' }], [0.5, { sp: '-', fv: '💤' }], [0.55, { go: 'home' }], [0.8, { fv: '💤' }]],
   train: NOISE, commute: NOISE, goslow: NOISE, honk: NOISE,
   mercury: [[0.1, { s: 'show', fs: '🪐✨' }], [0.4, { fv: '🌙' }], [0.7, { fv: '💤' }]],
   // 📵 Digital Detox
-  doom: [[0.04, { fv: '📱🔒' }], [0.25, { v: 'phone', fv: '👆👆' }], [0.45, { s: 'show', sp: 'ball', fs: '🔴' }], [0.58, { sp: '-', vp: 'ball', v: 'listen', fv: '😌' }], [0.88, { vp: '-' }]],
+  doom: [[0.04, { fv: '📱🔒' }], [0.25, { v: 'phone', fv: '👆👆' }], [0.4, { go: 'near', s: 'show', sp: 'ball', fs: '🔴' }], [0.56, { sp: '-', vp: 'ball', v: 'listen', fv: '😌' }], [0.6, { go: 'home' }], [0.88, { vp: '-' }]],
   group: [[0.04, { fv: '📱🔒' }], [0.25, { fv: '📳📳📳' }], [0.45, { s: 'show', fs: '🔕' }], [0.6, { v: 'clap', s: 'clap', fv: '🎲' }], [0.85, { v: 'happy' }]],
   novela: [[0.04, { v: 'show', fv: '🎭📺' }], [0.35, { s: 'show', sp: 'book', fs: '📖' }], [0.5, { sp: '-', vp: 'book', v: 'listen' }], [0.78, { fv: '😭📖' }], [0.92, { vp: '-' }]],
   // 💼 Career Coach
-  boss: [[0.04, { v: 'talk', fv: '😤👹' }], [0.35, { s: 'show', fs: '🧽' }], [0.6, { v: 'talk', fv: '🛑🙂' }], [0.85, { v: 'happy' }]],
-  ladder: [[0.1, { fv: '🪜😵' }], [0.35, { s: 'show', sp: 'marker', fs: '📶' }], [0.62, { sp: '-', v: 'think' }], [0.85, { v: 'happy', fv: '🪜👍' }]],
+  boss: [[0.04, { v: 'talk', fv: '😤👹' }], [0.25, { go: 'piece:easel|cork|board|chart', s: 'show', fs: '🧽' }], [0.55, { go: 'home' }], [0.6, { v: 'talk', fv: '🛑🙂' }], [0.85, { v: 'happy' }]],
+  ladder: [[0.1, { fv: '🪜😵' }], [0.25, { go: 'piece:ladder|cork|board', s: 'show', sp: 'marker', fs: '📶' }], [0.58, { go: 'home', sp: '-' }], [0.62, { v: 'think' }], [0.85, { v: 'happy', fv: '🪜👍' }]],
   topper: [[0.04, { v: 'show', vp: 'paper', fv: '📚💯' }], [0.35, { vp: '-', s: 'work', fs: '🗄️' }], [0.6, { s: 'talk', fs: '❤️❓' }], [0.85, { v: 'happy', fv: '🎨' }]],
   ahorita: [[0.04, { v: 'doze', fv: '⏳😴' }], [0.35, { s: 'show', sp: 'hourglass', fs: '⏳' }], [0.55, { v: 'talk', sp: '-' }], [0.85, { v: 'happy', fv: '✅' }]],
   thirty: [[0.1, { s: 'show', sp: 'muffin', fs: '🧁' }], [0.4, { v: 'talk', fv: '🌬️🕯️' }], [0.55, { sp: '-', fs: '✅' }], [0.85, { v: 'happy', fv: '🎂' }]],
@@ -2506,17 +2513,17 @@ const IX = {
   aunty: [[0.1, { s: 'talk', fs: '💍❓' }], [0.35, { v: 'talk', fv: '🙂🍛' }], [0.6, { s: 'talk2', fs: '💍❓❓' }], [0.75, { v: 'talk', fv: '😄☕' }], [0.9, { v: 'happy' }]],
   situation: [[0.1, { s: 'show', fs: '🥂 / 🫙' }], [0.4, { v: 'think', fv: '🤔' }], [0.7, { v: 'show', fv: '🥂' }], [0.88, { v: 'happy' }]],
   // 🧸 Parent Pod (the kid plays its own part)
-  toddler: [[0.02, { k: 'floor', fk: '😭' }], [0.25, { s: 'show', fs: '🧎' }], [0.45, { v: 'talk', fv: '🤗' }], [0.6, { k: 'sitfloor', fk: '😌' }], [0.8, { k: 'play', fk: '🧸' }]],
-  schoolrun: [[0.04, { s: 'show', sp: 'cards', fs: '🗓️' }], [0.25, { k: 'sad', fk: '🎒😩' }], [0.5, { k: 'happy', fk: '🎒👟' }], [0.75, { sp: '-', v: 'happy', fv: '⏰✅' }]],
-  tablet: [[0.02, { k: 'angry', fk: '🎮😤' }], [0.3, { s: 'show', fs: '🧱' }], [0.5, { k: 'play', fk: '🧱' }], [0.8, { k: 'happy', fk: '🏰' }]],
-  homework: [[0.04, { k: 'sitfloor', fk: '📝' }], [0.2, { v: 'head', fv: '😱📝' }], [0.45, { s: 'talk', fs: '🙌' }], [0.7, { v: 'listen', fv: '😮‍💨' }], [0.85, { k: 'happy', fk: '💯' }]],
-  sugar: [[0.02, { k: 'run', fk: '🍭⚡' }], [0.35, { s: 'show', sp: 'glass', fs: '💧' }], [0.5, { sp: '-', k: 'idle' }], [0.6, { k: 'sleep', fk: '💤' }], [0.85, { v: 'happy', fv: '😮‍💨' }]],
+  toddler: [[0.02, { k: 'floor', kat: 'mat', fk: '😭' }], [0.15, { go: 'matSide', s: 'pickup', fs: '🧎' }], [0.38, { v: 'talk', fv: '🗣️🤗' }], [0.52, { k: 'sitfloor', fk: '😌' }], [0.6, { go: 'home' }], [0.7, { k: 'play', fk: '🧸' }], [0.93, { k: 'home' }]],
+  schoolrun: [[0.02, { k: 'sitchair', kat: 'chair' }], [0.1, { go: 'board', s: 'show', fs: '🗓️' }], [0.3, { k: 'stand', fk: '🎒' }], [0.42, { k: 'pickup', fk: '👟' }], [0.55, { go: 'home' }], [0.62, { k: 'happy', fk: '🎒✅' }], [0.78, { v: 'happy', fv: '⏰✅' }], [0.93, { k: 'home' }]],
+  tablet: [[0.02, { k: 'sitchair', kat: 'chair', fk: '🎮😤' }], [0.2, { go: 'basket', s: 'pickup', fs: '🧱' }], [0.35, { fk: '😤' }], [0.4, { go: 'kidNear', s: 'show' }], [0.5, { k: 'tower', fk: '🧱' }], [0.62, { go: 'home' }], [0.8, { k: 'happy', fk: '🏰' }], [0.93, { k: 'home' }]],
+  homework: [[0.02, { k: 'write', kat: 'chair', kp: 'pen', fk: '📝' }], [0.15, { v: 'head', fv: '😱📝' }], [0.35, { s: 'talk', fs: '🙌' }], [0.55, { v: 'listen', fv: '😮‍💨' }], [0.72, { fk: '💯' }], [0.82, { kp: '-', k: 'happy' }], [0.93, { k: 'home' }]],
+  sugar: [[0.02, { k: 'run', kat: 'mat', fk: '🍭⚡' }], [0.2, { fk: '⚡⚡' }], [0.3, { go: 'matSide', s: 'show', sp: 'glass', fs: '💧' }], [0.42, { k: 'stand', sp: '-', kp: 'glass' }], [0.52, { kp: '-', k: 'sleep', fk: '💤' }], [0.6, { go: 'home' }], [0.82, { v: 'happy', fv: '😮‍💨' }], [0.95, { k: 'home' }]],
   // 📦 Moving Desk
-  moving: [[0.04, { fv: '📦💥' }], [0.35, { s: 'work', fs: '📦🩹' }], [0.6, { box: 'tidy', fv: '📦✨' }], [0.85, { v: 'happy' }]],
+  moving: [[0.04, { fv: '📦💥' }], [0.3, { go: 'near', s: 'work', fs: '📦🩹' }], [0.6, { box: 'tidy', fv: '📦✨' }], [0.65, { go: 'home' }], [0.85, { v: 'happy' }]],
   newcity: [[0.04, { v: 'think', fv: '🗺️❓' }], [0.3, { s: 'show', fs: '📍☕' }], [0.48, { fs: '📍🏋️' }], [0.64, { fs: '📍🥂' }], [0.8, { vp: 'map', v: 'happy', fv: '🗺️✅' }]],
   // 💊 Pharmacy (standing at the counter)
-  tummy: [[0.04, { v: 'head', fv: '🤢' }], [0.3, { s: 'pickup', fs: '🍵' }], [0.45, { vp: 'tea', v: 'drink' }], [0.85, { vp: '-', fv: '😌' }]],
-  headache: [[0.04, { v: 'head', fv: '🤕' }], [0.3, { s: 'pickup', fs: '💊💧' }], [0.45, { vp: 'glass', v: 'drink' }], [0.85, { vp: '-', fv: '😌' }]],
+  tummy: [[0.04, { v: 'head', fv: '🤢' }], [0.2, { go: 'piece:shelftea|tearack|shelf', s: 'pickup' }], [0.38, { go: 'home', fs: '🍵' }], [0.48, { vp: 'tea', v: 'drink' }], [0.85, { vp: '-', fv: '😌' }]],
+  headache: [[0.04, { v: 'head', fv: '🤕' }], [0.2, { go: 'piece:shelfcross|shelfvit|shelf', s: 'pickup' }], [0.38, { go: 'home', fs: '💊💧' }], [0.48, { vp: 'glass', v: 'drink' }], [0.85, { vp: '-', fv: '😌' }]],
   screeneyes: [[0.04, { v: 'head', fv: '🥲' }], [0.3, { s: 'pickup', sp: 'bottle', fs: '💧👁️' }], [0.5, { sp: '-', v: 'breath', fv: '💧' }], [0.85, { fv: '👀✨' }]],
   flu: [[0.04, { fv: '🤒🤧' }], [0.3, { s: 'pickup', fs: '💊😷' }], [0.45, { vp: 'sachet', fv: '😷' }], [0.88, { vp: '-' }]],
   heatgrump: [[0.04, { v: 'angry', fv: '🥵' }], [0.3, { s: 'pickup', fs: '🪭💧' }], [0.45, { vp: 'fan', v: 'idle', fv: '🪭' }], [0.85, { vp: '-', fv: '😎' }]],
@@ -2532,15 +2539,15 @@ const IX = {
   overthink: [[0.04, { fv: '🌀🌀' }], [0.3, { s: 'talk', fs: '🌬️' }], [0.45, { v: 'breath', fv: '🌬️' }], [0.6, { gag: 'off' }], [0.85, { v: 'happy', fv: '😌' }]],
   sharmaji: [[0.02, { vp: 'trophy', fv: '🏆👦' }], [0.35, { s: 'talk', fs: '🙃' }], [0.5, { vp: '-' }], [0.6, { s: 'talk2', fs: '⭐❓' }], [0.75, { v: 'talk', fv: '💪' }], [0.9, { v: 'happy' }]],
   hagwon: [[0.02, { vp: 'pen', v: 'doze', fv: '✏️😴' }], [0.4, { s: 'pickup', fs: '✏️' }], [0.5, { vp: '-', v: 'listen' }], [0.85, { v: 'happy' }]],
-  roomie: [[0.04, { v: 'angry', fv: '🛋️😤' }], [0.3, { s: 'show', fs: '⚖️' }], [0.55, { v: 'talk', fv: '🗣️🙂' }], [0.85, { v: 'happy' }]],
-  quake: [[0.02, { fv: '🫨', shake: 1 }], [0.4, { s: 'talk', fs: '🦶🦶' }], [0.6, { shake: 0, fv: '🧘' }], [0.85, { v: 'happy' }]],
+  roomie: [[0.04, { v: 'angry', fv: '🛋️😤' }], [0.25, { go: 'near', s: 'show', fs: '⚖️' }], [0.55, { v: 'talk', fv: '🗣️🙂' }], [0.7, { go: 'home' }], [0.85, { v: 'happy' }]],
+  quake: [[0.02, { fv: '🫨', shake: 1 }], [0.3, { go: 'near', s: 'talk', fs: '🦶🦶' }], [0.6, { shake: 0, fv: '🧘' }], [0.68, { go: 'home' }], [0.85, { v: 'happy' }]],
   quarter: [[0.04, { melt: 1, fv: '🫠' }], [0.4, { s: 'talk' }], [0.65, { melt: 0, fv: '🙂' }], [0.85, { v: 'happy' }]],
   // city rooms
-  hustle: [[0.04, { fv: '💼💼💼' }], [0.3, { s: 'show', fs: '📝📝📝' }], [0.5, { s: 'pickup', fs: '🗑️' }], [0.7, { fs: '📝' }], [0.85, { v: 'happy', fv: '🎯' }]],
+  hustle: [[0.04, { fv: '💼💼💼' }], [0.2, { go: 'piece:easel|cork|board|chart', s: 'show', fs: '📝📝📝' }], [0.45, { s: 'pickup', fs: '🗑️' }], [0.62, { fs: '📝' }], [0.7, { go: 'home' }], [0.85, { v: 'happy', fv: '🎯' }]],
   wedding: [[0.02, { vp: 'scroll', fv: '📜×600' }], [0.35, { s: 'show', sp: 'scissors', fs: '✂️' }], [0.6, { sp: '-', fv: '📜➡️📃' }], [0.85, { vp: '-', v: 'happy', fv: '😮‍💨' }]],
-  overtime: [[0.04, { fv: '🌃💻' }], [0.3, { fv: '🐑' }], [0.5, { s: 'pickup', sp: 'egg', fs: '🥚' }], [0.75, { sp: '-', fv: '📵😌' }]],
-  grind: [[0.04, { fv: '☕☕☕' }], [0.3, { s: 'show', fs: '🧘' }], [0.5, { v: 'breath', fv: '🧘' }], [0.8, { fv: '😌' }]],
-  coraje: [[0.02, { vp: 'lmask', fv: '😤' }], [0.3, { s: 'show', sp: 'pad', fs: '🛡️' }], [0.45, { v: 'angry', fv: '👊💥' }], [0.6, { fv: '🗣️❗' }], [0.8, { vp: '-', sp: '-', v: 'happy', fv: '😌' }]],
+  overtime: [[0.04, { fv: '🌃💻' }], [0.25, { fv: '🐑' }], [0.4, { go: 'near', s: 'pickup', sp: 'egg', fs: '🥚' }], [0.7, { go: 'home', sp: '-', fv: '📵😌' }]],
+  grind: [[0.04, { fv: '☕☕☕' }], [0.15, { stand: 1, v: 'breath', s: 'show', fs: '🙆' }], [0.4, { mat: 1, fv: '🧘' }], [0.72, { mat: 0, sitback: 1, v: 'think', fv: '😌' }]],
+  coraje: [[0.02, { vp: 'lmask', fv: '😤' }], [0.25, { go: 'near', s: 'show', sp: 'pad', fs: '🛡️' }], [0.45, { v: 'angry', fv: '👊💥' }], [0.6, { fv: '🗣️❗' }], [0.75, { go: 'home', sp: '-' }], [0.8, { vp: '-', v: 'happy', fv: '😌' }]],
   paperwork: [[0.04, { vp: 'paper', fv: '📑📑' }], [0.3, { s: 'drink', sp: 'tea', fs: '🍵' }], [0.45, { vp: 'tea', v: 'drink', fv: '🎲' }], [0.7, { sp: 'pen', s: 'work', fs: '🖊️✅' }], [0.88, { vp: '-', sp: '-', v: 'happy' }]],
   saudade: [[0.04, { fv: '🥹' }], [0.25, { s: 'clap', fs: '🥁🎶' }], [0.45, { v: 'clap', fv: '👏🎶' }], [0.8, { v: 'happy', fv: '🎶😊' }]],
 };
@@ -2551,53 +2558,142 @@ function ixHold(av, list, name) { // one object at a time in that hand
   for (const k of list.splice(0)) holdProp(av, 'ix_' + k, false);
   if (name && name !== '-' && IXP[name]) { holdProp(av, 'ix_' + name, true, IXP[name]); const g = av.userData['ix_' + name]; if (g) g.scale.multiplyScalar(1.7); list.push(name); } // larger than life, to read from the game camera
 }
-function ixKid(v, kid, what) {
-  const k = kid.userData; k.ix = what; k.ixT = 0; const pa = k.p.anim;
-  kid.rotation.set(0, 0, 0); if (k.blocks) k.blocks.visible = false;
-  const pp = k.p, anim = (st) => { if (pa) pa.set(st); else if (pp) { if (st === 'sit') poseSit(pp); else poseStand(pp); } }; // the simple (non-GLB) kid has no clips: legs only
-  if (what === 'floor' || what === 'sleep') { anim('idle'); kid.rotation.x = -Math.PI / 2; }
-  else if (what === 'sitfloor' || what === 'play') { anim('sit'); if (what === 'play') { if (!k.blocks) { const b = k.blocks = new THREE.Group(); for (let i = 0; i < 3; i++) put(rbox(0.12, 0.12, 0.12, ['#E5484D', '#5AB8F0', '#FFD25E'][i], 0.02), 0, 0.06 + i * 0.125, 0, b); kid.parent.add(b); } k.blocks.visible = true; k.blocks.position.set(kid.position.x + 0.35, 0, kid.position.z + 0.3); } }
-  else if (what === 'run') { if (pa) pa.set('walk', 1.2); else anim('idle'); }
-  else anim({ angry: 'IdleAngry', sad: 'IdleHead', happy: 'cheer' }[what] || 'idle');
+// ---- the kid (Parent Pod): walks to a corner of the room, then sits, lies, plays, runs… Its world position is kept here and turned into
+// the parent's local frame each frame (the kid stays a child of the parent, so it leaves with them).
+const _ixq = new THREE.Quaternion(), _ixq2 = new THREE.Quaternion(), _ixY = new THREE.Vector3(0, 1, 0), _ixX = new THREE.Vector3(1, 0, 0), _ixh = new THREE.Vector3();
+const KID_H = { sitchair: 0.4, write: 0.4, tower: 0.4, sitfloor: 0.16, play: 0.16, floor: 0.13, sleep: 0.13 }; // hips height above the floor
+const KID_LIE = new Set(['floor', 'sleep']);
+function ixKidAnim(kid, st) { const k = kid.userData, pa = k.p && k.p.anim; if (pa) { pa.set(st === 'run' ? 'walk' : st, st === 'run' ? 1.25 : 1); return; } if (k.p) { if (st === 'sit') poseSit(k.p); else poseStand(k.p); } }
+function ixKidAct(v, kid, what) { // the action itself, once the kid is where it should be
+  const k = kid.userData; k.ix = what; k.ixT = 0; if (k.blocks) k.blocks.visible = false;
+  if (k.cush) k.cush.visible = false;
+  if (KID_LIE.has(what)) { ixKidAnim(kid, 'idle'); if (what === 'sleep') { if (!k.cush) { k.cush = put(rbox(0.5, 0.12, 0.4, '#FF8FAB', 0.05), 0, 0, 0, scene); } k.cush.visible = true; } }
+  else if (what === 'sitchair' || what === 'sitfloor' || what === 'write') ixKidAnim(kid, 'sit');
+  else if (what === 'play' || what === 'tower') { ixKidAnim(kid, 'sit'); if (!k.blocks) { const b = k.blocks = new THREE.Group(); for (let i = 0; i < 3; i++) put(rbox(0.12, 0.12, 0.12, ['#E5484D', '#5AB8F0', '#FFD25E'][i], 0.02), 0, 0.06 + i * 0.125, 0, b); scene.add(b); } k.blocks.visible = true; k.blocks.children.forEach((c, i) => c.visible = what === 'play' || i === 0); }
+  else ixKidAnim(kid, { run: 'run', angry: 'IdleAngry', sad: 'IdleHead', happy: 'cheer', pickup: 'pickup', stand: 'idle', home: 'idle' }[what] || 'idle');
 }
-function ixKidTick(v, kid, dt) { // keeps the kid on the floor (the parent may be seated, i.e. lowered) and runs it in circles
-  const k = kid.userData, av = v.av; if (!k.ix) return; k.ixT += dt;
+function ixKid(v, kid, what, at) {
+  const k = kid.userData, pts = v.rspot && v.rspot.pts;
+  if (!k.wp) { kid.getWorldPosition(_ixw); k.wp = _ixw.clone(); k.face = v.av.rotation.y; }
+  let goal = null;
+  if (what === 'home') { k.goHome = true; goal = 'home'; }
+  else if (at && pts && pts[at]) goal = pts[at];
+  if (goal) { k.goal = goal; k.next = what; ixKidAnim(kid, 'walk'); k.ix = 'walk'; if (k.blocks) k.blocks.visible = false; if (k.cush) k.cush.visible = false; }
+  else ixKidAct(v, kid, what);
+}
+function ixKidTick(v, kid, dt) {
+  const k = kid.userData, av = v.av; if (!k.ix) return; k.ixT = (k.ixT || 0) + dt;
   if (!k.home) k.home = kid.position.clone();
-  const sy = av.scale.y || 1, kws = kid.scale.y * sy;
-  const low = k.ix === 'floor' || k.ix === 'sleep' || k.ix === 'sitfloor' || k.ix === 'play';
-  if (!low) kid.position.y = (0.02 - av.position.y) / sy;
-  else { // sitting or lying on the floor: hips just above the floor, whatever the clip and the kid's size
-    if (k.hips === undefined) { k.hips = null; kid.traverse((b) => { if (!k.hips && b.isBone && /hips/i.test(b.name)) k.hips = b; }); }
-    if (k.hips) { kid.updateMatrixWorld(true); k.hips.getWorldPosition(_ixw); kid.position.y += ((k.ix === 'sitfloor' || k.ix === 'play' ? 0.16 : 0.13) - _ixw.y) / sy; }
-    else kid.position.y = ((k.ix === 'sitfloor' || k.ix === 'play' ? -0.05 : 0.12) - av.position.y) / sy; } // simple kid: its own legs fold
-  if (k.ix === 'run') { const a = k.ixT * 2.6, r = 0.5; kid.position.x = k.home.x + 0.3 + Math.cos(a) * r; kid.position.z = k.home.z + 0.3 + Math.sin(a) * r; kid.rotation.y = -a; }
-  else { kid.position.x = k.home.x; kid.position.z = k.home.z; if (k.ix !== 'floor' && k.ix !== 'sleep') kid.rotation.y = 0; }
+  if (!k.wp) { kid.getWorldPosition(_ixw); k.wp = _ixw.clone(); k.face = av.rotation.y; }
+  const homeW = av.localToWorld(_ixh.set(k.home.x, 0, k.home.z));
+  if (k.goal) { // walking there
+    const gx = k.goal === 'home' ? homeW.x : k.goal.x, gz = k.goal === 'home' ? homeW.z : k.goal.z, dx = gx - k.wp.x, dz = gz - k.wp.z, d = Math.hypot(dx, dz), stp = 1.3 * dt;
+    if (d > 0.02) k.face = Math.atan2(dx, dz);
+    if (d <= stp) { k.wp.x = gx; k.wp.z = gz; const g = k.goal; k.goal = null; if (g === 'home') { k.ix = null; kid.quaternion.identity(); kid.position.copy(k.home); ixKidAnim(kid, 'idle'); return; } k.face = g.rot ?? k.face; ixKidAct(v, kid, k.next); }
+    else { k.wp.x += dx / d * stp; k.wp.z += dz / d * stp; }
+  } else if (k.ix === 'run') { const c = (v.rspot.pts && v.rspot.pts.mat) || homeW, a = k.ixT * 2.2, r = 0.6; const nx = c.x + Math.cos(a) * r, nz = c.z + Math.sin(a) * r; k.face = Math.atan2(nx - k.wp.x, nz - k.wp.z); k.wp.x = nx; k.wp.z = nz; }
+  // into the parent's frame: position, then yaw (and lying down) as a quaternion
+  _ixw.set(k.wp.x, 0, k.wp.z); av.worldToLocal(_ixw); kid.position.x = _ixw.x; kid.position.z = _ixw.z;
+  _ixq.setFromAxisAngle(_ixY, k.face - av.rotation.y); if (KID_LIE.has(k.ix)) _ixq.multiply(_ixq2.setFromAxisAngle(_ixX, -Math.PI / 2)); kid.quaternion.copy(_ixq);
+  const sy = av.scale.y || 1, hh = KID_H[k.ix];
+  if (hh == null) kid.position.y = (0.02 - av.position.y) / sy;
+  else { if (k.hips === undefined) { k.hips = null; kid.traverse((b) => { if (!k.hips && b.isBone && /hips/i.test(b.name)) k.hips = b; }); }
+    if (k.hips) { kid.updateMatrixWorld(true); k.hips.getWorldPosition(_ixh); kid.position.y += (hh - _ixh.y) / sy; }
+    else kid.position.y = ((KID_LIE.has(k.ix) ? 0.12 : hh - 0.45 * kid.scale.y * sy) - av.position.y) / sy; } // simple kid: its own legs fold
+  if (k.blocks && k.blocks.visible) { const pts = v.rspot.pts || {}, onT = k.ix === 'tower' && pts.table; const bx = onT ? pts.table.x : k.wp.x + Math.sin(k.face) * 0.38, bz = onT ? pts.table.z : k.wp.z + Math.cos(k.face) * 0.38; k.blocks.position.set(bx, onT ? 0.45 : 0.12, bz);
+    if (k.ix === 'tower') k.blocks.children.forEach((c, i) => c.visible = k.ixT > i * 1.2); }
+  if (k.cush && k.cush.visible) { k.cush.position.set(k.wp.x - Math.sin(k.face) * 0.55, 0.16, k.wp.z - Math.cos(k.face) * 0.55); k.cush.rotation.y = k.face; }
+}
+// a simple (non-animated) kid made while the kid models were still loading: swapped for a real one as soon as they are in
+function ixKidUpgrade(v) {
+  const gg = v.gag, old = gg && gg.userData.kid; if (!old || old.userData.p.glb || !v.av.userData.p.glb) return;
+  const kk = ['v25', 'v26', 'v27', 'v28'].filter((k) => CHAR.A.full[k]); if (!kk.length) return;
+  const key = v.look.kid && CHAR.A.full[v.look.kid] ? v.look.kid : kk[(v.look.vm || 'v').charCodeAt(2) % kk.length]; const kid = person({ vm: key }, 'visitor'); if (!kid.userData.p.glb) return;
+  kid.position.set(0.6, 0, 0.15); v.av.add(kid); kid.traverse((m) => { if (m.isMesh) m.userData.owner = v.av; });
+  const o = old.userData; if (o.ix) { const n = kid.userData; n.wp = o.wp; n.face = o.face; n.goal = o.goal; n.next = o.next; n.home = kid.position.clone(); if (o.blocks) o.blocks.visible = false; if (o.cush) o.cush.visible = false; if (o.goal) { n.ix = 'walk'; ixKidAnim(kid, 'walk'); } else ixKidAct(v, kid, o.ix); }
+  old.parent && old.parent.remove(old); gg.userData.kid = kid;
+}
+// ---- the carer walks over (to the board, the client, the kids' corner…) and comes back to their seat
+function ixPoint(v, st, room, where) {
+  const pts = (v.rspot && v.rspot.pts) || {}, c = v.av.position;
+  if (where === 'near') { const dx = st.av.position.x - c.x, dz = st.av.position.z - c.z, d = Math.hypot(dx, dz) || 1; const x = c.x + dx / d * 0.75, z = c.z + dz / d * 0.75; return { x, z, rot: Math.atan2(c.x - x, c.z - z) }; }
+  if (pts[where]) return pts[where];
+  if (where.startsWith('piece:')) { const re = new RegExp(where.slice(6), 'i'); let hit = null; room.g.traverse((o) => { if (!hit && (re.test(o.name || '') || re.test(o.userData.glb || '') || re.test(o.userData.kit || ''))) hit = o; });
+    if (hit) { _fb.setFromObject(hit); const cx = (_fb.min.x + _fb.max.x) / 2, cz = (_fb.min.z + _fb.max.z) / 2, dx = c.x - cx, dz = c.z - cz, d = Math.hypot(dx, dz) || 1, x = cx + dx / d * 0.8, z = cz + dz / d * 0.8; return { x, z, rot: Math.atan2(cx - x, cz - z) }; } }
+  return null;
+}
+// a carer's few steps inside their own room: a small A* on a 15 cm grid of the room, around the furniture (room.obs), then
+// straightened where the way is clear. The start and the goal may sit inside a piece (their own chair, the shelf they reach for).
+function ixRoute(room, from, to, pad = 0.2) {
+  const q = roomRect(room.def), C = 0.15, x0 = q.x0 + 0.22, z0 = q.z0 + 0.22, nx = Math.max(2, Math.floor((q.x1 - q.x0 - 0.44) / C)), nz = Math.max(2, Math.floor((q.z1 - q.z0 - 0.44) / C));
+  const cell = (x, z) => [clamp(Math.round((x - x0) / C), 0, nx), clamp(Math.round((z - z0) / C), 0, nz)], pos = (i, j) => ({ x: x0 + i * C, z: z0 + j * C });
+  const obs = room.obs || [], blocked = new Uint8Array((nx + 1) * (nz + 1));
+  for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) { const p = pos(i, j); if (Math.hypot(p.x - from.x, p.z - from.z) < 0.5 || Math.hypot(p.x - to.x, p.z - to.z) < 0.5) continue;
+    for (const b of obs) if (p.x > b[0] - pad && p.x < b[1] + pad && p.z > b[2] - pad && p.z < b[3] + pad) { blocked[j * (nx + 1) + i] = 1; break; } }
+  const [si, sj] = cell(from.x, from.z), [ti, tj] = cell(to.x, to.z), W1 = nx + 1, N = W1 * (nz + 1), g = new Float32Array(N).fill(1e9), par = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+  const s0 = sj * W1 + si, t0 = tj * W1 + ti; g[s0] = 0; const open = [s0];
+  while (open.length) { let bi = 0, bf = 1e9; for (let k = 0; k < open.length; k++) { const c = open[k], ci2 = c % W1, f = g[c] + Math.hypot(ti - ci2, tj - (c - ci2) / W1); if (f < bf) { bf = f; bi = k; } }
+    const c = open.splice(bi, 1)[0]; if (done[c]) continue; done[c] = 1; if (c === t0) break; const i = c % W1, j = (c - i) / W1;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni > nx || nj > nz) continue; const n = nj * W1 + ni; if (blocked[n] || done[n]) continue;
+      if (di && dj && (blocked[j * W1 + ni] || blocked[nj * W1 + i])) continue; const ng = g[c] + (di && dj ? 1.414 : 1); if (ng < g[n]) { g[n] = ng; par[n] = c; open.push(n); } } }
+  let tg = t0; if (par[t0] < 0 && t0 !== s0) { if (pad > 0.1) return ixRoute(room, from, to, 0.06); // tight: hug the furniture closer
+    let bd = 1e9; for (let c = 0; c < N; c++) if (done[c]) { const ci2 = c % W1, dd = Math.hypot(ti - ci2, tj - (c - ci2) / W1); if (dd < bd) { bd = dd; tg = c; } } } // still no way: as close as it gets, then the last step
+  const cells = []; for (let c = tg; c >= 0 && c !== s0; c = par[c]) cells.push(c); cells.reverse();
+  const clear = (a, b) => { const n = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.07); for (let k = 1; k < n; k++) { const [i, j] = cell(a.x + (b.x - a.x) * k / n, a.z + (b.z - a.z) * k / n); if (blocked[j * W1 + i]) return false; } return true; };
+  const pts = cells.map((c) => pos(c % W1, (c - c % W1) / W1)); pts.push({ x: to.x, z: to.z });
+  const out = []; let a = { x: from.x, z: from.z }, k = 0; while (k < pts.length) { let far = k; for (let m = pts.length - 1; m > k; m--) if (clear(a, pts[m])) { far = m; break; } out.push(pts[far]); a = pts[far]; k = far + 1; }
+  return out;
+}
+function ixGo(v, st, room, where, pose) {
+  if (where === 'home') { if (st.ixGo && !st.ixGo.back) st.ixGo = { back: true, av: st.av, ph: 0, path: ixRoute(room, st.av.position, st.target) }; return; } // a few steps inside the room, round the furniture (the house walk grid would send them out by the door)
+  const p = ixPoint(v, st, room, where) || (where !== 'near' ? ixPoint(v, st, room, 'near') : null); if (!p) return;
+  st.ixGo = { av: st.av, ph: 0, path: ixRoute(room, st.av.position, p), face: p.rot, pose }; poseStand(st.av.userData.p);
+}
+function ixStaffWalk(rs, dt) { // from staffAttend: true while the carer is away from their spot for a scene
+  const G = rs.ixGo; if (!G) return false;
+  if (G.path.length) { stepWalker(G, dt, 2.2); return true; }
+  if (G.back) { rs.ixGo = null; settle(rs, rs.target); rs.busyPose = null; return false; }
+  if (!G.arrived) { G.arrived = true; const p = rs.av.userData.p; if (p.anim) p.anim.set(G.pose ? (IXV[G.pose] ? IXV[G.pose][1] : G.pose) : 'idle'); }
+  if (G.face != null) turnTo(rs.av, G.face, dt, 6); rs.av.position.y = 0.1; return true;
 }
 function ixFloat(o, txt) { if (!o || !txt) return; o.getWorldPosition(_ixw); floatAt(_ixw, txt); }
 function ixTick(v, st, room, dt) {
-  if (!v.ix) { v.ix = { i: 0, beats: IX[v.prob] || IX_DEF, vp: [], sp: [], st, sit: !!(v.rspot && v.rspot.sit && !v.rspot.lie), lie: !!(v.rspot && v.rspot.lie), ssit: !!(st.target && st.target.sit), sc: v.av.scale.y, chair: !!(v.look && VIS[v.look.vm] && VIS[v.look.vm].chair) }; }
+  if (!v.ix) { v.ix = { i: 0, beats: IX[v.prob] || IX_DEF, vp: [], sp: [], kp: [], st, sit: !!(v.rspot && v.rspot.sit && !v.rspot.lie), lie: !!(v.rspot && v.rspot.lie), ssit: !!(st.target && st.target.sit), sc: v.av.scale.y, chair: !!(v.look && VIS[v.look.vm] && VIS[v.look.vm].chair) }; }
   const X = v.ix, kid = v.gag && v.gag.userData.kid;
   while (X.i < X.beats.length && v.prog >= X.beats[X.i][0]) {
     const b = X.beats[X.i++][1];
-    if (b.v && !X.lie && !X.chair) ixClip(v.av, b.v, X.sit); // (wheelchair users keep their own clip)
-    if (b.s && st.av) { st.ixPose = 'ix:' + (IXV[b.s] ? IXV[b.s][X.ssit ? 0 : 1] : b.s); }
+    if (b.stand) { poseStand(v.av.userData.p); v.av.position.y = 0.1; X.sit = false; X.stood = true; }
+    if (b.sitback) { settle(v, v.rspot); X.sit = !!v.rspot.sit; X.stood = false; }
+    if (b.mat != null) X.mat = b.mat;
+    if (b.v && !X.lie && !X.chair && !X.mat) ixClip(v.av, b.v, X.sit); // (wheelchair users keep their own clip)
+    if (b.go && st.av) ixGo(v, st, room, b.go, b.s);
+    if (b.s && st.av) { const away = st.ixGo && !st.ixGo.back; if (away) { if (st.ixGo.arrived && st.av.userData.p.anim) st.av.userData.p.anim.set(IXV[b.s] ? IXV[b.s][1] : b.s); else st.ixGo.pose = b.s; } else st.ixPose = 'ix:' + (IXV[b.s] ? IXV[b.s][X.ssit ? 0 : 1] : b.s); }
     if (b.vp) ixHold(v.av, X.vp, b.vp);
     if (b.sp && st.av) ixHold(st.av, X.sp, b.sp);
+    if (b.kp && kid) ixHold(kid, X.kp, b.kp);
     if (b.fv) ixFloat(v.av, b.fv); if (b.fs && st.av) ixFloat(st.av, b.fs);
     if (b.gag === 'off' && v.gag) for (const c of v.gag.children) if (c !== kid && !c.userData.ixKeep) c.visible = false;
     if (b.box === 'tidy' && v.gag) v.gag.traverse((o) => { if (o.isMesh && o.material && !o.userData.ixTaped) { o.userData.ixTaped = true; o.material = o.material.clone(); o.material.color.set('#E3C590'); } });
     if (b.shake != null) X.shake = b.shake; if (b.melt != null) X.melt = b.melt;
-    if (kid && b.k) ixKid(v, kid, b.k); if (kid && b.fk) ixFloat(kid, b.fk);
+    if (kid && b.k) ixKid(v, kid, b.k, b.kat); if (kid && b.fk) ixFloat(kid, b.fk);
   }
-  if (kid && kid.userData.ix) ixKidTick(v, kid, dt);
-  if (X.shake) v.av.rotation.z = Math.sin(performance.now() / 28) * 0.05; else if (v.av.rotation.z) v.av.rotation.z = 0;
+  if (kid) { ixKidUpgrade(v); const k2 = v.gag.userData.kid; if (k2.userData.ix) ixKidTick(v, k2, dt);
+    // the parent keeps an eye on the kid: a glance over every few seconds
+    X.gl = (X.gl || 0) + dt; if (X.gl > 5.5 && !X.lie) { X.gl = 0; X.look = 1.6; } if (X.look > 0) { X.look -= dt; const kw = k2.userData.wp; if (kw) turnTo(v.av, Math.atan2(kw.x - v.av.position.x, kw.z - v.av.position.z), dt, 5); } }
+  if (X.mat) { // yoga: lying flat on the mat (savasana)
+    const r = v.rspot.rot || 0; v.av.quaternion.setFromAxisAngle(_ixY, r).multiply(_ixq2.setFromAxisAngle(_ixX, -Math.PI / 2)); v.av.position.set(v.rspot.x + Math.sin(r) * 0.78 * v.av.scale.y, 0.17, v.rspot.z + Math.cos(r) * 0.78 * v.av.scale.y); // body centred on the mat
+    const p = v.av.userData.p; if (p.anim && p.anim.state !== 'idle') p.anim.set('idle'); X.wasMat = true; }
+  else if (X.wasMat) { X.wasMat = false; v.av.quaternion.identity(); v.av.rotation.set(0, v.rspot.rot || 0, 0); if (X.stood) { poseStand(v.av.userData.p); v.av.position.set(v.rspot.x, 0.1, v.rspot.z); } else settle(v, v.rspot); }
+  if (X.shake) v.av.rotation.z = Math.sin(performance.now() / 28) * 0.05; else if (v.av.rotation.z && !X.mat) v.av.rotation.z = 0;
   if (X.melt != null) { X.m = (X.m || 0) + ((X.melt ? 1 : 0) - (X.m || 0)) * Math.min(1, dt * 3); v.av.scale.y = X.sc * (1 - 0.35 * X.m); v.av.scale.x = v.av.scale.z = X.sc * (1 + 0.15 * X.m); }
 }
 function ixEnd(v) { // session over (cured, or the carer left): everything back to normal
   const X = v.ix; if (!X) return; v.ix = null;
-  ixHold(v.av, X.vp, null); if (X.st && X.st.av) { ixHold(X.st.av, X.sp, null); X.st.ixPose = null; }
-  v.av.rotation.z = 0; if (X.m) { v.av.scale.setScalar(X.sc); }
-  const kid = v.gag && v.gag.userData.kid; if (kid && kid.userData.ix) { const k = kid.userData; k.ix = null; kid.rotation.set(0, 0, 0); if (k.home) kid.position.copy(k.home); if (k.blocks) k.blocks.visible = false; }
+  ixHold(v.av, X.vp, null); if (X.st && X.st.av) { ixHold(X.st.av, X.sp, null); X.st.ixPose = null; if (X.st.ixGo && !X.st.ixGo.back) { const rm = R.rooms[X.st.at]; X.st.ixGo = { back: true, av: X.st.av, ph: 0, path: rm ? ixRoute(rm, X.st.av.position, X.st.target) : [{ x: X.st.target.x, z: X.st.target.z }] }; } }
+  if (X.wasMat) { v.av.quaternion.identity(); v.av.rotation.set(0, (v.rspot && v.rspot.rot) || v.av.rotation.y, 0); }
+  v.av.rotation.z = 0; v.av.rotation.x = 0; if (X.m) { v.av.scale.setScalar(X.sc); }
+  if (X.stood || X.wasMat) { v.av.position.y = 0.1; poseStand(v.av.userData.p); }
+  const kid = v.gag && v.gag.userData.kid; if (kid) { ixHold(kid, X.kp, null); const k = kid.userData; k.ix = null; k.goal = null; k.wp = null; kid.quaternion.identity(); if (k.home) kid.position.copy(k.home); if (k.blocks) k.blocks.visible = false; if (k.cush) k.cush.visible = false; ixKidAnim(kid, 'idle'); }
 }
 function finishCheckin(v, quiet) {
   v.known = true; probSeen(v.prob); v.icon.material = iconTex(isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e); for (const q of R.deskQs) { const qi = q.indexOf(v); if (qi >= 0) q.splice(qi, 1); }
@@ -3155,6 +3251,7 @@ function roomSpeed(type) { return (type === 'nap' && done('nap')) || (type === '
 function exitPath(v) { const x = 2 + Math.random() * 3; return findPath(v.av.position, { x, z: 11.8 }).concat([{ x, z: 13.4 }]); }
 function visitorUpdate(v, dt) {
   if (v.ix && v.state !== 'treat') ixEnd(v);
+  if (v.gag && v.gag.userData.kid && !v.gag.userData.kid.userData.p.glb && (v.kidChk = (v.kidChk || 0) + dt) > 1) { v.kidChk = 0; ixKidUpgrade(v); }
   if (v.markAt === undefined) { const mk = v.state === 'toQueue' ? arrivalMark(v) : null; v.markAt = mk ? 1 + RNG() * 2.5 : null; v.mark = mk; }
   if (v.markAt != null && (v.markAt -= dt) <= 0) { v.markAt = null; dropMark(v.av.position.x + 0.2, v.av.position.z, v.mark[0], v.mark[1]); }
   if (v.asleep) { v.sleepT = (v.sleepT || 0) + dt; if (v.sleepT > (v.state === 'queue' ? (DQ(v.desk || 0)[0] === v && deskHost(v.desk || 0, true) ? 5 : 15) : 20) || (R.mgr && Math.hypot(R.mgr.av.position.x - v.av.position.x, R.mgr.av.position.z - v.av.position.z) < 1.6)) wakeUp(v); v.hud.position.copy(v.av.position); return; } // asleep: doesn't move, blocks the line
