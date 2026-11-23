@@ -810,7 +810,7 @@ function plant(x, z, s = 1, pot = '#E9785F', p = scene, force = null) { // force
   put(cyl(0.22 * s, 0.17 * s, 0.38 * s, pot), 0, 0.19 * s, 0, g);
   [[0, 0.6, 0, 0.26], [0.16, 0.5, 0.08, 0.2], [-0.15, 0.52, -0.05, 0.2], [0.05, 0.78, -0.06, 0.18]].forEach((q, i) => put(sph(q[3] * s, ['#4E9E58', '#6DBA63', '#3F8A4D'][i % 3], { r: 0.85 }), q[0] * s, q[1] * s, q[2] * s, g));
   if (force) glbSwap(g, force.v, { h: force.h, ...(force.tint ? { tint: force.tint } : {}) });
-  else if (pot !== '#E3B341') { const v = ['plant_s', 'plant_m', 'plant_l'][Math.abs(Math.round(x * 7.3 + z * 3.1)) % 3]; glbSwap(g, v, { h: { plant_s: 0.72, plant_m: 0.95, plant_l: 1.1 }[v] * s }); }
+  else if (pot !== '#E3B341') { const k = Math.abs(Math.round(x * 7.3 + z * 3.1)) % 3; glbSwap(g, 'nap_plant', { h: [0.75, 0.9, 1.0][k] * s, rot: k * 2.1 }); } // the well-defined monstera everywhere (the old round-leaf pots looked like blobs)
   return g;
 }
 const world = { roomGroups: {}, lotGroup: null, decor: {} };
@@ -1066,10 +1066,17 @@ ROOM_STYLE.budget = { v2: true, model: 'budget_kit', kit: true, wall: '#2A8550',
 ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, archWin: true, rim: '#3E3560', wall: '#4A4271', inBase: '#3A325C', floor: '#7E7299', floorM: () => mat('#FFFFFF', { map: NAP_CARPET(), mapK: 'napCarpet', r: 1 }), door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 // diorama look (validated on the café) for every room built from Tripo/Meshy pieces: rounded walls and floor, sage plinth, soft contact shadows, pieces ×1.1
 // the older rooms (code-built furniture, interiors not redone yet) get the same walls and floors: their pastel tint inside, cream outside, arched door
+const LAB_FLOOR = () => GC.labFloor || (GC.labFloor = canvasTex(256, 256, (c, W) => { c.fillStyle = '#B9B5C3'; c.fillRect(0, 0, W, W); let sd = 3; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 1400; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(60,50,80,0.07)'; c.fillRect(rr() * W, rr() * W, 2, 2); }
+  c.strokeStyle = '#9C7BD6'; c.lineWidth = 9; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(0, 70); c.lineTo(150, 70); c.arcTo(190, 70, 190, 110, 40); c.lineTo(190, 256); c.stroke();
+  c.beginPath(); c.moveTo(256, 190); c.lineTo(110, 190); c.arcTo(70, 190, 70, 150, 40); c.lineTo(70, 0); c.stroke(); }, [3, 3]));
+ROOM_STYLE.lab = { v2: true, model: 'lab_kit', kit: true, winSide: '0,-1', winOuter: true, wall: '#E6E2EC', inBase: '#B7AFC6', floor: '#B9B5C3', floorM: () => mat('#FFFFFF', { map: LAB_FLOOR(), mapK: 'labFloor', r: 0.7 }), door: '#8E6CC9', panel: '#8E6CC9', pop: '#B48CE8', posts: true, h: ROOM_H };
+ROOM_STYLE.moving = { v2: true, model: 'moving_kit', kit: true, winSide: '1,0', winOuter: true, wood: ['#C98E52', '#B97E45'], wall: '#E9D3A6', inBase: '#C9AD78', floor: '#C98E52', door: '#2F7F78', panel: '#2F7F78', pop: '#E3B341', posts: true, h: ROOM_H };
+ROOM_STYLE.parent = { v2: true, model: 'parent_kit', kit: true, winSide: 'none', wood: ['#E0A06A', '#D6955E'], wall: '#E4B9A5', inBase: '#CF9B84', floor: '#E0A06A', door: '#D9864A', panel: '#D9864A', pop: '#9DB38C', posts: true, h: ROOM_H };
 for (const k of ['detox', 'lab', 'parent', 'moving', 'jjim', 'yoga', 'lucha', 'ahwa', 'roda', 'garage', 'shop', 'staffroom', 'toilet']) { const st = ROOM_STYLE[k]; if (!st || st.v2) continue;
   const c = new THREE.Color(st.wall), h = {}; c.getHSL(h); const tone = (s2, l2) => '#' + new THREE.Color().setHSL(h.h, Math.min(1, s2), l2).getHexString(); // a bit more colour inside, a door in the deep version of the room's hue
   const dc = tone(h.s * 0.55 + 0.25, 0.42); Object.assign(st, { v2: true, chunky: true, ao: true, wall: tone(h.s * 1.25, h.l * 0.9), inBase: tone(h.s * 0.9, h.l * 0.72), door: dc, panel: dc, pop: '#E3B341' }); }
-for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
+for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 // one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
 function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
@@ -1619,12 +1626,83 @@ const DECO = {
     put(sph(0.09, it.c2 || '#9DB38C', { r: 0.9 }), 0, y - H * 0.05, 0.02, p).scale.z = 0.2; put(rbox(W * 0.5, 0.04, 0.05, it.c2 || '#9DB38C', 0.01, { r: 0.9 }), 0, y - H * 0.3, 0.004, p); },
   '@rug': (p, it) => { const r = (it.len || 1.8) / 2; put(cyl(r, r, 0.015, '#9DB38C', { r: 1 }, 32), 0, 0.14, 0, p); put(cyl(r - 0.1, r - 0.1, 0.018, '#EADBB8', { r: 1 }, 32), 0, 0.142, 0, p); put(cyl(r - 0.28, r - 0.28, 0.02, '#D9A877', { r: 1 }, 32), 0, 0.144, 0, p); put(cyl(r - 0.4, r - 0.4, 0.022, '#EADBB8', { r: 1 }, 32), 0, 0.146, 0, p); },
 };
+const ROOM_MAP = () => GC.roomMap || (GC.roomMap = canvasTex(512, 320, (c, W, H) => { c.fillStyle = '#EFE3C4'; c.fillRect(0, 0, W, H); let sd = 11; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 7; for (let i = 0; i < 9; i++) { c.beginPath(); c.moveTo(0, 20 + i * 38 + rr() * 10); c.lineTo(W, 30 + i * 36 + rr() * 20); c.stroke(); c.beginPath(); c.moveTo(20 + i * 60 + rr() * 10, 0); c.lineTo(10 + i * 58 + rr() * 30, H); c.stroke(); }
+  for (let i = 0; i < 26; i++) { c.fillStyle = rr() < 0.5 ? '#E3D2A8' : '#D8E6C2'; c.fillRect(rr() * W, rr() * H, 26 + rr() * 30, 18 + rr() * 20); }
+  c.strokeStyle = '#8CC3E3'; c.lineWidth = 22; c.lineCap = 'round'; c.beginPath(); c.moveTo(250, -10); c.bezierCurveTo(200, 80, 330, 140, 260, 210); c.bezierCurveTo(200, 270, 300, 300, 280, 340); c.stroke();
+  for (let i = 0; i < 30; i++) { const x = rr() * W, y = rr() * H; if (Math.abs(x - 260) < 40) continue; c.fillStyle = '#8DBF73'; c.beginPath(); c.arc(x, y, 6 + rr() * 5, 0, 6.3); c.fill(); } }));
+const SCHED_TEX = () => GC.sched || (GC.sched = canvasTex(256, 96, (c, W, H) => { c.fillStyle = '#F8EEDF'; c.fillRect(0, 0, W, H);
+  [['#F3C04A', 'sun'], ['#7DB8D8', 'bowl'], ['#9C7BD6', 'book'], ['#8DBF73', 'star']].forEach(([col, k], i) => { const x = 16 + i * 60; c.fillStyle = '#FFFFFF'; c.fillRect(x, 18, 48, 62); c.fillStyle = col; c.fillRect(x + 18, 10, 12, 12);
+    c.beginPath(); if (k === 'sun') { c.arc(x + 24, 52, 12, 0, 6.3); } else if (k === 'bowl') { c.arc(x + 24, 46, 15, 0, Math.PI); } else if (k === 'book') { c.rect(x + 10, 38, 28, 26); } else { for (let a = 0; a < 10; a++) { const r = a % 2 ? 7 : 16, t = a * Math.PI / 5 - Math.PI / 2; c.lineTo(x + 24 + Math.cos(t) * r, 52 + Math.sin(t) * r); } } c.fill(); }); }));
+Object.assign(DECO_DIMS, { '@whiteboard': [1.5, 1, 0.06], '@map': [1.6, 1, 0.04], '@cork': [1.25, 1, 0.06], '@pendant': [0.45, 1, 0.45], '@cubby': [1.4, 1, 0.42], '@planterLav': [0.9, 1, 0.3] });
+Object.assign(DECO, {
+  '@whiteboard': (p, it) => { const H = it.h, W = H * 1.5, y = it.y || 1.5; put(rbox(W, H, 0.04, '#5E5A6A', 0.02, { m: 0.3, r: 0.5 }), 0, y, 0, p); put(rbox(W - 0.08, H - 0.08, 0.045, '#FBFBFD', 0.01, { r: 0.3 }), 0, y, 0.004, p);
+    [[-0.35, 0.18, '#9C7BD6'], [0.1, 0.25, '#9C7BD6'], [0.35, -0.1, '#9C7BD6'], [-0.2, -0.2, '#9C7BD6']].forEach(([x, yy, c]) => put(cyl(0.07, 0.07, 0.01, c, { r: 0.6 }), x * W, y + yy * H, 0.03, p).rotation.x = Math.PI / 2);
+    [[-0.42, 0.32, '#F7D154'], [0.4, 0.3, '#F2A0B8'], [0.38, -0.3, '#F7D154'], [-0.4, -0.32, '#9ED6B0']].forEach(([x, yy, c]) => put(rbox(0.12, 0.12, 0.012, c, 0.005, { r: 0.9 }), x * W, y + yy * H, 0.032, p)); },
+  '@map': (p, it) => { const H = it.h, W = H * 1.6, y = it.y || 1.45; put(rbox(W + 0.06, H + 0.06, 0.03, '#C99A5E', 0.01, { r: 0.7 }), 0, y, 0, p); const pl = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat('#FFFFFF', { map: ROOM_MAP(), mapK: 'roomMap', r: 0.9 })); pl.position.set(0, y, 0.02); p.add(pl); },
+  '@cork': (p, it) => { const H = it.h, W = H * 1.25, y = it.y || 1.55; put(rbox(W, H, 0.04, '#8A5A34', 0.02, { r: 0.7 }), 0, y, 0, p); put(rbox(W - 0.08, H - 0.08, 0.045, '#C9955F', 0.01, { r: 0.95 }), 0, y, 0.004, p);
+    for (let i = 0; i < 3; i++) { put(rbox(0.22, 0.26, 0.01, '#FFFFFF', 0.004, { r: 0.8 }), (-0.3 + i * 0.3) * W, y + 0.18 * H, 0.03, p); put(rbox(0.17, 0.15, 0.012, ['#C9B79A', '#B9C7D6', '#D6C2A6'][i], 0.004, { r: 0.8 }), (-0.3 + i * 0.3) * W, y + 0.2 * H, 0.034, p); put(sph(0.018, ['#D9534F', '#3E8E5A', '#3B6FB6'][i]), (-0.3 + i * 0.3) * W, y + 0.33 * H, 0.04, p); }
+    for (let i = 0; i < 5; i++) { put(cyl(0.012, 0.012, 0.02, '#C9A23B', { m: 0.6 }), (-0.36 + i * 0.18) * W, y - 0.18 * H, 0.03, p).rotation.x = Math.PI / 2; put(rbox(0.03, 0.09, 0.012, '#C9A23B', 0.006, { m: 0.6, r: 0.3 }), (-0.36 + i * 0.18) * W, y - 0.26 * H, 0.032, p); put(rbox(0.05, 0.06, 0.008, ['#E9785F', '#5AB8F0', '#7ACB4E', '#F2C14E', '#B57BE8'][i], 0.004), (-0.36 + i * 0.18) * W, y - 0.34 * H, 0.033, p); } },
+  '@pendant': (p, it) => { const y = it.y || 1.95, c = it.c || '#DADCE2'; put(cyl(0.008, 0.008, ROOM_H + 0.1 - y, '#4A4A50'), 0, (ROOM_H + 0.1 + y) / 2, 0, p); put(cyl(0.05, 0.05, 0.08, c, { m: 0.5, r: 0.35 }), 0, y + 0.02, 0, p);
+    const sh = put(new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(c, { m: 0.4, r: 0.35 })), 0, y - 0.18, 0, p); sh.material.side = THREE.DoubleSide; sh.castShadow = true; put(sph(0.07, '#FFF2D0', { e: '#FFE2A8', ei: 1.2 }), 0, y - 0.2, 0, p); },
+  '@cubby': (p, it) => { const H = it.h, W = H * 1.4, D = 0.42; for (const [w2, h2, d2, x, y] of [[W, 0.05, D, 0, H - 0.025], [W, 0.05, D, 0, 0.17], [0.05, H - 0.1, D, -W / 2 + 0.025, H / 2 + 0.07], [0.05, H - 0.1, D, W / 2 - 0.025, H / 2 + 0.07], [W, H - 0.1, 0.03, 0, H / 2 + 0.07]]) put(rbox(w2, h2, d2, '#D9935A', 0.02, { r: 0.6 }), x, y + 0.1, d2 === 0.03 ? -D / 2 + 0.015 : 0, p);
+    put(rbox(0.55, 0.3, 0.32, '#E8D2A6', 0.04, { r: 0.95 }), 0.15, 0.42, 0.02, p); ['#E9785F', '#5AB8F0', '#F2C14E', '#7ACB4E'].forEach((c, i) => put(sph(0.08, c, { r: 0.4 }), 0.15 + (i - 1.5) * 0.12, 0.6, 0.02 + (i % 2) * 0.05, p)); },
+  '@planterLav': (p, it) => { const y = it.y || 0.95; put(rbox(0.9, 0.2, 0.26, '#B97E45', 0.03, { r: 0.8 }), 0, y, 0, p); for (let i = 0; i < 11; i++) { const x = -0.38 + i * 0.076; put(cyl(0.008, 0.008, 0.26, '#6E8F45'), x, y + 0.2, (i % 2) * 0.06 - 0.03, p); put(rbox(0.035, 0.12, 0.035, i % 3 ? '#9C7BD6' : '#B39AE0', 0.012, { r: 0.9 }), x, y + 0.36, (i % 2) * 0.06 - 0.03, p); } },
+});
+const LAB_DIMS = {"k_bench":[0.998,0.7246,0.3379],"k_chair":[0.7324,0.998,0.7129],"k_shelf":[0.998,0.8223,0.4941],"k_stool":[0.6621,0.998,0.6582],"k_printer":[0.7715,0.998,0.6426],"k_pegboard":[0.998,0.6738,0.2168],"k_island":[0.998,0.791,0.5918],"k_desk":[0.998,0.8887,0.5645]};
+const MOVING_DIMS = {"k_chair":[0.6855,0.998,0.8848],"k_boxes":[0.834,0.998,0.6152],"k_trolley":[0.5762,0.998,0.9277],"k_rug":[0.998,0.041,0.8105],"k_box":[0.998,0.627,0.416],"k_openbox":[0.998,0.8848,0.998],"k_desk":[0.998,0.9473,0.834]};
+const PARENT_DIMS = {"k_schedule":[0.998,0.4746,0.084],"k_table":[0.998,0.3613,0.5527],"k_rug":[0.998,0.0488,0.7441],"k_sofa":[0.998,0.5176,0.459],"k_playmat":[0.998,0.084,0.709],"k_kidchair":[0.6699,0.998,0.6504],"k_kidtable":[0.998,0.8574,0.9941],"k_armchair":[0.7285,0.998,0.7246]};
+// Lab (from the lab painting): tool pegboard over the long bench with the microscope (stool in front), the two-screen desk and its chair, the 3D printer and the bin shelf on the right, the island in the middle, pendants and a whiteboard
+function labKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = w < 5 || D < 5, H = Math.PI / 2, L = [];
+  L.push({ p: 'k_bench', len: S ? 1.6 : 2.2, wall: 'back', u: 'L' }, { p: 'k_pegboard', len: S ? 1.4 : 1.7, wall: 'back', u: 'L', hang: true, y: 1.05, gap: 0.12 });
+  L.push({ p: 'k_desk', len: S ? 1.4 : 1.7, wall: 'back', u: 'R' });
+  if (!S) L.push({ p: 'k_printer', h: 0.95, wall: 'right', u: -0.15 }, { p: 'k_shelf', len: 1.5, wall: 'right', u: 'F' }, { p: '@whiteboard', h: 0.8, wall: 'right', u: -0.3, hang: true, y: 1.65, gap: 0.14 });
+  else L.push({ p: 'k_shelf', len: 1.2, wall: 'right', u: 'F' });
+  L.push({ p: 'k_island', len: S ? 1.0 : 1.5, x: S ? -1.05 : -0.4, z: S ? 0.6 : 0.75, rot: 0 });
+  L.push({ p: 'k_stool', h: 0.62, x: -w / 2 + (S ? 0.8 : 1.0), z: -D / 2 + 1.0, rot: 0 });
+  L.push({ p: '@pendant', h: 1, x: -w / 2 + (S ? 0.55 : 0.75), z: -D / 2 + 0.55, solid: false, y: 1.85 }, { p: '@pendant', h: 1, x: -w / 2 + (S ? 1.25 : 1.75), z: -D / 2 + 0.55, solid: false, y: 1.85 });
+  if (!S) L.push({ p: '@plant', s: 1.4, wall: 'left', u: 'F' });
+  const at = kitRoom(g, cx, cz, room, ROOM_STYLE.lab.model, L, LAB_DIMS);
+  const dk = at.k_desk; if (dk) { const cz2 = dk.z + dk.pd / 2 + 0.35; const ch = grp(dk.x, cz2, Math.PI, g); glbSwap(ch, 'lab_kit/k_chair', { h: 0.95, y: 0.11 }); room.staffSpot = { x: dk.x, z: cz2, rot: Math.PI, sit: true, y: 0.02 }; }
+}
+// Moving (from the moving painting): city map on the back wall, the round wooden desk on a jute rug with the agent behind it and two client chairs in front, a stack of boxes with the hand truck in the corner, the sofa, the photo-and-keys board, a lavender box, a lamp over the desk
+function movingKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = w < 5 || D < 5, H = Math.PI / 2, L = [], dx = -0.55, dz = S ? -0.6 : -0.5;
+  L.push({ p: '@map', h: S ? 1.0 : 1.3, wall: 'back', u: S ? -0.5 : -0.9, hang: true, y: 1.45, gap: 0.14 });
+  L.push({ p: 'k_boxes', h: 1.45, wall: 'back', u: 'R' }, { p: 'k_rug', len: S ? 2.4 : 3.0, x: dx, z: dz + 0.35, rot: 0, solid: false });
+  L.push({ p: 'k_desk', len: S ? 1.35 : 1.6, x: dx, z: dz, rot: 0 });
+  L.push({ p: 'k_chair', h: 0.9, x: dx - 0.45, z: dz + 1.05, rot: Math.PI }); if (!S) L.push({ p: 'k_chair', h: 0.9, x: dx + 0.45, z: dz + 1.05, rot: Math.PI });
+  if (!S) { L.push({ p: 'k_sofa', kit: 'parent_kit', dm: PARENT_DIMS.k_sofa, len: 1.9, wall: 'right', u: 0.55, tint: '#6FB3A8' }, { p: '@cork', h: 0.7, wall: 'right', u: -1.4, hang: true, y: 1.6, gap: 0.14 }, { p: '@planterLav', h: 1, wall: 'right', u: 0.6, hang: true, y: 1.35, gap: 0.14 });
+    L.push({ p: 'k_trolley', h: 1.1, x: w / 2 - 1.55, z: -D / 2 + 0.55, rot: -0.4 }, { p: 'k_openbox', h: 0.5, x: w / 2 - 0.55, z: D / 2 - 0.55, rot: -0.3 }, { p: '@plant', s: 1.5, wall: 'left', u: 'F' }); }
+  else L.push({ p: 'k_openbox', h: 0.5, wall: 'right', u: 'F' });
+  L.push({ p: '@pendant', h: 1, x: dx, z: dz, solid: false, y: 1.9, c: '#2F7F78' });
+  const at = kitRoom(g, cx, cz, room, ROOM_STYLE.moving.model, L, MOVING_DIMS);
+  const ag = grp(cx + dx, cz + dz - 0.78, 0, g); glbSwap(ag, 'moving_kit/k_chair', { h: 0.9, y: 0.11 });
+  room.staffSpot = { x: cx + dx, z: cz + dz - 0.78, rot: 0, sit: true, y: 0.02 };
+  room.spots.push({ x: cx + dx - 0.45, z: cz + dz + 1.05, rot: Math.PI, sit: true, y: 0.02, busy: null });
+}
+// Parent coaching (from the parent painting): grown-ups' corner (sofa on a rug, coffee table, the coach's green armchair), the routine board and a cubby with a basket of balls on the wall, the kids' corner (foam play mat, small table with shape puzzle, little chair)
+function parentKit(g, cx, cz, room) {
+  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = w < 5 || D < 5, H = Math.PI / 2, L = [];
+  const sx = -w / 2 + (S ? 1.15 : 1.5), sz = -D / 2 + 0.8, ax = sx + (S ? 1.55 : 2.0);
+  L.push({ p: 'k_rug', len: S ? 2.2 : 2.8, x: sx + 0.7, z: sz + 0.75, rot: 0, solid: false }, { p: 'k_sofa', len: S ? 1.5 : 1.8, x: sx, z: sz, rot: 0 }, { p: 'k_table', len: S ? 0.8 : 1.0, x: sx + 0.25, z: sz + 1.05, rot: 0 }, { p: 'k_armchair', h: 0.92, x: ax, z: sz + 0.35, rot: -H * 0.75 });
+  L.push({ p: 'k_schedule', len: S ? 1.2 : 1.5, wall: 'back', u: S ? 0.6 : 1.1, hang: true, y: 1.15, gap: 0.13 });
+  const mx = w / 2 - (S ? 1.0 : 1.75), mz = S ? D / 2 - 0.95 : 0.75; // the kids' corner sits towards the middle, not pushed into the far corner
+  L.push({ p: 'k_playmat', len: S ? 1.7 : 2.3, x: mx, z: mz, rot: 0, solid: false }, { p: 'k_kidtable', len: 0.75, x: mx + 0.2, z: mz - 0.2, rot: 0 }, { p: 'k_kidchair', h: 0.55, x: mx + 0.2, z: mz + 0.42, rot: Math.PI });
+  if (!S) L.push({ p: '@cubby', h: 0.8, wall: 'right', u: -0.3, gap: 0.12 });
+  kitRoom(g, cx, cz, room, ROOM_STYLE.parent.model, L, PARENT_DIMS);
+  const P = (x, z, rot) => ({ x: cx + x, z: cz + z, rot });
+  room.spots.push({ x: cx + sx + 0.25, z: cz + sz + 0.1, rot: 0, sit: true, y: 0, busy: null,
+    pts: { chair: P(mx + 0.2, mz + 0.42, Math.PI), mat: P(mx - 0.4, mz + 0.2, 0), matSide: P(mx - 1.0, mz, H), board: P(S ? 0.6 : 1.1, -D / 2 + 0.75, Math.PI), basket: P(w / 2 - 0.9, -0.3, -H), table: P(mx + 0.2, mz - 0.2, 0), kidNear: P(mx - 0.5, mz + 0.4, H) } });
+  room.staffSpot = { x: cx + ax, z: cz + sz + 0.35, rot: -H * 0.75, sit: true, y: 0 };
+}
 const KITK = new Proxy({}, { get: (o, kit) => { const st = Object.values(ROOM_STYLE).find((x) => x && x.model === kit); return st && st.kscale || 1; } }); // per-kit piece scale (diorama look)
 function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
   const w = F.w, D = F.D, lx = -w / 2, rx = w / 2, bz = -D / 2, fz = D / 2, H = Math.PI / 2, out = [], rep = [], door = F.door;
   const W = (x, z) => { const p = F.T(x, z); return { x: cx + p.x, z: cz + p.z }; }; // layout frame -> station coords
   const lane = door ? (Math.abs(door.z) / (D / 2) >= Math.abs(door.x) / (w / 2) ? { x0: door.x - 0.55, x1: door.x + 0.55, z0: door.z > 0 ? door.z - 1.4 : door.z, z1: door.z > 0 ? door.z : door.z + 1.4 } : { z0: door.z - 0.55, z1: door.z + 0.55, x0: door.x > 0 ? door.x - 1.4 : door.x, x1: door.x > 0 ? door.x : door.x + 1.4 }) : null; // 1.1 m wide, 1.4 m in from the door
-  for (const it of items) { if (!it) continue; const dm = it.p === '@plant' ? [0.45, 1, 0.45] : dims[it.p] || DECO_DIMS[it.p]; if (!dm) { rep.push('no piece ' + it.p); continue; }
+  for (const it of items) { if (!it) continue; const dm = it.p === '@plant' ? [0.45, 1, 0.45] : it.dm || dims[it.p] || DECO_DIMS[it.p]; if (!dm) { rep.push('no piece ' + it.p); continue; }
     const KS = it.p[0] === '@' ? 1 : KITK[kit] || 1, k = it.p === '@plant' ? (it.s || 1.5) : (it.len ? it.len / Math.max(dm[0], dm[2]) : it.h / dm[1]) * KS, pw = dm[0] * k, pd = dm[2] * k, gp = it.gap ?? 0.04; let x, z, rot;
     const along = (u, half, lo, hi) => u === 'L' || u === 'B' ? lo + half + gp : u === 'R' || u === 'F' ? hi - half - gp : (lo + hi) / 2 + (u || 0);
     if (it.wall === 'back') { rot = 0; z = bz + pd / 2 + gp; x = along(it.u, pw / 2, lx, rx); }
@@ -1647,7 +1725,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5), tint: it.tint } : null); box.g = p; continue; } // the game's own potted plants
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
-    glbSwap(p, kit + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}), ...(it.tint ? { tint: it.tint } : {}), ...(it.rugH ? { rugH: it.rugH } : {}), ...(it.onModel ? { onModel: it.onModel } : {}) }); box.g = p;
+    glbSwap(p, (it.kit || kit) + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}), ...(it.tint ? { tint: it.tint } : {}), ...(it.rugH ? { rugH: it.rugH } : {}), ...(it.onModel ? { onModel: it.onModel } : {}) }); box.g = p;
     if (!it.hang && !/rug/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
@@ -1965,15 +2043,34 @@ const furniture = {
     const sofa = grp(cx + 1.8 * K, cz + 1.6 * K, -Math.PI / 2, g); put(rbox(1.6, 0.4, 0.7, '#B57BE8', 0.14), 0, 0.3, 0, sofa); put(rbox(1.6, 0.55, 0.22, '#B57BE8', 0.1), 0, 0.62, -0.28, sofa);
     room.staffSpot = { x: cx, z: cz + 1.1 * K, rot: Math.PI, sit: false, y: 0 };
   },
-  parent(g, cx, cz, room, K = 1) {
-    const mat2 = new THREE.Mesh(new THREE.BoxGeometry(2.2 * K + 0.6, 0.03, 2.0 * K + 0.6), mat('#7ACB4E', { r: 1 })); mat2.position.set(cx + 0.4 * K, 0.14, cz - 0.6 * K); mat2.receiveShadow = true; g.add(mat2);
-    ['#E9785F', '#5AB8F0', '#FFD25E', '#B57BE8', '#2BB5A6'].forEach((c, i) => put(rbox(0.32, 0.32, 0.32, c, 0.05), cx + (-0.3 + (i % 3) * 0.4) * K, 0.32 + Math.floor(i / 3) * 0.32, cz - 1.0 * K, g));
-    const sl = grp(cx + 2.0 * K, cz - 2.2 * K, -Math.PI / 4, g); put(rbox(0.6, 0.06, 1.6, '#FF8FAB', 0.03), 0, 0.6, 0, sl); sl.children[0].rotation.x = 0.55; put(rbox(0.5, 1.1, 0.5, '#FFD25E', 0.06), 0, 0.6, -0.9, sl);
-    const bean = sph(0.55, '#E08A2E'); bean.scale.set(1, 0.6, 1); put(bean, cx - 1.4 * K, 0.38, cz + 0.4 * K, g);
-    room.spots.push({ x: cx - 1.4 * K, z: cz + 0.4 * K, rot: Math.PI / 4, sit: true, y: 0, busy: null });
-    room.staffSpot = { x: cx + 0.2 * K, z: cz + 1.2 * K, rot: -Math.PI * 0.8, sit: false, y: 0 };
+  parent(g, cx, cz, room, K = 1) { if (ROOM_STYLE.parent && ROOM_STYLE.parent.kit && PROPS_ON) { parentKit(g, cx, cz, room); return; } // two zones: the grown-ups' corner (parent's sofa facing the coach's armchair) and, against the back wall, the kids' corner (rug, small table and chair, toy basket, routine board)
+    const hw = (room.w || 6) / 2, hd = SIZES[room.sz || 'm'].D / 2, dr = room.door || { x: 0, z: hd }, alongZ = Math.abs(dr.z) >= Math.abs(dr.x), sg = alongZ ? Math.sign(dr.z) || 1 : Math.sign(dr.x) || 1;
+    const U = alongZ ? hw : hd, Wd = alongZ ? hd : hw; // u: across the room, w: toward the door
+    const P = (u, w) => alongZ ? { x: cx + u, z: cz + w * sg } : { x: cx + w * sg, z: cz + u };
+    const A = (du, dw) => alongZ ? Math.atan2(du, dw * sg) : Math.atan2(dw * sg, du); // facing (du, dw)
+    const at = (u, w, du, dw) => { const q = P(u, w); return grp(q.x, q.z, A(du, dw), g); };
+    // kids' corner
+    const mu = U * 0.3, mw = -Wd + 1.15, mL = Math.min(2.3, U * 1.15), mD = 1.5;
+    { const m = at(mu, mw, 0, 1); const r = put(rbox(mL, 0.03, mD, '#9ED97A', 0.02), 0, 0.12, 0, m); r.receiveShadow = true; put(rbox(mL - 0.2, 0.031, mD - 0.2, '#B8E59A', 0.02), 0, 0.125, 0, m); }
+    const tu = Math.min(U - 0.6, mu + mL / 2 - 0.4), tw = -Wd + 0.55;
+    { const t = at(tu, tw, 0, 1); put(rbox(0.8, 0.06, 0.52, '#FFD25E', 0.03), 0, 0.42, 0, t); for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) put(cyl(0.03, 0.03, 0.38, '#E08A2E'), sx * 0.33, 0.2, sz * 0.2, t); }
+    { const c = at(tu, tw + 0.55, 0, -1); put(rbox(0.36, 0.05, 0.34, '#5AB8F0', 0.03), 0, 0.3, 0, c); put(rbox(0.36, 0.34, 0.05, '#5AB8F0', 0.03), 0, 0.48, -0.16, c); for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) put(cyl(0.022, 0.022, 0.28, '#3E8FD0'), sx * 0.14, 0.15, sz * 0.13, c); }
+    const bu = mu - mL / 2 + 0.25, bw = -Wd + 0.35;
+    { const b = at(bu, bw, 0, 1); put(cyl(0.26, 0.22, 0.34, '#E9C08F'), 0, 0.27, 0, b); ['#E9785F', '#5AB8F0', '#FFD25E'].forEach((c, i) => put(rbox(0.13, 0.13, 0.13, c, 0.02), -0.1 + i * 0.1, 0.48, (i - 1) * 0.06, b)); }
+    const ru = -U + 0.85;
+    { const b = at(ru, -Wd + 0.1, 0, 1); put(rbox(1.0, 0.72, 0.05, '#FFFFFF', 0.02), 0, 1.35, 0, b); ['#E9785F', '#7ACB4E', '#5AB8F0', '#B57BE8'].forEach((c, i) => put(rbox(0.19, 0.19, 0.02, c, 0.01), -0.33 + i * 0.22, 1.4, 0.035, b)); put(rbox(0.8, 0.05, 0.02, '#FFD25E', 0.01), 0, 1.15, 0.035, b); }
+    // grown-ups' corner: the parent on a small sofa, facing the coach in an armchair, a low table with a teddy between them
+    const aw = Math.min(Wd - 1.0, Wd * 0.2), su = -U + 0.55, cu = Math.min(U - 0.6, su + 1.9);
+    { const so = at(su, aw, 1, 0); put(rbox(1.5, 0.42, 0.8, '#FFB067', 0.15), 0, 0.32, 0, so); put(rbox(1.5, 0.6, 0.22, '#FFB067', 0.1), 0, 0.66, -0.3, so); glbSwap(so, 'sofa', { len: 1.6, h: 0.9, y: 0.12 }); }
+    { const ac = at(cu, aw, -1, 0); put(rbox(0.85, 0.45, 0.8, '#7ACB4E', 0.15), 0, 0.3, 0, ac); put(rbox(0.85, 0.55, 0.2, '#7ACB4E', 0.1), 0, 0.7, -0.32, ac); glbSwap(ac, 'armchair', { len: 0.95, y: 0.1, rot: Math.PI }); }
+    { const q = P((su + cu) / 2, aw), t = grp(q.x, q.z, 0, g); put(cyl(0.32, 0.32, 0.05, '#FFFFFF'), 0, 0.34, 0, t); put(cyl(0.05, 0.05, 0.3, '#C9A06B'), 0, 0.18, 0, t); put(sph(0.09, '#B5793A'), 0.05, 0.45, 0, t); put(sph(0.065, '#B5793A'), 0.05, 0.58, 0, t); }
+    const sp = P(su + 0.1, aw), cs = P(cu - 0.1, aw), pt = (u, w, du, dw) => ({ ...P(u, w), rot: A(du, dw) });
+    room.spots.push({ x: sp.x, z: sp.z, rot: A(1, 0), sit: true, y: 0, busy: null,
+      pts: { chair: pt(tu, tw + 0.55, 0, -1), mat: pt(mu, mw, 0, 1), matSide: pt(mu - 0.95, mw, 1, 0), board: pt(ru, -Wd + 0.8, 0, -1), basket: pt(bu + 0.15, bw + 0.65, 0, -1), table: pt(tu, tw, 0, 1), kidNear: pt(tu - 0.7, tw + 0.55, 1, 0) } });
+    room.staffSpot = { x: cs.x, z: cs.z, rot: A(-1, 0), sit: true, y: 0 };
   },
   moving(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.moving && ROOM_STYLE.moving.kit && PROPS_ON) { movingKit(g, cx, cz, room); return; }
     const d = grp(cx, cz - 0.6 * K, 0, g);
     put(rbox(2.0, 0.12, 0.9, '#F4EFE6', 0.05), 0, 0.86, 0, d); put(rbox(1.9, 0.76, 0.1, '#8A6A45', 0.03), 0, 0.46, 0.36, d);
     put(rbox(1.0, 0.6, 0.05, '#FFFFFF', 0.02), 0, 1.3, -0.35, d); put(rbox(0.9, 0.5, 0.02, '#9FD8B8', 0.01), 0, 1.3, -0.32, d);
@@ -2171,6 +2268,7 @@ const furniture = {
     room.wash = wash;
   },
   lab(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.lab && ROOM_STYLE.lab.kit && PROPS_ON) { labKit(g, cx, cz, room); return; }
     const d = grp(cx - 0.4 * K, cz - 1.2 * K, 0, g);
     put(rbox(2.6, 0.12, 1.0, '#FFFFFF', 0.05), 0, 0.9, 0, d); put(rbox(2.5, 0.8, 0.9, '#C9D6E3', 0.05), 0, 0.46, 0, d);
     put(cyl(0.12, 0.16, 0.5, '#3B4A6B'), -0.8, 1.2, -0.1, d); put(cyl(0.05, 0.05, 0.35, '#3B4A6B'), -0.8, 1.55, 0.05, d);
