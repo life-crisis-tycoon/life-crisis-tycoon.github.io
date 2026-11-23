@@ -1417,6 +1417,7 @@ function buildRoom(r) {
     const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a, ...(p.rot2 != null ? { rot2: p.rot2 + r.a } : {}) }; };
     for (const sp of tmp.spots) room.spots.push({ ...conv(sp), st: i, busy: null });
     room.staffSpots[i] = tmp.staffSpot ? conv(tmp.staffSpot) : null;
+    if (tmp.wash) { room.wash = (room.wash || []).concat(tmp.wash.map((sp) => ({ ...conv(sp), st: i, busy: null }))); (room.bins = room.bins || []).push(conv({ ...tmp.bin, rot: 0 })); }
   }
   if (!(RS && RS.model)) { const pc = toW(r, Z.W / 2 - 0.6, -Z.D / 2 + 0.7); plant(pc.x, pc.z, 0.9, '#FFFFFF', g); }
   // furniture footprints become obstacles for the walk grid (people go around sofas, desks, poufs, machines…)
@@ -2159,15 +2160,40 @@ const furniture = {
     const cm = grp(cx + 1.9 * K, cz - 2.2 * K, 0, g); put(rbox(0.9, 1.0, 0.6, '#2F3A52', 0.06), 0, 0.6, 0, cm); put(rbox(0.5, 0.4, 0.5, '#C0C6CC', 0.05, { m: 0.5, r: 0.3 }), 0, 1.3, 0, cm); glbSwap(cm, 'kitchenette', { len: 1.4, y: 0.1 });
   },
   toilet(g, cx, cz, room, K = 1) {
-    const n = room.sz ? { s: 2, m: 4, l: 3 }[room.sz] : K < 0.8 ? 2 : 3;
+    const n = room.sz ? { s: 2, m: 4, l: 3 }[room.sz] : K < 0.8 ? 2 : 3, W = room.w || 6, D = SIZES[room.sz || 'm'].D;
     for (let i = 0; i < n; i++) {
-      const x = cx + (i - (n - 1) / 2) * 1.25;
+      const x = cx + (i - (n - 1) / 2) * 1.25, wz = cz - 0.9 * K - 0.55;
       if (!PROPS_ON) put(rbox(0.06, 1.5, 1.1, '#FFFFFF', 0.02), x + 0.6, 0.85, cz - 0.9 * K - 0.25, g); // the modelled cubicle brings its own walls
-      const wc = grp(x, cz - 0.9 * K - 0.55, 0, g); put(rbox(0.42, 0.42, 0.5, '#FFFFFF', 0.12, { r: 0.25 }), 0, 0.3, 0.05, wc); put(rbox(0.45, 0.45, 0.16, '#F4F7FA', 0.05), 0, 0.6, -0.2, wc); glbSwap(wc, 'toilet', { y: 0.1 });
-      put(rbox(0.9, 1.2, 0.05, ['#5AB8F0', '#FF8FAB', '#7ACB4E'][i % 3], 0.02), x, 0.75, cz - 0.9 * K + 0.32, g).visible = false;
-      room.spots.push({ x, z: cz - 0.9 * K - 0.5, rot: 0, sit: true, y: 0.1, busy: null });
+      const wc = grp(x, wz, 0, g); put(rbox(0.42, 0.42, 0.5, '#FFFFFF', 0.12, { r: 0.25 }), 0, 0.3, 0.05, wc); put(rbox(0.45, 0.45, 0.16, '#F4F7FA', 0.05), 0, 0.6, -0.2, wc);
+      glbSwap(wc, 'toilet', { y: 0.1, onModel: (m) => m.traverse((o) => { if (/^(basin|bowlIn|pipe|spout|tap)/.test(o.name)) o.visible = false; }) }); // no hand basin inside the cubicle: hands are washed at the vanity
+      // cubicle door on the front-left hinge: swings open when the cubicle is free, closes while someone is inside; a small red/green lock shows which
+      const dv = grp(x - 0.57, wz + 0.27, 0, g); dv.rotation.y = -1.35; dv.userData.looDoor = true;
+      put(rbox(1.1, 1.3, 0.04, '#E4ECF1', 0.015, { r: 0.6 }), 0.56, 0.86, 0, dv); put(rbox(0.04, 0.12, 0.03, '#B9C2CA', 0.01, { m: 0.6, r: 0.3 }), 1.0, 0.9, 0.035, dv);
+      const lk = put(rbox(0.07, 0.04, 0.02, '#4CB363', 0.008, { e: '#4CB363', ei: 0.5 }), 1.0, 1.02, 0.035, dv);
+      dv.traverse((o) => { if (o.isMesh) o.userData.kitW = true; }); // moving parts stay out of the static batches
+      room.spots.push({ x, z: wz + 0.05, rot: 0, sit: true, y: 0.1, busy: null, door: dv, lock: lk });
     }
-    const sk = grp(cx + 1.2 * K, cz + 1.4 * K, -Math.PI / 2, g); put(rbox(1.2, 0.8, 0.5, '#FFFFFF', 0.06), 0, 0.5, 0, sk); put(rbox(0.9, 0.6, 0.04, '#BFE6F6', 0.02, { e: '#BFE6F6', ei: 0.4 }), 0, 1.5, -0.22, sk);
+    // double vanity against a side wall (light oak top on two panels with a shelf, two round vessel basins, tall chrome taps, an oval mirror), a towel dispenser and a pedal bin
+    const side = room.nst === 2 ? (room.st ? 1 : -1) : -1, Lv = K < 0.8 ? 1.5 : 1.9, vz = Math.min(D / 2 - 0.3 - Lv / 2, cz - 0.9 * K - 0.28 + 1.2 + Lv / 2), bs = vz + Lv / 2 + 0.55 < D / 2 ? 1 : -1; // starts past the swing of the cubicle doors; bin and towels at whichever end has room
+    const vg = grp(side * (W / 2 - 0.33), vz, -side * Math.PI / 2, g), OAK = '#D9B27C';
+    put(rbox(Lv, 0.07, 0.52, OAK, 0.02, { r: 0.7 }), 0, 0.86, 0, vg); put(rbox(Lv - 0.1, 0.05, 0.46, OAK, 0.02, { r: 0.7 }), 0, 0.3, 0, vg);
+    for (const sx of [-1, 1]) put(rbox(0.06, 0.84, 0.5, OAK, 0.02, { r: 0.7 }), sx * (Lv / 2 - 0.05), 0.43, 0, vg);
+    const wash = [];
+    for (const bx of [-Lv / 4, Lv / 4]) {
+      put(cyl(0.2, 0.15, 0.15, '#FFFFFF', { r: 0.2 }), bx, 0.97, 0.03, vg); put(cyl(0.16, 0.16, 0.012, '#D9E2E8', { r: 0.25 }), bx, 1.04, 0.03, vg);
+      put(cyl(0.022, 0.026, 0.34, '#C7CDD3', { m: 0.8, r: 0.25 }), bx, 1.06, -0.2, vg); put(rbox(0.04, 0.035, 0.16, '#C7CDD3', 0.012, { m: 0.8, r: 0.25 }), bx, 1.22, -0.13, vg);
+      const wt = put(cyl(0.012, 0.012, 0.15, '#BFE3F5', { e: '#BFE3F5', ei: 0.3 }), bx, 1.13, -0.06, vg); wt.visible = false; wt.castShadow = false;
+      // spot in front of the basin, facing the wall (vanity frame: x along the top, +z its front)
+      const lx = bx, lz = 0.62, c = Math.cos(vg.rotation.y), s2 = Math.sin(vg.rotation.y);
+      wash.push({ x: vg.position.x + lx * c + lz * s2, z: vg.position.z - lx * s2 + lz * c, rot: vg.rotation.y + Math.PI, sit: false, y: 0, busy: null, water: wt });
+    }
+    const mr = grp(0, -0.25, 0, vg); mr.position.y = 1.62; { const fr = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 10, 40), mat(OAK, { r: 0.6 })); fr.scale.set(Lv > 1.6 ? 1.5 : 1.25, 1, 1); fr.castShadow = true; mr.add(fr);
+      const gl = new THREE.Mesh(new THREE.CircleGeometry(0.355, 40), mat('#CFE3EC', { r: 0.08, m: 0.3 })); gl.scale.set(Lv > 1.6 ? 1.5 : 1.25, 1, 1); gl.position.z = -0.005; mr.add(gl); }
+    put(cyl(0.035, 0.035, 0.13, '#F2F4F5', { r: 0.4 }), 0, 0.96, -0.17, vg); put(cyl(0.012, 0.012, 0.05, '#C7CDD3', { m: 0.8 }), 0, 1.05, -0.17, vg); // soap
+    const td = put(rbox(0.3, 0.38, 0.12, '#F4F6F7', 0.03, { r: 0.4 }), bs * (Lv / 2 + 0.3), 1.32, -0.2, vg); put(rbox(0.2, 0.02, 0.02, '#FFFFFF', 0.005), 0, -0.17, 0.065, td); // paper towels
+    const bin = grp(bs * (Lv / 2 + 0.3), 0, 0, vg); put(cyl(0.16, 0.14, 0.44, '#C9CFD4', { m: 0.6, r: 0.3 }), 0, 0.22, 0, bin); put(cyl(0.165, 0.165, 0.04, '#B4BBC2', { m: 0.6, r: 0.3 }), 0, 0.46, 0, bin); put(rbox(0.1, 0.02, 0.06, '#59606A', 0.01), 0, 0.03, 0.17, bin);
+    { const c = Math.cos(vg.rotation.y), s2 = Math.sin(vg.rotation.y), bx = bs * (Lv / 2 + 0.3); room.bin = { x: vg.position.x + bx * c, z: vg.position.z - bx * s2 }; }
+    room.wash = wash;
   },
   lab(g, cx, cz, room, K = 1) {
     const d = grp(cx - 0.4 * K, cz - 1.2 * K, 0, g);
@@ -3042,9 +3068,20 @@ function visitorUpdate(v, dt) {
     case 'loo': {
       v.prog += dt / 3.5;
       if (v.prog >= 1) { { const lr = roomOfSpot(v.lspot); if (lr) { if ((lr.def.dirt || 0) >= 0.7) { v.pat = Math.max(0.05, v.pat - 0.12); logComplaint('dirty'); floatAt(v.av.position, '🤢'); } addDirt(lr, 0.1); } }
-        v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️'); floatAt(v.av.position, '🧼');
+        const lroom = roomOfSpot(v.lspot); v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️'); AU.sfx('flush', hearVol(v.av.position));
+        const ws = lroom && lroom.wash && lroom.wash.filter((w) => !w.busy).sort((a, b) => Math.hypot(a.x - v.av.position.x, a.z - v.av.position.z) - Math.hypot(b.x - v.av.position.x, b.z - v.av.position.z))[0];
+        if (ws) { ws.busy = v; v.wspot = ws; v.wroom = lroom; setPath(v, findPath(v.av.position, ws)); v.state = 'toWash'; break; } // hands are washed before leaving
         const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
-        spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; AU.sfx('flush', hearVol(v.av.position)); }
+        spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
+      break; }
+    case 'toWash': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.wspot); v.state = 'washing'; v.prog = 0; if (v.wspot.water) v.wspot.water.visible = true; } break;
+    case 'washing': {
+      v.prog += dt / 2.8;
+      if (v.prog >= 1) { const ws = v.wspot, rm = v.wroom; if (ws) { if (ws.water) ws.water.visible = false; ws.busy = null; } v.wspot = null; v.wroom = null; v.prog = 0; floatAt(v.av.position, '🧼');
+        const bn = rm && rm.bins && rm.bins.reduce((a, b) => (!a || Math.hypot(b.x - v.av.position.x, b.z - v.av.position.z) < Math.hypot(a.x - v.av.position.x, a.z - v.av.position.z) ? b : a), null);
+        if (bn) tossPaper(v.av.position, bn); // the paper towel goes in the bin
+        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'wait': {
       v.need = (v.need || 0) + dt / 95;
@@ -3163,7 +3200,7 @@ function groupStep(v, gid) { S.gs[gid]--; if (S.gs[gid] > 0) return; delete S.gs
   if (ok) { incCnt(cityOf().groups ? cityOf().groups.kind : 'groups'); floatAt(v.av.position, cityOf().groups && cityOf().groups.kind === 'families' ? '👨‍👩‍👧 ✓' : '🥳 ✓'); } }
 function leave(v, quiet) {
   lineDrop(v);
-  if (v.spot) v.spot.busy = null; if (v.rspot) v.rspot.busy = null; if (v.sspot) { v.sspot.busy = null; v.sspot = null; } if (v.lspot) { v.lspot.busy = null; v.lspot = null; }
+  if (v.spot) v.spot.busy = null; if (v.rspot) v.rspot.busy = null; if (v.sspot) { v.sspot.busy = null; v.sspot = null; } if (v.lspot) { v.lspot.busy = null; v.lspot = null; } if (v.wspot) { if (v.wspot.water) v.wspot.water.visible = false; v.wspot.busy = null; v.wspot = null; }
   for (const q of R.deskQs) { const qi = q.indexOf(v); if (qi >= 0) q.splice(qi, 1); }
   if (v.gid && S.gs && S.gs[v.gid] > 0) groupStep(v, v.gid); // one member leaving no longer cancels the whole group
   if (!quiet && beh('onestar')) { vb('left', 0 - 1.5); behSeen('onestar'); } // one-star reviews travel fast here
@@ -3518,8 +3555,8 @@ function openRoomMenu(id) {
   $('sheet').querySelectorAll('[data-size]').forEach((b) => b.onclick = () => { closeSheet(); startPlace({ type: r.type, size: b.dataset.size }, r); });
 }
 function evictRoom(id) {
-  for (const v of R.visitors) if ((v.room === id && (v.state === 'toRoom' || v.state === 'treat')) || ((v.state === 'toLoo' || v.state === 'loo' || v.state === 'toCafe' || v.state === 'cafe') && R.rooms[id] && R.rooms[id].spots.includes(v.lspot))) {
-    if (v.lspot) { v.lspot.busy = null; v.lspot = null; }
+  for (const v of R.visitors) if ((v.room === id && (v.state === 'toRoom' || v.state === 'treat')) || ((v.state === 'toLoo' || v.state === 'loo' || v.state === 'toCafe' || v.state === 'cafe') && R.rooms[id] && R.rooms[id].spots.includes(v.lspot)) || ((v.state === 'toWash' || v.state === 'washing') && R.rooms[id] && (R.rooms[id].wash || []).includes(v.wspot))) {
+    if (v.lspot) { v.lspot.busy = null; v.lspot = null; } if (v.wspot) { if (v.wspot.water) v.wspot.water.visible = false; v.wspot.busy = null; v.wspot = null; }
     v.room = null; v.rspot = null; v.prog = 0;
     const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
     spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait';
@@ -4058,7 +4095,16 @@ let flowCache = { t: -1, n: 0 };
 function staffedRooms() { const now = performance.now(); if (now - flowCache.t > 1000) { flowCache = { t: now, n: Object.values(R.rooms).filter((r) => ROOMS[r.type].role && !ROOMS[r.type].shop && r.type !== 'cafe' && r.type !== 'lab' && !ROOMS[r.type].train && r.staff.some(Boolean)).length }; } return flowCache.n; }
 const flowMul = () => (S.mode === 'career' ? Math.min(1.8, 1 + 0.06 * Math.max(0, staffedRooms() - 3)) : 1);
 const visCap = () => (S.mode === 'career' ? Math.min(36, 18 + Math.round(1.5 * Math.max(0, staffedRooms() - 3))) : 18);
+const PAPERS = [];
+function tossPaper(from, to) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat('#FFFFFF', { r: 0.9 })); m.position.set(from.x, 1.0, from.z); scene.add(m); PAPERS.push({ m, t: 0, a: { x: from.x, z: from.z }, b: to }); }
+function tickLoos(dt) {
+  for (const room of Object.values(R.rooms)) { if (!ROOMS[room.type].loo) continue;
+    for (const sp of room.spots) { if (!sp.door) continue; const inside = sp.busy && sp.busy.state === 'loo', tgt = inside ? 0 : -1.35; sp.door.rotation.y += (tgt - sp.door.rotation.y) * Math.min(1, dt * 6);
+      if (sp.lock && sp.lock.userData.on !== inside) { sp.lock.userData.on = inside; sp.lock.material = mat(inside ? '#D9534F' : '#4CB363', { e: inside ? '#D9534F' : '#4CB363', ei: 0.5 }); } } }
+  for (let i = PAPERS.length - 1; i >= 0; i--) { const p = PAPERS[i]; p.t += dt / 0.6; const t = Math.min(1, p.t); p.m.position.set(p.a.x + (p.b.x - p.a.x) * t, 1.0 + Math.sin(t * Math.PI) * 0.35 - 0.55 * t, p.a.z + (p.b.z - p.a.z) * t); if (p.t >= 1) { scene.remove(p.m); PAPERS.splice(i, 1); } }
+}
 function step(dt, now = performance.now(), rdt = dt) {
+  tickLoos(dt);
   dayTick(dt); if (!inGame) return; if (!trainAsked && CHAR.status === 'ready') { trainAsked = true; trainClips(); } // extra Meshy clips (class, drink, till, pick up…) for every character probIntroTick(rdt); behTick(dt); laterTick(dt); caseTick(); tempTick(dt); quakeTick(dt); doomers = beh('slowdoom') ? R.visitors.filter((u) => DOOM.has(u.prob) && !u.cured && u.path && u.path.length) : [];
   spawnT -= dt; if (S.epi && S.epi.quar) spawnT = Math.max(spawnT, 1.5); // quarantine: the front desk turns new people away
   if (spawnT <= 0 && S.mode === 'career' && cityOf().groups && cityOf().groups.kind === 'families' && RNG() < cityOf().groups.chance && R.visitors.length < 15) { const kp = ['toddler', 'schoolrun', 'tablet', 'homework', 'sugar']; famNext = true; const pr = spawnVisitor(unlocked('parent') ? rnd(kp) : undefined); famNext = false; const gid = S.nextId++; S.gs = S.gs || {}; S.gs[gid] = 1; pr.gid = gid; spawnT = 9; }
