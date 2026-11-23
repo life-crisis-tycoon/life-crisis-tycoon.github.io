@@ -4866,7 +4866,7 @@ async function cloudInit() {
       if (loc == null || !at[k]) useCloud = true;                       // wiped / new device: take the online copy
       else if (CLOUD.early.has(k)) { const pl = cloudProgress(k, loc), pc = cloudProgress(k, b.v); useCloud = pl != null && pc != null ? pc > pl : (b.at || 0) > at[k]; } // written before sync: never let a fresh start erase progress
       else useCloud = (b.at || 0) > at[k];                              // otherwise the newest copy wins
-      if (k === 'ahq_profile') { try { const L = JSON.parse(loc || '{}'), C = JSON.parse(b.v), W = useCloud ? C : L, O = useCloud ? L : C; W.stars = W.stars || {}; for (const [c, n] of Object.entries(O.stars || {})) W.stars[c] = Math.max(W.stars[c] || 0, n); if (O.cu) W.cu = Object.assign({}, O.cu, W.cu); const js = JSON.stringify(W); if (js !== loc) { LS_SET.call(localStorage, k, js); got++; } at[k] = Math.max(b.at || 0, at[k] || 0); continue; } catch (e) {} }
+      if (k === 'ahq_profile') { try { const L = JSON.parse(loc || '{}'), C = JSON.parse(b.v); if ((L.reset || 0) !== (C.reset || 0)) useCloud = (C.reset || 0) > (L.reset || 0); const W = useCloud ? C : L, O = useCloud ? L : C; W.stars = W.stars || {}; if ((O.reset || 0) === (W.reset || 0)) for (const [c, n] of Object.entries(O.stars || {})) W.stars[c] = Math.max(W.stars[c] || 0, n); if (O.cu) W.cu = Object.assign({}, O.cu, W.cu); const js = JSON.stringify(W); if (js !== loc) { LS_SET.call(localStorage, k, js); got++; } at[k] = Math.max(b.at || 0, at[k] || 0); continue; } catch (e) {} }
       if (useCloud) { LS_SET.call(localStorage, k, b.v); at[k] = b.at || Date.now(); got++; }
     }
     LS_SET.call(localStorage, 'ahq_sync_at', JSON.stringify(at));
@@ -4962,7 +4962,9 @@ function openBrief() {
   $('bOpen').onclick = () => { const sv = load(mapCity); if (sv) { RNG = Math.random; S = sv; S.city = S.city || mapCity; startGame(); } else startNew(mapCity); };
   show('brief');
 }
-function resetCareer() { for (const c of Object.keys(CITIES)) localStorage.removeItem(saveKey(c)); const p = profile(); p.stars = {}; p.last = 'london'; localStorage.setItem('ahq_profile', JSON.stringify(p)); }
+// a new career must also win against the online copy: city saves become 'null' (synced like any save, removeItem would not be) and the profile gets a
+// reset stamp, so the cloud merge stops adding back the old stars. The playtest 'open every city' switch is turned off too.
+function resetCareer() { for (const c of Object.keys(CITIES)) localStorage.setItem(saveKey(c), 'null'); localStorage.setItem('ahq_unlock', '0'); const p = profile(); p.stars = {}; p.last = 'london'; p.reset = Date.now(); localStorage.setItem('ahq_profile', JSON.stringify(p)); }
 $('bContinue').onclick = showMap;
 $('bNew').onclick = () => {
   const go = () => { resetCareer(); mapCity = 'london'; openCreate('map'); }; // every new career starts by creating (or tweaking) the manager
