@@ -1500,14 +1500,15 @@ function lieUpdate() {
       av.rotation.order = 'YXZ'; av.rotation.set(-Math.PI / 2, r, 0); av.position.set(sp.x + s * L * 0.5, base + 0.13, sp.z + c * L * 0.5); // feet at +z, head toward -z (the pillow end)
       const ud = av.userData, now = performance.now(); if (!ud.lieT) { ud.lieS = now; ud.roll = 0; ud.rollT = 0; ud.rollAt = now + 1500; }
       if (o.prob && o.state === 'treat' && (o.prog || 0) < 0.72) { // a client tosses and turns before falling asleep (and stays still after)
-        if (now > ud.rollAt) { ud.rollT = ud.rollT ? 0 : (Math.random() < 0.5 ? -0.85 : 0.85); ud.rollAt = now + 1400 + Math.random() * 2200; } } else ud.rollT = 0;
-      ud.roll += (ud.rollT - ud.roll) * 0.08; if (Math.abs(ud.roll) > 0.01) av.quaternion.multiply(_ixq.setFromAxisAngle(_ixY, ud.roll)); // roll around the body's own axis
+        if (now > ud.rollAt) { const side = ud.rollT > 0 ? -1 : ud.rollT < 0 ? 1 : (Math.random() < 0.5 ? -1 : 1); ud.rollT = side * 1.35; ud.rollAt = now + 900 + Math.random() * 1100; // flops from one side to the other, Theme Hospital style
+          if (Math.random() < 0.35) floatAt(av.position, Math.random() < 0.5 ? '😣' : '🔄'); } } else ud.rollT = 0;
+      ud.roll += (ud.rollT - ud.roll) * 0.16; if (Math.abs(ud.roll) > 0.01) av.quaternion.multiply(_ixq.setFromAxisAngle(_ixY, ud.roll)); // roll around the body's own axis
       const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
       let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; }
       av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
-      if (!dv.parent) scene.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.y = r; dv.scale.y = 1.3; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
+      if (!dv.parent) scene.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.order = 'YXZ'; dv.rotation.y = r; dv.rotation.z = -(ud.roll || 0) * 0.45; dv.scale.y = 1.3 + Math.abs(ud.roll || 0) * 0.35; /* the duvet follows the body's turn */ dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
     else { av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x && !(o.ix && o.ix.mat)) { av.rotation.x = 0; av.rotation.z = 0; } const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
 }
 function doorsUpdate(dt) {
@@ -2679,10 +2680,32 @@ function ixPoint(v, st, room, where) {
     if (hit) { _fb.setFromObject(hit); const cx = (_fb.min.x + _fb.max.x) / 2, cz = (_fb.min.z + _fb.max.z) / 2, dx = c.x - cx, dz = c.z - cz, d = Math.hypot(dx, dz) || 1, x = cx + dx / d * 0.8, z = cz + dz / d * 0.8; return { x, z, rot: Math.atan2(cx - x, cz - z) }; } }
   return null;
 }
+// a carer's few steps inside their own room: a small A* on a 15 cm grid of the room, around the furniture (room.obs), then
+// straightened where the way is clear. The start and the goal may sit inside a piece (their own chair, the shelf they reach for).
+function ixRoute(room, from, to, pad = 0.2) {
+  const q = roomRect(room.def), C = 0.15, x0 = q.x0 + 0.22, z0 = q.z0 + 0.22, nx = Math.max(2, Math.floor((q.x1 - q.x0 - 0.44) / C)), nz = Math.max(2, Math.floor((q.z1 - q.z0 - 0.44) / C));
+  const cell = (x, z) => [clamp(Math.round((x - x0) / C), 0, nx), clamp(Math.round((z - z0) / C), 0, nz)], pos = (i, j) => ({ x: x0 + i * C, z: z0 + j * C });
+  const obs = room.obs || [], blocked = new Uint8Array((nx + 1) * (nz + 1));
+  for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) { const p = pos(i, j); if (Math.hypot(p.x - from.x, p.z - from.z) < 0.5 || Math.hypot(p.x - to.x, p.z - to.z) < 0.5) continue;
+    for (const b of obs) if (p.x > b[0] - pad && p.x < b[1] + pad && p.z > b[2] - pad && p.z < b[3] + pad) { blocked[j * (nx + 1) + i] = 1; break; } }
+  const [si, sj] = cell(from.x, from.z), [ti, tj] = cell(to.x, to.z), W1 = nx + 1, N = W1 * (nz + 1), g = new Float32Array(N).fill(1e9), par = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+  const s0 = sj * W1 + si, t0 = tj * W1 + ti; g[s0] = 0; const open = [s0];
+  while (open.length) { let bi = 0, bf = 1e9; for (let k = 0; k < open.length; k++) { const c = open[k], ci2 = c % W1, f = g[c] + Math.hypot(ti - ci2, tj - (c - ci2) / W1); if (f < bf) { bf = f; bi = k; } }
+    const c = open.splice(bi, 1)[0]; if (done[c]) continue; done[c] = 1; if (c === t0) break; const i = c % W1, j = (c - i) / W1;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni > nx || nj > nz) continue; const n = nj * W1 + ni; if (blocked[n] || done[n]) continue;
+      if (di && dj && (blocked[j * W1 + ni] || blocked[nj * W1 + i])) continue; const ng = g[c] + (di && dj ? 1.414 : 1); if (ng < g[n]) { g[n] = ng; par[n] = c; open.push(n); } } }
+  let tg = t0; if (par[t0] < 0 && t0 !== s0) { if (pad > 0.1) return ixRoute(room, from, to, 0.06); // tight: hug the furniture closer
+    let bd = 1e9; for (let c = 0; c < N; c++) if (done[c]) { const ci2 = c % W1, dd = Math.hypot(ti - ci2, tj - (c - ci2) / W1); if (dd < bd) { bd = dd; tg = c; } } } // still no way: as close as it gets, then the last step
+  const cells = []; for (let c = tg; c >= 0 && c !== s0; c = par[c]) cells.push(c); cells.reverse();
+  const clear = (a, b) => { const n = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.07); for (let k = 1; k < n; k++) { const [i, j] = cell(a.x + (b.x - a.x) * k / n, a.z + (b.z - a.z) * k / n); if (blocked[j * W1 + i]) return false; } return true; };
+  const pts = cells.map((c) => pos(c % W1, (c - c % W1) / W1)); pts.push({ x: to.x, z: to.z });
+  const out = []; let a = { x: from.x, z: from.z }, k = 0; while (k < pts.length) { let far = k; for (let m = pts.length - 1; m > k; m--) if (clear(a, pts[m])) { far = m; break; } out.push(pts[far]); a = pts[far]; k = far + 1; }
+  return out;
+}
 function ixGo(v, st, room, where, pose) {
-  if (where === 'home') { if (st.ixGo && !st.ixGo.back) st.ixGo = { back: true, av: st.av, ph: 0, path: [{ x: st.target.x, z: st.target.z }] }; return; } // a few steps inside the room: straight there and back (the walk grid would send them round by the door)
+  if (where === 'home') { if (st.ixGo && !st.ixGo.back) st.ixGo = { back: true, av: st.av, ph: 0, path: ixRoute(room, st.av.position, st.target) }; return; } // a few steps inside the room, round the furniture (the house walk grid would send them out by the door)
   const p = ixPoint(v, st, room, where) || (where !== 'near' ? ixPoint(v, st, room, 'near') : null); if (!p) return;
-  st.ixGo = { av: st.av, ph: 0, path: [{ x: p.x, z: p.z }], face: p.rot, pose }; poseStand(st.av.userData.p);
+  st.ixGo = { av: st.av, ph: 0, path: ixRoute(room, st.av.position, p), face: p.rot, pose }; poseStand(st.av.userData.p);
 }
 function ixStaffWalk(rs, dt) { // from staffAttend: true while the carer is away from their spot for a scene
   const G = rs.ixGo; if (!G) return false;
@@ -2724,7 +2747,7 @@ function ixTick(v, st, room, dt) {
 }
 function ixEnd(v) { // session over (cured, or the carer left): everything back to normal
   const X = v.ix; if (!X) return; v.ix = null;
-  ixHold(v.av, X.vp, null); if (X.st && X.st.av) { ixHold(X.st.av, X.sp, null); X.st.ixPose = null; if (X.st.ixGo && !X.st.ixGo.back) X.st.ixGo = { back: true, av: X.st.av, ph: 0, path: [{ x: X.st.target.x, z: X.st.target.z }] }; }
+  ixHold(v.av, X.vp, null); if (X.st && X.st.av) { ixHold(X.st.av, X.sp, null); X.st.ixPose = null; if (X.st.ixGo && !X.st.ixGo.back) { const rm = R.rooms[X.st.at]; X.st.ixGo = { back: true, av: X.st.av, ph: 0, path: rm ? ixRoute(rm, X.st.av.position, X.st.target) : [{ x: X.st.target.x, z: X.st.target.z }] }; } }
   if (X.wasMat) { v.av.quaternion.identity(); v.av.rotation.set(0, (v.rspot && v.rspot.rot) || v.av.rotation.y, 0); }
   v.av.rotation.z = 0; v.av.rotation.x = 0; if (X.m) { v.av.scale.setScalar(X.sc); }
   if (X.stood || X.wasMat) { v.av.position.y = 0.1; poseStand(v.av.userData.p); }
