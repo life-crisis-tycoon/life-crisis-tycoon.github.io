@@ -822,7 +822,7 @@ function buildWorld() {
   put(rbox(2.1, 0.1, 0.05, '#FFD25E', 0.02, { e: '#FFC94A', ei: 0.8 }), 0, 0.72, 0.36, desk); put(rbox(0.5, 0.36, 0.05, '#2F3640', 0.02), -0.75, 1.42, -0.3, desk);
   put(sph(0.09, '#E3B341', { m: 0.7, r: 0.25 }), 0.6, 1.26, 0.1, desk);
   desk.traverse((m) => { if (m.isMesh) m.userData.desk = true; });
-  setTimeout(() => glbSwap(desk, 'desk', { len: 2.5, y: 0.1, keep: (c) => c === world.deskRing }), 0); // modelled in Blender
+  setTimeout(() => glbSwap(desk, 'desk', { len: 2.5, y: 0.1, keep: (c) => c === world.deskRing, onModel: () => setTimeout(() => { if (S && S.desk) { (world.desks2 || []).forEach((m) => scene.remove(m)); world.desks2 = []; placeDesk(); } }, 0) }), 0); // modelled in Blender; once it is in (it can take longer than dressDesks' retries on a phone), the chairs and monitors are set out per station and the extra desks re-cloned from it
   const dr = new THREE.Mesh(new THREE.RingGeometry(1.35, 1.55, 40), new THREE.MeshBasicMaterial({ color: '#7ACB4E', transparent: true, opacity: 0.85 })); dr.rotation.x = -Math.PI / 2; dr.position.y = 0.14; dr.visible = false; desk.add(dr); world.deskRing = dr;
   const rug = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.02, 40), mat('#2BB5A6', { r: 1 })); rug.position.set(2.6, 0.13, 3.6); rug.receiveShadow = true; scene.add(rug);
   plant(6.1, 1.1, 1.1, '#FFFFFF'); plant(1.0, 6.0, 1, '#E9785F'); plant(2.6, 1.0, 0.9, '#FFD25E');
@@ -851,7 +851,7 @@ function propModel(name) {
           const merged = geos.length > 1 ? mergeGeometries(geos, false) : geos[0]; if (!merged) { for (const m of list) { const c = m.clone(); c.applyMatrix4(m.matrixWorld); root.add(c); } continue; }
           const mm = new THREE.Mesh(merged, list[0].material); mm.name = list[0].name; root.add(mm); }
         // keep named top-level nodes (the building kit picks modules by name)
-        if (!gl.scene.children.some((c) => /^(bw|gw|ob|sf|chim|k_)/.test(c.name))) gl.scene = root; }
+        if (name !== 'desk' && !gl.scene.children.some((c) => /^(bw|gw|ob|sf|chim|k_)/.test(c.name))) gl.scene = root; } // the reception desk keeps its parts too: dressDesk moves its chair and monitor to each station by name
     }
     gl.scene.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.isMeshStandardMaterial) { mt.metalness = 0; mt.roughness = /glass/.test(mt.name) ? 0.2 : 0.8; mt.envMapIntensity = /glass/.test(mt.name) ? 1.2 : 0.6; if (mt.map) mt.map.anisotropy = 4; } } });
     return gl.scene;
@@ -1466,16 +1466,13 @@ function lieUpdate() {
     if (on) { const L = 1.55 * av.scale.y, r = sp.rot || 0, s = Math.sin(r), c = Math.cos(r), base = 0.1 + (sp.y || 0);
       av.rotation.order = 'YXZ'; av.rotation.set(-Math.PI / 2, r, 0); av.position.set(sp.x + s * L * 0.5, base + 0.13, sp.z + c * L * 0.5); // feet at +z, head toward -z (the pillow end)
       const ud = av.userData, now = performance.now(); if (!ud.lieT) { ud.lieS = now; ud.roll = 0; ud.rollT = 0; ud.rollAt = now + 1500; }
-      if (o.prob && o.state === 'treat' && (o.prog || 0) < 0.72) { // a client tosses and turns before falling asleep (and stays still after)
-        if (now > ud.rollAt) { const side = ud.rollT > 0 ? -1 : ud.rollT < 0 ? 1 : (Math.random() < 0.5 ? -1 : 1); ud.rollT = side * 1.35; ud.rollAt = now + 900 + Math.random() * 1100; // flops from one side to the other, Theme Hospital style
-          if (Math.random() < 0.35) floatAt(av.position, Math.random() < 0.5 ? '😣' : '🔄'); } } else ud.rollT = 0;
-      ud.roll += (ud.rollT - ud.roll) * 0.16; if (Math.abs(ud.roll) > 0.01) av.quaternion.multiply(_ixq.setFromAxisAngle(_ixY, ud.roll)); // roll around the body's own axis
+      ud.roll = 0; // once in bed a client lies still under the duvet (no tossing: it read as bodies falling out of the bed)
       const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
       let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; }
       av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
-      if (!dv.parent) scene.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.order = 'YXZ'; dv.rotation.y = r; dv.rotation.z = -(ud.roll || 0) * 0.45; dv.scale.y = 1.3 + Math.abs(ud.roll || 0) * 0.35; /* the duvet follows the body's turn */ dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
+      if (!dv.parent) scene.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.y = r; dv.rotation.z = 0; dv.scale.y = 1.3; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
     else { av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x && !(o.ix && o.ix.mat)) { av.rotation.x = 0; av.rotation.z = 0; } const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
 }
 function doorsUpdate(dt) {
