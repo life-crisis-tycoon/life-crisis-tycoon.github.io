@@ -826,7 +826,7 @@ function plant(x, z, s = 1, pot = '#E9785F', p = scene, force = null) { // force
   put(cyl(0.22 * s, 0.17 * s, 0.38 * s, pot), 0, 0.19 * s, 0, g);
   [[0, 0.6, 0, 0.26], [0.16, 0.5, 0.08, 0.2], [-0.15, 0.52, -0.05, 0.2], [0.05, 0.78, -0.06, 0.18]].forEach((q, i) => put(sph(q[3] * s, ['#4E9E58', '#6DBA63', '#3F8A4D'][i % 3], { r: 0.85 }), q[0] * s, q[1] * s, q[2] * s, g));
   if (force) glbSwap(g, force.v, { h: force.h, ...(force.tint ? { tint: force.tint } : {}) });
-  else if (pot !== '#E3B341') { const v = ['plant_s', 'plant_m', 'plant_l'][Math.abs(Math.round(x * 7.3 + z * 3.1)) % 3]; glbSwap(g, v, { h: { plant_s: 0.72, plant_m: 0.95, plant_l: 1.1 }[v] * s }); }
+  else if (pot !== '#E3B341') { const k = Math.abs(Math.round(x * 7.3 + z * 3.1)) % 3; glbSwap(g, 'nap_plant', { h: [0.75, 0.9, 1.0][k] * s, rot: k * 2.1 }); } // the well-defined monstera everywhere (the old round-leaf pots looked like blobs)
   return g;
 }
 const world = { roomGroups: {}, lotGroup: null, decor: {} };
@@ -1695,7 +1695,7 @@ const PARENT_DIMS = {"k_schedule":[0.998,0.4746,0.084],"k_table":[0.998,0.3613,0
 // Lab (from the lab painting): tool pegboard over the long bench with the microscope (stool in front), the two-screen desk and its chair, the 3D printer and the bin shelf on the right, the island in the middle, pendants and a whiteboard
 function labKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = w < 5 || D < 5, H = Math.PI / 2, L = [];
-  L.push({ p: 'k_bench', len: S ? 1.6 : 2.2, wall: 'back', u: 'L' }, { p: 'k_pegboard', len: S ? 1.4 : 1.9, wall: 'back', u: 'L', hang: true, y: 1.25, gap: 0.12 });
+  L.push({ p: 'k_bench', len: S ? 1.6 : 2.2, wall: 'back', u: 'L' }, { p: 'k_pegboard', len: S ? 1.4 : 1.7, wall: 'back', u: 'L', hang: true, y: 1.05, gap: 0.12 });
   L.push({ p: 'k_desk', len: S ? 1.4 : 1.7, wall: 'back', u: 'R' });
   if (!S) L.push({ p: 'k_printer', h: 0.95, wall: 'right', u: -0.15 }, { p: 'k_shelf', len: 1.5, wall: 'right', u: 'F' }, { p: '@whiteboard', h: 0.8, wall: 'right', u: -0.3, hang: true, y: 1.65, gap: 0.14 });
   else L.push({ p: 'k_shelf', len: 1.2, wall: 'right', u: 'F' });
@@ -1727,8 +1727,8 @@ function parentKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = w < 5 || D < 5, H = Math.PI / 2, L = [];
   const sx = -w / 2 + (S ? 1.15 : 1.5), sz = -D / 2 + 0.8, ax = sx + (S ? 1.55 : 2.0);
   L.push({ p: 'k_rug', len: S ? 2.2 : 2.8, x: sx + 0.7, z: sz + 0.75, rot: 0, solid: false }, { p: 'k_sofa', len: S ? 1.5 : 1.8, x: sx, z: sz, rot: 0 }, { p: 'k_table', len: S ? 0.8 : 1.0, x: sx + 0.25, z: sz + 1.05, rot: 0 }, { p: 'k_armchair', h: 0.92, x: ax, z: sz + 0.35, rot: -H * 0.75 });
-  L.push({ p: 'k_schedule', len: S ? 1.3 : 1.7, wall: 'back', u: S ? 0.6 : 1.1, hang: true, y: 1.55, gap: 0.13 });
-  const mx = w / 2 - (S ? 1.0 : 1.35), mz = D / 2 - (S ? 0.95 : 1.15);
+  L.push({ p: 'k_schedule', len: S ? 1.2 : 1.5, wall: 'back', u: S ? 0.6 : 1.1, hang: true, y: 1.15, gap: 0.13 });
+  const mx = w / 2 - (S ? 1.0 : 1.75), mz = S ? D / 2 - 0.95 : 0.75; // the kids' corner sits towards the middle, not pushed into the far corner
   L.push({ p: 'k_playmat', len: S ? 1.7 : 2.3, x: mx, z: mz, rot: 0, solid: false }, { p: 'k_kidtable', len: 0.75, x: mx + 0.2, z: mz - 0.2, rot: 0 }, { p: 'k_kidchair', h: 0.55, x: mx + 0.2, z: mz + 0.42, rot: Math.PI });
   if (!S) L.push({ p: '@cubby', h: 0.8, wall: 'right', u: -0.3, gap: 0.12 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.parent.model, L, PARENT_DIMS);
