@@ -572,7 +572,7 @@ function carveLane(blk, a, b, q, own = []) { // own: the seat/bed's own boxes, c
 function markRoom(r, blk) {
   const q = roomRect(r), dp = doorPt(r, 0), rm = R.rooms && R.rooms[r.id];
   if (rm && rm.obs) { const keep = rm.spots.concat(rm.staffSpots.filter(Boolean)).concat([doorPt(r, -0.6)]);
-    for (const b of rm.obs) { const [i0, j0] = ci(b[0] - 0.12, b[2] - 0.12), [i1, j1] = ci(b[1] + 0.12, b[3] + 0.12);
+    for (const b of rm.obs) { const [i0, j0] = ci(b[0] - 0.18, b[2] - 0.18), [i1, j1] = ci(b[1] + 0.18, b[3] + 0.18);
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j); if (keep.some((k) => Math.hypot(k.x - p.x, k.z - p.z) < 0.36)) continue; blk[j * GW + i] = 1; } }
     // never wall a seat off: if a spot can't be reached from the door, clear the cheapest lane to it
     const din = doorPt(r, -0.6);
@@ -584,6 +584,8 @@ function markRoom(r, blk) {
     const p = cc(i, j); const ring = p.x - q.x0 < 0.5 || q.x1 - p.x < 0.5 || p.z - q.z0 < 0.5 || q.z1 - p.z < 0.5;
     if (ring && Math.hypot(p.x - dp.x, p.z - dp.z) > 0.6) blk[j * GW + i] = 1;
   }
+  { const M = 0.3, [a0, b0] = ci(q.x0 - M, q.z0 - M), [a1, b1] = ci(q.x1 + M, q.z1 + M); // keep walkers off the outside of the walls too (their bodies brushed through them), except in front of the door
+    for (let j = b0; j <= b1; j++) for (let i = a0; i <= a1; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const p = cc(i, j); if (p.x > q.x0 && p.x < q.x1 && p.z > q.z0 && p.z < q.z1) continue; if (Math.hypot(p.x - dp.x, p.z - dp.z) < 0.95) continue; blk[j * GW + i] = 1; } }
 }
 function markObstacles(blk) {
   const box = (cx, cz, w, d, rot) => { const c = Math.cos(rot || 0), s = Math.sin(rot || 0), R = Math.hypot(w, d) / 2 + 0.3;
@@ -609,7 +611,7 @@ function rebuildGrid() { gridBlk = makeGrid(S.rooms); }
 // furniture footprints become obstacles for the walk grid (people go around sofas, desks, poufs, beds…): every mesh between knee and chest height
 // built-in-code pieces are measured once, before batching merges them into one big mesh; the 3D-model pieces (swap groups, never batched) every time one loads; rugs are walked on
 function roomObs(room) { const g = room.g; g.updateMatrixWorld(true); const skip = new Set([...(room.wallG || []), room.door && room.door.g]), bx = new THREE.Box3(), first = !room.obs0, st = [], sw = [];
-  const walk = (o, inSw) => { for (const c of o.children) { if (skip.has(c) || /rug|carpet/i.test(c.userData.glb || '')) continue; const s2 = inSw || !!c.userData.swap;
+  const walk = (o, inSw) => { for (const c of o.children) { if (skip.has(c) || c.userData.noObs || /rug|carpet/i.test(c.userData.glb || '')) continue; const s2 = inSw || !!c.userData.swap;
     if (c.isMesh && (s2 || first)) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) (s2 ? sw : st).push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); }
     if (s2 || first) walk(c, s2); else if (c.children.length) walk(c, false); } };
   walk(g, false); if (first) room.obs0 = st; room.obs = room.obs0.concat(sw); }
@@ -647,7 +649,10 @@ function los(a, b, o) {
   for (const k of [1, -1]) if (!walkCells(a.x + nx * k, a.z + nz * k, b.x + nx * k, b.z + nz * k, (i, j, pi, pj) => step(i, j, pi, pj, false))) return false;
   return true;
 }
+let VIA_SPOTS = [];
 function findPath(from, to, loose) {
+  if (!loose && to && to.via && Math.hypot(from.x - to.via.x, from.z - to.via.z) > 0.05) return findPath(from, to.via).concat([{ x: to.x, z: to.z }]); // into a cubicle: to its door first, then straight in
+  if (!loose && from) { const vs = VIA_SPOTS.find((s) => s !== to && R.rooms[s.room0.id] === s.room0 && Math.hypot(s.x - from.x, s.z - from.z) < 0.35); if (vs) return [{ x: vs.via.x, z: vs.via.z }].concat(findPath(vs.via, to)); } // out of a cubicle: straight out of its door first
   if (!Number.isFinite(to.x) || !Number.isFinite(to.z) || !Number.isFinite(from.x) || !Number.isFinite(from.z)) { console.warn('[findPath] bad point', JSON.stringify(from), JSON.stringify(to), new Error().stack.split('\n').slice(2, 5).join(' | ')); return []; }
   const [si, sj] = ci(from.x, from.z), [ti, tj] = ci(to.x, to.z);
   const N = GW * GH, inB = (i, j) => i >= 0 && j >= 0 && i < GW && j < GH;
@@ -1418,6 +1423,7 @@ function buildRoom(r) {
     const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a, ...(p.rot2 != null ? { rot2: p.rot2 + r.a } : {}) }; };
     for (const sp of tmp.spots) room.spots.push({ ...conv(sp), st: i, busy: null });
     room.staffSpots[i] = tmp.staffSpot ? conv(tmp.staffSpot) : null;
+    VIA_SPOTS = VIA_SPOTS.filter((sp) => sp.room0 && R.rooms[sp.room0.id] === sp.room0); for (const sp of room.spots) if (sp.front && !sp.via) { sp.via = { x: sp.x + Math.sin(sp.rot) * 1.35, z: sp.z + Math.cos(sp.rot) * 1.35 }; sp.room0 = room; VIA_SPOTS.push(sp); }
     if (tmp.wash) { room.wash = (room.wash || []).concat(tmp.wash.map((sp) => ({ ...conv(sp), st: i, busy: null }))); (room.bins = room.bins || []).push(conv({ ...tmp.bin, rot: 0 })); }
   }
   if (!(RS && RS.model)) { const pc = toW(r, Z.W / 2 - 0.6, -Z.D / 2 + 0.7); plant(pc.x, pc.z, 0.9, '#FFFFFF', g); }
@@ -2166,13 +2172,15 @@ const furniture = {
       const x = cx + (i - (n - 1) / 2) * 1.25, wz = cz - 0.9 * K - 0.55;
       if (!PROPS_ON) put(rbox(0.06, 1.5, 1.1, '#FFFFFF', 0.02), x + 0.6, 0.85, cz - 0.9 * K - 0.25, g); // the modelled cubicle brings its own walls
       const wc = grp(x, wz, 0, g); put(rbox(0.42, 0.42, 0.5, '#FFFFFF', 0.12, { r: 0.25 }), 0, 0.3, 0.05, wc); put(rbox(0.45, 0.45, 0.16, '#F4F7FA', 0.05), 0, 0.6, -0.2, wc);
-      glbSwap(wc, 'toilet', { y: 0.1, onModel: (m) => m.traverse((o) => { if (/^(basin|bowlIn|pipe|spout|tap)/.test(o.name)) o.visible = false; }) }); // no hand basin inside the cubicle: hands are washed at the vanity
+      // the cubicle is made deeper at the front (side panels carried forward, door further out) so a seated person's knees stay inside the closed door
+      const ext = [-0.6, 0.6].map((sx) => put(rbox(0.045, 1.42, 0.5, '#D8C6E4', 0.01, { r: 0.6 }), sx, 0.83, 0.5, wc));
+      glbSwap(wc, 'toilet', { y: 0.1, onModel: (m) => m.traverse((o) => { if (/^(basin|bowlIn|pipe|spout|tap)/.test(o.name)) o.visible = false; if (/^post/.test(o.name)) o.userData.noObs = true; if (o.isMesh && o.name === 'left' && o.material) for (const e of ext) e.material = o.material; }) }); // no hand basin inside the cubicle: hands are washed at the vanity
       // cubicle door on the front-left hinge: swings open when the cubicle is free, closes while someone is inside; a small red/green lock shows which
-      const dv = grp(x - 0.57, wz + 0.27, 0, g); dv.rotation.y = -1.35; dv.userData.looDoor = true;
+      const dv = grp(x - 0.57, wz + 0.76, 0, g); dv.rotation.y = -1.35; dv.userData.looDoor = true;
       put(rbox(1.1, 1.3, 0.04, '#E4ECF1', 0.015, { r: 0.6 }), 0.56, 0.86, 0, dv); put(rbox(0.04, 0.12, 0.03, '#B9C2CA', 0.01, { m: 0.6, r: 0.3 }), 1.0, 0.9, 0.035, dv);
       const lk = put(rbox(0.07, 0.04, 0.02, '#4CB363', 0.008, { e: '#4CB363', ei: 0.5 }), 1.0, 1.02, 0.035, dv);
       dv.traverse((o) => { if (o.isMesh) o.userData.kitW = true; }); // moving parts stay out of the static batches
-      room.spots.push({ x, z: wz + 0.05, rot: 0, sit: true, y: 0.1, busy: null, door: dv, lock: lk });
+      room.spots.push({ x, z: wz - 0.04, rot: 0, sit: true, y: 0.1, busy: null, door: dv, lock: lk, front: true });
     }
     // double vanity against a side wall (light oak top on two panels with a shelf, two round vessel basins, tall chrome taps, an oval mirror), a towel dispenser and a pedal bin
     const side = room.nst === 2 ? (room.st ? 1 : -1) : -1, Lv = K < 0.8 ? 1.5 : 1.9, vz = Math.min(D / 2 - 0.3 - Lv / 2, cz - 0.9 * K - 0.28 + 1.2 + Lv / 2), bs = vz + Lv / 2 + 0.55 < D / 2 ? 1 : -1; // starts past the swing of the cubicle doors; bin and towels at whichever end has room
