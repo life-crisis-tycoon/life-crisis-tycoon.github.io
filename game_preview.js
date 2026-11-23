@@ -233,7 +233,16 @@ function placeCam() {
   const a = innerWidth / innerHeight;
   cam.left = -view.half * a; cam.right = view.half * a; cam.top = view.half; cam.bottom = -view.half; cam.updateProjectionMatrix();
   const D = 65, ep = bgMode() ? BG_PITCH : camPitch(), cp = Math.cos(ep);
-  cam.position.set(view.tx + Math.sin(view.yaw) * cp * D, Math.sin(ep) * D, view.tz + Math.cos(view.yaw) * cp * D); cam.lookAt(view.tx, 0, view.tz); cam.updateMatrixWorld();
+  const put0 = () => { cam.left = -view.half * a; cam.right = view.half * a; cam.top = view.half; cam.bottom = -view.half; cam.updateProjectionMatrix();
+    cam.position.set(view.tx + Math.sin(view.yaw) * cp * D, Math.sin(ep) * D, view.tz + Math.cos(view.yaw) * cp * D); cam.lookAt(view.tx, 0, view.tz); cam.updateMatrixWorld(); };
+  put0();
+  // camera limit: the ground seen on screen always stays inside the city, so its empty edges never show (zoom out and pan stop there)
+  const gnd = world.ground; if (gnd) { const gh = 45 * gnd.scale.x + 2.5, X0 = gnd.position.x - gh, X1 = gnd.position.x + gh, Z0 = gnd.position.z - gh, Z1 = gnd.position.z + gh;
+    const fw = new THREE.Vector3(), rt = new THREE.Vector3(), up = new THREE.Vector3(); cam.getWorldDirection(fw); rt.setFromMatrixColumn(cam.matrixWorld, 0); up.setFromMatrixColumn(cam.matrixWorld, 1);
+    const foot = () => { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const o = cam.position.clone().addScaledVector(rt, sx * view.half * a).addScaledVector(up, sy * view.half), t = (-0.5 - o.y) / fw.y, x = o.x + fw.x * t, z = o.z + fw.z * t; x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); } return [x0, x1, z0, z1]; };
+    let f = foot(); const k = Math.min(1, (X1 - X0) / (f[1] - f[0]), (Z1 - Z0) / (f[3] - f[2])); if (k < 1) { view.half *= k * 0.999; put0(); f = foot(); }
+    let dx = 0, dz = 0; if (f[0] < X0) dx = X0 - f[0]; else if (f[1] > X1) dx = X1 - f[1]; if (f[2] < Z0) dz = Z0 - f[2]; else if (f[3] > Z1) dz = Z1 - f[3];
+    if (dx || dz) { view.tx += dx; view.tz += dz; put0(); } }
   updateCutaway();
 }
 const GHOST = new Map();
