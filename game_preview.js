@@ -611,7 +611,7 @@ function rebuildGrid() { gridBlk = makeGrid(S.rooms); }
 // furniture footprints become obstacles for the walk grid (people go around sofas, desks, poufs, beds…): every mesh between knee and chest height
 // built-in-code pieces are measured once, before batching merges them into one big mesh; the 3D-model pieces (swap groups, never batched) every time one loads; rugs are walked on
 function roomObs(room) { const g = room.g; g.updateMatrixWorld(true); const skip = new Set([...(room.wallG || []), room.door && room.door.g]), bx = new THREE.Box3(), first = !room.obs0, st = [], sw = [];
-  const walk = (o, inSw) => { for (const c of o.children) { if (skip.has(c) || c.userData.noObs || /rug|carpet/i.test(c.userData.glb || '')) continue; const s2 = inSw || !!c.userData.swap;
+  const walk = (o, inSw) => { for (const c of o.children) { if (skip.has(c) || c.userData.noObs || /rug|carpet|playmat/i.test(c.userData.glb || '')) continue; const s2 = inSw || !!c.userData.swap;
     if (c.isMesh && (s2 || first)) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) (s2 ? sw : st).push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); }
     if (s2 || first) walk(c, s2); else if (c.children.length) walk(c, false); } };
   walk(g, false); if (first) room.obs0 = st; room.obs = room.obs0.concat(sw); }
@@ -920,7 +920,7 @@ function glbSwap(g, name, o = {}) {
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
     const sl = o.len ? o.len / Math.max(sz.x, sz.z) : null, sh = o.h ? o.h / sz.y : null;
     const k = sl || sh || 1; m.scale.set(k, sh && sl ? sh : k, k);
-    if (/rug|carpet/i.test(name) && sz.y * m.scale.y > (o.rugH || 0.035)) m.scale.y = (o.rugH || 0.035) / sz.y; // a rug is walked on: flat, so feet stay above it
+    if (/rug|carpet|playmat/i.test(name) && sz.y * m.scale.y > (o.rugH || 0.035)) m.scale.y = (o.rugH || 0.035) / sz.y; // a rug is walked on: flat, so feet stay above it
     if (o.fit) { const fx = o.fit[0] / sz.x, fz = o.fit[1] / sz.z; m.scale.set(fx, o.h ? sh : Math.min(fx, fz) * (o.hk || 1), fz); } // fit a footprint [w, d] (group axes); height follows the narrower side unless h is given
     let rid; g.traverse((c) => { if (c.userData.roomId != null && rid == null) rid = c.userData.roomId; });
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
