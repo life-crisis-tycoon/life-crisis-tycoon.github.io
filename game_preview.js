@@ -1540,9 +1540,9 @@ function lieUpdate() {
       const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
-      let dv = av.userData.duvet; if (!dv) { dv = av.userData.duvet = rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; }
+      let dv = av.userData.duvet; if (dv && dv.userData.wide !== !!sp.duvetC) { if (dv.parent) dv.parent.remove(dv); dv = null; } if (!dv) { dv = av.userData.duvet = sp.duvetC ? rbox(0.98, 0.26, 1, sp.duvetC, 0.12, { r: 0.95 }) : rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; dv.userData.wide = !!sp.duvetC; } // the nap beds: a wide, thick duvet in the bed's colour that covers the arms and comes up to the chest
       av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
-      if (!dv.parent) scene.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.y = r; dv.rotation.z = 0; dv.scale.y = 1.3; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + 0.19, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
+      if (!dv.parent) scene.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.y = r; dv.rotation.z = 0; dv.scale.y = sp.duvetC ? 1 : 1.3; const dy = sp.duvetC ? 0.24 : 0.19; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + dy, sp.z + c * (L * 0.5 - len / 2 + 0.06)); dv.visible = av.visible !== false; }
     else { av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x && !(o.ix && o.ix.mat)) { av.rotation.x = 0; av.rotation.z = 0; } const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
 }
 function doorsUpdate(dt) {
@@ -2020,7 +2020,7 @@ function napKit(g, cx, cz, room) {
   for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? null : '#A39CB2'; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   if (!GFX.low && !MOBILE && sp > 1.45) for (let i = 0; i < n - 1; i++) { const pl = new THREE.PointLight('#FFB46A', 1.1, 1.5, 2); pl.position.set(cx + (i + 0.5 - (n - 1) / 2) * sp, 0.55, bz + 0.45); g.add(pl); } // a small pool of lamp light at each bedside, nothing on the sleepers' faces // the warm, dimmed glow of the lamps and the moon
-  for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null });
+  for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null, duvetC: ['#8C7FB0', '#B48AA8', '#7F8CB4'][i % 3] }); // each bed its own duvet shade, as in the painting
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
 }
 const TRAIN_DIMS = {"k_board":[0.9538,0.998,0.4711],"k_chair":[0.6579,0.998,0.6337],"k_table":[0.998,0.6348,0.6582],"k_shelf":[0.6621,0.998,0.3457],"k_sink":[0.6348,0.998,0.5723]};
@@ -2565,8 +2565,8 @@ function routerMesh() {
 const ROOM_JOB = new Map(), FIX_JOB = new Map();
 function maintJobs() {
   const out = [];
-  for (const o of R.litter) out.push({ kind: 'litter', obj: o, pr: o.heavy ? 0 : 5 });
-  for (const o of R.rats) out.push({ kind: 'rat', obj: o, pr: 1 });
+  for (const o of R.litter) out.push({ kind: 'litter', obj: o, pr: o.prio ? -1 : o.heavy ? 0 : 5 }); // prio: the player tapped it
+  for (const o of R.rats) out.push({ kind: 'rat', obj: o, pr: o.prio ? -1 : 1 });
   for (const room of Object.values(R.rooms)) if ((room.def.dirt || 0) >= 0.35) { let j = ROOM_JOB.get(room); if (!j) { j = { mesh: { position: doorPt(room.def, -1.0) } }; ROOM_JOB.set(room, j); } out.push({ kind: 'room', room: room.id, obj: j, pr: ROOMS[room.type].loo ? 2 : 4 }); }
   for (const d of S.decor || []) { if (d.broken) { let j = FIX_JOB.get(d.id); if (!j) { j = { mesh: { position: { x: d.x, z: d.z } } }; FIX_JOB.set(d.id, j); } j.mesh.position = { x: d.x, z: d.z }; out.push({ kind: 'fix', dec: d, obj: j, pr: 3 }); }
     if (d.k === 'plant' && (d.dry || 0) >= 0.5) { let j = FIX_JOB.get('w' + d.id); if (!j) { j = { mesh: { position: { x: d.x, z: d.z } } }; FIX_JOB.set('w' + d.id, j); } out.push({ kind: 'chore', what: 'water', dec: d, obj: j, pr: 6 }); } }
@@ -3810,12 +3810,19 @@ function spawnRat() {
   tip('rat'); if (!S.ratSeen) { S.ratSeen = true; chat(t('from.hq'), t('pest.chat'), '🐀'); }
 }
 const messIcons = new Map();
+function prioMess(o) { // tapped a mess icon: the nearest free cleaner drops what they were walking to and deals with it first
+  o.prio = true; const p = o.mesh.position; floatAt({ x: p.x, y: 1.4, z: p.z }, '❗');
+  const crew = R.staff.filter((rs) => rs.data.role === 'maint' && !rs.away && rs.at !== 'break');
+  if (!crew.length) { tip('litter', null, true); return; }
+  const idle = crew.filter((rs) => !rs.task || rs.task.kind === 'chore').sort((a, b) => Math.hypot(a.av.position.x - p.x, a.av.position.z - p.z) - Math.hypot(b.av.position.x - p.x, b.av.position.z - p.z));
+  if (idle.length) { const rs = idle[0]; if (rs.task) { rs.task = null; holdBroom(rs.av, false); } maintGo(rs, { kind: R.rats.includes(o) ? 'rat' : 'litter', obj: o, pr: -1 }); }
+}
 function updateMessIcons() { // 🤢 over a puddle, 🗑️ over litter, 🐀 over a rat: the player sees where the centre is dirty
   const live = new Set([...R.litter, ...R.rats]), now = performance.now();
   for (const [o, sp] of messIcons) if (!live.has(o)) { scene.remove(sp); messIcons.delete(o); }
   for (const o of live) {
-    let sp = messIcons.get(o); if (!sp) { sp = new THREE.Sprite(iconTex(R.rats.includes(o) ? '🐀' : o.heavy ? '🤢' : '🗑️')); sp.scale.set(0.38, 0.38, 1); sp.renderOrder = 9; scene.add(sp); messIcons.set(o, sp); }
-    const p = o.mesh.position; sp.position.set(p.x, 1.05 + Math.sin(now / 300 + p.x) * 0.06, p.z);
+    let sp = messIcons.get(o); if (!sp) { sp = new THREE.Sprite(iconTex(R.rats.includes(o) ? '🐀' : o.heavy ? '🤢' : '🧹')); sp.scale.set(0.38, 0.38, 1); sp.renderOrder = 9; sp.userData.mess = o; scene.add(sp); messIcons.set(o, sp); }
+    const p = o.mesh.position; sp.position.set(p.x, 1.05 + Math.sin(now / 300 + p.x) * 0.06, p.z); if (o.prio) { const k = 0.46 + Math.sin(now / 160) * 0.05; sp.scale.set(k, k, 1); }
   }
 }
 function pestUpdate(dt) { updateMessIcons();
@@ -4340,7 +4347,7 @@ const visById = (id) => R.visitors.find((v) => v.id === id && ['toWait', 'wait',
 const ACTS = {
   inc: { live: (a) => { const x = incOf(a.room); return !!x && x.techT == null; },
     opts: (a) => { const x = incOf(a.room), c = x ? expressCost(x) : 0; return [
-      { id: 'exp', main: true, label: '🧰 ' + t('inc.express', { m: money(c) }), ok: S.cash >= c, reply: t('inc.techComing'), run: () => incExpress(a.room) },
+      { id: 'exp', main: true, label: '🧰 ' + t('inc.express', { m: money(c) }), ok: S.cash >= c, reply: t('inc.fixedX', { room: rn((S.rooms.find((q) => q.id === a.room) || {}).type) }), run: () => incExpress(a.room) },
       { id: 'wait', label: '⏳ ' + t('inc.wait'), reply: t('inc.waitR'), run: () => {} }]; } },
   gen: { live: () => S.gen && (S.genBroken || genFuel() < GEN_TANK || !S.genBig),
     opts: () => [
@@ -4443,6 +4450,7 @@ canvas.addEventListener('pointerup', (e) => {
   ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, cam);
   if (mgrPick) { mgrPickAt(e); return; }
   if (R.mgr && R.mgr.av.visible && ray.intersectObject(R.mgr.av, true).length) { openMgr(); return; }
+  { const mh = ray.intersectObjects([...messIcons.values()], false); if (mh.length && mh[0].object.userData.mess) { prioMess(mh[0].object.userData.mess); return; } } // tap a 🧹 / 🤢 / 🐀 to send the cleaner there first
   { const pv = pickVisitor(e); if (pv) { selectVisitor(pv); return; } }
   // decor (vending machine, radiators, AC, plants, sofas…): the modelled versions replace the primitive children after the tap
   // ids were set, so climb to the decor group instead of trusting the mesh — otherwise placed items could never be moved
@@ -5148,11 +5156,11 @@ function incTick(dt) {
     if (!INC_MESH.has(x.room)) incVisual(x);
     if (INC[x.k].closes) room.closed = true;
     { const mm = INC_MESH.get(x.room); if (mm && mm.userData.drip) mm.userData.drip.position.y = 2.4 - ((performance.now() / 600) % 1) * 2.2; }
-    if (x.techT != null) { x.techT -= dt; if (x.techT <= 0) { incEnd(x, true); continue; } }
+    if (x.techT != null) { incEnd(x, true); continue; } // a repair paid in an older save: done
     if (nowAbs() >= x.end) incEnd(x, false);
   }
 }
-function incExpress(id) { const x = incOf(id); if (!x || x.techT != null) return false; const c = expressCost(x); if (S.cash < c) { toast(t('build.noCash')); return false; } S.cash -= c; x.techT = 20; toast('🧰 ' + t('inc.techComing')); save(); return true; }
+function incExpress(id) { const x = incOf(id); if (!x) return false; if (x.techT != null) { incEnd(x, true); save(); return true; } /* already paid in an older version: finish it now */ const c = expressCost(x); if (S.cash < c) { toast(t('build.noCash')); return false; } S.cash -= c; incEnd(x, true); { const room = R.rooms[id]; if (room) floatAt({ x: room.cx, y: 1.6, z: room.cz }, '🧰✅'); } toast('🧰 ' + t('inc.fixedX', { room: rn((S.rooms.find((q) => q.id === id) || {}).type) })); save(); return true; } // paid express repair: fixed and reopened right away
 // ---------------- mandatory events ----------------
 const EVENTS = { power: { dur: 25, e: '⚡' }, wifi: { dur: 40, e: '📶' }, leak: { dur: 45, e: '💧' }, noise: { dur: 40, e: '🔨' }, heat: { dur: 50, e: '🥵' } };
 const evSlow = (type) => (S.ev && S.ev.k === 'noise' && (type === 'nap' || type === 'therapy') ? 2 : S.ev && S.ev.k === 'wifi' && type === 'detox' ? 0.67 : 1);
