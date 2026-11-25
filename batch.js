@@ -4,10 +4,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const MATS = {};
-function kindKey(m) { return [m.roughness, m.metalness, m.emissive.getHexString(), m.emissiveIntensity.toFixed(2)].join('|'); }
+function kindKey(m) { return [m.roughness, m.metalness, m.emissive.getHexString(), m.emissiveIntensity.toFixed(2), m.polygonOffset ? m.polygonOffsetFactor + '/' + m.polygonOffsetUnits : '-'].join('|'); } // depth bias is part of the kind: merging must not drop it
 function kindMat(m) {
   const k = kindKey(m);
-  return MATS[k] || (MATS[k] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: m.roughness, metalness: m.metalness, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity }));
+  return MATS[k] || (MATS[k] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: m.roughness, metalness: m.metalness, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, polygonOffset: m.polygonOffset, polygonOffsetFactor: m.polygonOffsetFactor, polygonOffsetUnits: m.polygonOffsetUnits }));
 }
 const canBatch = (o) => o.isMesh && !o.userData.kitW && !o.isSkinnedMesh && !o.isInstancedMesh && o.visible && o.material && !Array.isArray(o.material) && o.material.isMeshStandardMaterial && !o.material.map && !o.material.transparent && !o.material.vertexColors;
 

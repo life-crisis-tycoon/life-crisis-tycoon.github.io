@@ -1304,7 +1304,8 @@ function ringQ(parent, cx, cz, ax, az, bx, bz, r0, r1, h, y, c, bev = 0, o = { r
 function dioCorner(g, RS, q, sx, sz, owA, owB) {
   const px = sx < 0 ? q.x0 : q.x1, pz = sz < 0 ? q.z0 : q.z1, R = DIO_RC, cx = px - sx * R, cz = pz - sz * R, h = RS.h, ow = owA && owB, IN = ow ? 0.135 : 0.09, OUT = ow ? 0 : 0.06;
   const cg = new THREE.Group(); g.add(cg); cg.userData.n = [sx * Math.SQRT1_2, sz * Math.SQRT1_2]; cg.userData.p = [px, pz]; cg.userData.corner = true;
-  if (RKIT) { const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(cx, y, cz); m.scale.set(sx, sy, sz); par.add(m); return m; };
+  if (RKIT) { const kx = cx - (owA ? sx * 0.02 : 0), kz = cz - (owB ? sz * 0.02 : 0); // follows its walls 2 cm proud of the building's outer wall (see wallSegV2)
+    const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(kx, y, kz); m.scale.set(sx, sy, sz); par.add(m); return m; };
     pc('k_c_wall_in', RS.wall, cg, 0.1, h, 0.95); if (!ow) pc('k_c_wall_out', RS.wall, cg, 0.1, h, 0.95); pc('k_c_skirt', KIT_C.trim, cg, 0.1, 1, 0.6);
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; cg.add(rim); pc('k_c_rim', RS.rim || KIT_C.rim, rim, 0, 1, 0.72);
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; cg.add(base); pc('k_c_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
@@ -1327,7 +1328,11 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
   const run = (a, b, hh, y, c, r, o, ex = 0) => wbox(parent, alongX, cx, cz, 1, n, -len / 2 - ex, len / 2 + ex, a, b, hh, y, c, r, o);
   if (S.chunky && RKIT) { // kit wall: paint layer, outer layer (a shade deeper), skirting; crown and plinth keep their shape under the cutaway
     const yaw = Math.atan2(n[0], n[1]), paint = parent.userData.wall || S.wall;
-    const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(cx, y, cz); m.rotation.y = yaw; m.scale.set(len, sy, 1); par.add(m); return m; };
+    // against the building's outer wall the kit lining's painted face would sit exactly in the plane of that wall's inner face (both 12 cm in from
+    // the line): the two then z-fight and the room colour blinks to the wall's cream. A depth bias hid it on some GPUs only (not on iPhone), so the
+    // whole kit wall stands 2 cm proud of the outer wall instead: no shared plane left, whatever the GPU.
+    const pr = ow ? 0.02 : 0, px = cx - n[0] * pr, pz = cz - n[1] * pr;
+    const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(px, y, pz); m.rotation.y = yaw; m.scale.set(len, sy, 1); par.add(m); return m; };
     pc('k_wall_in', paint, parent, 0.1, h, 0.95); if (!ow) pc('k_wall_out', paint, parent, 0.1, h, 0.95); pc('k_skirt', KIT_C.trim, parent, 0.1, 1, 0.6);
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; parent.add(rim); pc('k_rim', S.rim || KIT_C.rim, rim, 0, 1, 0.72); parent.userData.rim = rim;
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; parent.add(base); pc('k_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
