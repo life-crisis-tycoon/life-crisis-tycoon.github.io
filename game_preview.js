@@ -1706,7 +1706,7 @@ Object.assign(DECO, {
     put(rbox(0.55, 0.3, 0.32, '#E8D2A6', 0.04, { r: 0.95 }), 0.15, 0.42, 0.02, p); ['#E9785F', '#5AB8F0', '#F2C14E', '#7ACB4E'].forEach((c, i) => put(sph(0.08, c, { r: 0.4 }), 0.15 + (i - 1.5) * 0.12, 0.6, 0.02 + (i % 2) * 0.05, p)); },
   '@planterLav': (p, it) => { const y = it.y || 0.95; put(rbox(0.9, 0.2, 0.26, '#B97E45', 0.03, { r: 0.8 }), 0, y, 0, p); for (let i = 0; i < 11; i++) { const x = -0.38 + i * 0.076; put(cyl(0.008, 0.008, 0.26, '#6E8F45'), x, y + 0.2, (i % 2) * 0.06 - 0.03, p); put(rbox(0.035, 0.12, 0.035, i % 3 ? '#9C7BD6' : '#B39AE0', 0.012, { r: 0.9 }), x, y + 0.36, (i % 2) * 0.06 - 0.03, p); } },
 });
-Object.assign(DECO_DIMS, { '@notes': [1.3, 1, 0.06], '@stool': [0.42, 1, 0.42], '@lowtable': [0.85, 1, 0.85], '@bookshelf': [0.9, 1, 0.34], '@yline': [0.12, 1, 3] });
+Object.assign(DECO_DIMS, { '@notes': [1.3, 1, 0.06], '@stool': [0.42, 1, 0.42], '@lowtable': [0.85, 1, 0.85], '@bookshelf': [1.0, 1, 0.36], '@yline': [0.12, 1, 3] });
 Object.assign(DECO, {
   '@notes': (p, it) => { const H = it.h, W = H * 1.3, y = it.y || 1.5; put(rbox(W, H, 0.04, '#8A5A34', 0.02, { r: 0.7 }), 0, y, 0, p); put(rbox(W - 0.08, H - 0.08, 0.045, '#C9955F', 0.01, { r: 0.95 }), 0, y, 0.004, p); // idea board: many sticky notes, one circled in red
     let sd = 21; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647), cols = ['#F7D154', '#F2A0B8', '#9ED6B0', '#8CC8EE', '#F5B66A', '#FFFFFF'];
@@ -1716,13 +1716,13 @@ Object.assign(DECO, {
     for (const a of [0.785, 2.356, 3.927, 5.498]) { const l = put(cyl(0.016, 0.016, sh, '#2E2F33', { m: 0.5, r: 0.4 }), Math.cos(a) * 0.15, sh / 2, Math.sin(a) * 0.15, p); l.rotation.set(Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12); }
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.01, 6, 24), mat('#2E2F33', { m: 0.5, r: 0.4 })); ring.rotation.x = Math.PI / 2; ring.position.y = sh * 0.38; p.add(ring); },
   '@lowtable': (p, it) => { const r = (it.len || 0.85) / 2; put(cyl(r, r, 0.07, '#B97E45', { r: 0.7 }), 0, 0.42, 0, p); for (const a of [0.785, 2.356, 3.927, 5.498]) put(cyl(0.04, 0.035, 0.36, '#A86F3C', { r: 0.7 }), Math.cos(a) * r * 0.62, 0.21, Math.sin(a) * r * 0.62, p); },
-  '@bookshelf': (p, it) => { const H = it.h || 1.0, W = 0.9, Dp = 0.32, wood = '#B97E45'; // low open bookshelf with books, a basket and a fern-like plant on top
+  '@bookshelf': (p, it) => { const H = it.h || 1.0, W = it.w || 1.0, Dp = 0.34, wood = '#B97E45'; // low open bookshelf with books, a basket and a fern-like plant on top
     for (const [w2, h2, d2, x, y, z] of [[W, 0.04, Dp, 0, H, 0], [W, 0.04, Dp, 0, 0.06, 0], [0.04, H, Dp, -W / 2 + 0.02, H / 2, 0], [0.04, H, Dp, W / 2 - 0.02, H / 2, 0], [W, H, 0.02, 0, H / 2, -Dp / 2 + 0.01], [W - 0.06, 0.03, Dp - 0.03, 0, H * 0.36, 0], [W - 0.06, 0.03, Dp - 0.03, 0, H * 0.68, 0]]) put(rbox(w2, h2, d2, wood, 0.01, { r: 0.7 }), x, y + 0.1, z, p);
     let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647), bc = ['#3E6E8E', '#C8553D', '#7A9A5A', '#E3B341', '#8E5A9E', '#D98B6C', '#4A7A6A'];
     for (const sy of [0.08, H * 0.38]) { let x = -W / 2 + 0.06; while (x < W / 2 - 0.12) { const bw = 0.035 + rr() * 0.03, bh = H * 0.24 + rr() * 0.05; put(rbox(bw, bh, 0.2, bc[Math.floor(rr() * bc.length)], 0.006, { r: 0.8 }), x + bw / 2, sy + bh / 2 + 0.1, 0.02, p); x += bw + 0.006; if (sy > 0.1 && x > 0.05) break; } }
     put(rbox(0.28, 0.16, 0.22, '#C9A56B', 0.03, { r: 0.95 }), W / 2 - 0.2, H * 0.38 + 0.2, 0.02, p);
     for (let i = 0; i < 3; i++) put(rbox(0.22, 0.04, 0.17, bc[i + 2], 0.006, { r: 0.8 }), -0.15, H * 0.7 + 0.14 + i * 0.045, 0.02, p);
-    plant(0.2, 0, 0.55, '#C9A56B', p, { v: 'nap_plant', h: 0.42 }).position.y = H + 0.12; },
+    put(cyl(0.09, 0.07, 0.12, '#C9A56B', { r: 0.9 }), 0.25, H + 0.18, 0, p); [[0.25, 0.32, 0], [0.19, 0.27, 0.04], [0.31, 0.28, -0.03]].forEach(([x, y, z]) => put(sph(0.07, '#5E8A3C', { r: 0.8 }), x, H + y, z, p)); }, // a small fern pot on top (part of the shelf, so it folds away with it)
 });
 const SHOP_DIMS = {"k_shelf":[0.9139,1,0.3307],"k_counter":[0.998,0.7832,0.834],"k_display":[0.9004,0.998,0.8887],"k_bag":[0.6582,0.998,0.5176],"k_reader":[0.7832,0.8379,0.998],"k_candles":[0.998,0.3691,0.3145],"k_milk":[0.998,0.666,0.7793],"k_masks":[0.998,0.416,0.2598]};
 const DETOX_DIMS = {"k_lockers":[0.998,0.9082,0.5371],"k_beanbag":[0.998,0.666,0.998],"k_rug":[0.998,0.041,0.998],"k_cushion":[0.998,0.2793,0.9512],"k_book":[0.998,0.1973,0.7598]};
@@ -1750,7 +1750,7 @@ function shopKit(g, cx, cz, room) {
 function detoxKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, sz = room.sz || 'm', S = w < 5, L = [], tx = S ? 0.1 : -0.2, tz = S ? 0.2 : 0.2;
   L.push({ p: 'k_lockers', len: S ? 1.3 : 1.7, wall: 'back', u: S ? -0.35 : 0.1 });
-  if (!S) L.push({ p: '@bookshelf', h: 1.0, wall: 'back', u: 'R' }, { p: '@plant', s: 1.7, wall: 'back', u: 'L' });
+  if (!S) L.push({ p: '@bookshelf', h: 1.15, wall: 'back', u: 'R' }, { p: '@plant', s: 1.7, wall: 'back', u: 'L' });
   L.push({ p: 'k_rug', len: S ? 2.2 : 2.8, x: tx, z: tz, rot: 0, solid: false }, { p: '@lowtable', h: 1, len: 0.8, x: tx, z: tz, rot: 0 }, { p: 'k_book', len: 0.34, x: tx + 0.03, z: tz, rot: 0.3, solid: false, y: 0.36 });
   const b1 = [tx - 1.0, tz - 0.25], b2 = [tx + 1.0, tz + 0.2];
   L.push({ p: 'k_beanbag', len: 0.85, x: b1[0], z: b1[1], rot: 0.9 }, { p: 'k_beanbag', len: 0.85, x: b2[0], z: b2[1], rot: -2.0 });
