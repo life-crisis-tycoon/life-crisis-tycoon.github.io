@@ -1457,8 +1457,9 @@ function buildRoom(r) {
   room.wallG = wallG; roomObs(room);
   // two rooms side by side build their kit walls, corners and crowns in the very same planes: the GPU then flickers between the two
   // colours. Each room gets its own small depth priority (and the kit wins over the plot walls it is pushed against).
-  { const off = roomPO(r); g.traverse((o) => { if (o.isMesh && o.userData.kitW && o.material && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
-      o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off })); } }); }
+  { const off = roomPO(r), po = (o) => { if (o.isMesh && o.material && !Array.isArray(o.material) && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
+      o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off })); } };
+    g.traverse((o) => { if (o.userData.kitW) po(o); }); for (const w of wallG) w.traverse(po); } // every piece of the walls, not only the kit parts: the painted inner layers and caps met the centre's walls in the same plane too
   if (GFX.batch) { for (const w of wallG) { const keep = w.children.filter((c) => c.userData.keepY || c.userData.kitW); batchNode(w, new Set(keep), { userData: { roomId: r.id } }); for (const k of keep) batchNode(k, new Set(), { userData: { roomId: r.id } }); } batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
   { const ca = Math.cos(r.a), sa = Math.sin(r.a), hs = []; g.traverse((o) => { if (o.userData.whang) hs.push({ o, n: o.userData.whang }); else if (o.userData.hang) { const [lx, lz] = o.userData.hang; hs.push({ o, n: [Math.round(lx * ca + lz * sa), Math.round(-lx * sa + lz * ca)] }); } });
     world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
@@ -1537,7 +1538,7 @@ function lieUpdate() {
 function doorsUpdate(dt) {
   ambience(dt); lieUpdate();
   const ds = world.doors; if (!ds || !ds.length) return;
-  const movers = []; for (const v of R.visitors) movers.push(v.av.position); for (const rs of R.staff) movers.push(rs.av.position); if (R.mgr && R.mgr.av) movers.push(R.mgr.av.position);
+  const movers = []; for (const v of R.visitors) movers.push(v.av.position); for (const rs of R.staff) movers.push(rs.av.position); if (R.mgr && R.mgr.av && R.mgr.av.visible) movers.push(R.mgr.av.position);
   for (const d of ds) {
     if (!d.g.parent) continue;
     let want = 0; for (const p of movers) if (Math.abs(p.x - d.x) < 1.25 && Math.abs(p.z - d.z) < 1.25) { want = 1; break; }
@@ -3003,12 +3004,26 @@ function lineTick(v, dt) {
   lineDrop(v); sp.busy = v;
   if (v.lineKind === 'cafe') { v.lspot = sp; setPath(v, findPath(v.av.position, sp)); v.state = 'toCafe'; } else { v.sspot = sp; setPath(v, findPath(v.av.position, sp)); v.state = 'toShop'; }
 }
+// Clients who already know which room they need wait right outside its door (standing, to either side of the doorway, so the way in stays clear),
+// so the player sees who is waiting for what; the lobby seats are for the others and for when that spot by the door is full.
+function nearRoomSpot(v) {
+  const room = v.target != null && R.rooms[v.target]; if (!room || room.closed) return null;
+  if (!room.waitPts) { const r = room.def, d0 = doorPt(r, 0), c = { x: room.cx, z: room.cz }, L = Math.hypot(d0.x - c.x, d0.z - c.z) || 1, nx = (d0.x - c.x) / L, nz = (d0.z - c.z) / L, tx = -nz, tz = nx;
+    room.waitPts = []; for (const [d, lat] of [[1.05, 0.85], [1.05, -0.85], [1.05, 1.6], [1.05, -1.6], [1.8, 0.85], [1.8, -0.85]]) { const x = d0.x + nx * d + tx * lat, z = d0.z + nz * d + tz * lat; room.waitPts.push({ x, z, rot: Math.atan2(d0.x - x, d0.z - z), sit: false, y: 0, busy: null, near: room.id }); } }
+  const okPt = (p) => { if (!inFloor(p.x, p.z)) return false; const [i, j] = ci(p.x, p.z); if (!free(gridBlk, i, j)) return false;
+    return !S.rooms.some((o) => { const q = roomRect(o); return p.x > q.x0 - 0.3 && p.x < q.x1 + 0.3 && p.z > q.z0 - 0.3 && p.z < q.z1 + 0.3; }) && !desks().some((D) => Math.hypot(p.x - D.x, p.z - D.z) < 1.5); };
+  for (const p of room.waitPts) { if (p.busy && !R.visitors.includes(p.busy)) p.busy = null; if (!p.busy && okPt(p)) return p; }
+  return null;
+}
+const waitSpotFor = (v) => nearRoomSpot(v) || WAIT_SPOTS.find((s) => !s.busy && !s.blocked);
 function seatVisitor(v) {
-  const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || OVERFLOW.find((s) => !s.busy || !R.visitors.includes(s.busy)); v.prog = 0;
+  const spot = waitSpotFor(v) || OVERFLOW.find((s) => !s.busy || !R.visitors.includes(s.busy)); v.prog = 0;
   if (!spot) { floatAt(v.av.position, '🚪 ' + t('cmp.crowd')); v.crowdOut = true; leave(v, false); return; }
   spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot));
   v.state = 'toWait';
 }
+// a wait told in the game's own time (a day lasts DAY_LEN seconds), not in real minutes
+function gameDur(sec) { const h = sec / DAY_LEN * 24; if (h < 1.5) return t('dur.h1'); if (h < 23.5) return t('dur.h', { n: Math.round(h) }); const d = Math.round(h / 24); return d <= 1 ? t('dur.d1') : t('dur.d', { n: d }); }
 const needOf = (v) => (isMystK(v.prob) ? null : PROBLEMS[v.prob].room);
 function roomQ(id) { return R.visitors.filter((v) => v.target === id && (v.state === 'wait' || v.state === 'toWait')); }
 function pickRoomFor(v) { const need = needOf(v); if (!need) return null; const rs = Object.values(R.rooms).filter((r) => r.type === need); if (!rs.length) return null; rs.sort((a, b) => (roomQ(a.id).length - a.spots.length) - (roomQ(b.id).length - b.spots.length)); return rs[0].id; }
@@ -3554,7 +3569,7 @@ function visitorUpdate(v, dt) {
       v.prog += dt / 3;
       if (v.prog >= 1) { const spend = Math.round((7 + RNG() * 6) * (S.price || 1) * (done('oat') ? 1.2 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.25); incCnt('matcha'); { const cr = roomOfSpot(v.lspot); if (cr) { roomEarn(cr.id, spend); addDirt(cr, 0.03); } } if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 1, null, 0.5);
         AU.sfx('cash'); floatAt(v.av.position, '🍵 +' + money(spend)); holdCup(v.av, false); v.lspot.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
-        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'toLine': if (stepWalker(v, dt, walkSpeed)) { const lp = v.linePt; if (lp) { v.av.rotation.y = lp.rot; } posePhone(v.av.userData.p); v.state = 'line'; } // fall through to 'line' next frame
@@ -3567,7 +3582,7 @@ function visitorUpdate(v, dt) {
         if (A.k === 'vending') { const spend = Math.round((4 + RNG() * 5) * (S.price || 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.15); incCnt('snack'); if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 2, null, 0.55); AU.sfx('cash'); floatAt(v.av.position, '🥤 +' + money(spend)); }
         else { v.pat = Math.min(1, v.pat + 0.4); vb('decor', 0 + 0.3); floatAt(v.av.position, '💆'); }
         A.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
-        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'loo': {
@@ -3576,7 +3591,7 @@ function visitorUpdate(v, dt) {
         const lroom = roomOfSpot(v.lspot); v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️'); AU.sfx('flush', hearVol(v.av.position));
         const ws = lroom && lroom.wash && lroom.wash.filter((w) => !w.busy).sort((a, b) => Math.hypot(a.x - v.av.position.x, a.z - v.av.position.z) - Math.hypot(b.x - v.av.position.x, b.z - v.av.position.z))[0];
         if (ws) { ws.busy = v; v.wspot = ws; v.wroom = lroom; setPath(v, findPath(v.av.position, ws)); v.state = 'toWash'; break; } // hands are washed before leaving
-        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'toWash': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.wspot); v.state = 'washing'; v.prog = 0; if (v.wspot.water) v.wspot.water.visible = true; } break;
@@ -3585,12 +3600,12 @@ function visitorUpdate(v, dt) {
       if (v.prog >= 1) { const ws = v.wspot, rm = v.wroom; if (ws) { if (ws.water) ws.water.visible = false; ws.busy = null; } v.wspot = null; v.wroom = null; v.prog = 0; floatAt(v.av.position, '🧼');
         const bn = rm && rm.bins && rm.bins.reduce((a, b) => (!a || Math.hypot(b.x - v.av.position.x, b.z - v.av.position.z) < Math.hypot(a.x - v.av.position.x, a.z - v.av.position.z) ? b : a), null);
         if (bn) tossPaper(v.av.position, bn); // the paper towel goes in the bin
-        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'wait': {
       v.need = (v.need || 0) + dt / 95;
-      if (v.pat < 0.45 && !v.asked && S.mode === 'career' && S.tut < 0 && S.day * DAY_LEN + S.t - (S.askWaitT ?? -99) > 45) { v.asked = true; S.askWaitT = S.day * DAY_LEN + S.t; chat(t('from.review') + ' · ' + v.name + ', ' + v.age, t('ct.w.msg', { m: Math.max(1, Math.round((v.waitT || 0) / 60)) }), '⏳', { act: { k: 'wait', id: v.id } }); }
+      if (v.pat < 0.45 && !v.asked && S.mode === 'career' && S.tut < 0 && S.day * DAY_LEN + S.t - (S.askWaitT ?? -99) > 45) { v.asked = true; S.askWaitT = S.day * DAY_LEN + S.t; chat(t('from.review') + ' · ' + v.name + ', ' + v.age, t('ct.w.msg', { d: gameDur(v.waitT || 0) }), '⏳', { act: { k: 'wait', id: v.id } }); }
       if (v.pat < 0.25 && RNG() < dt * 0.006) {
         if (RNG() < 0.55) { dropPuddle(v.av.position.x + 0.35, v.av.position.z + 0.2, '#9BCB4E'); floatAt(v.av.position, '🤢', true); vb('dirt', 0 - 0.6); for (const o of R.visitors) if (o !== v && Math.hypot(o.av.position.x - v.av.position.x, o.av.position.z - v.av.position.z) < 2) o.pat -= 0.05; tip('vomit'); }
         else { v.need = 1.5; v.urgent = true; floatAt(v.av.position, '💩', true); }
@@ -3999,7 +4014,7 @@ function updateLabels() {
   if (S.desk.segs && !deskHost(1) && deskHost(0)) { const d1 = desks()[1], el = label('desk1', 'warn', t('desk.need')); at(el, d1.x, 2.2, d1.z); seen.add('desk1'); }
   if (!deskHost(0)) { if (R.deskQ.length) say('desk', t('desk.need'), 50); const el = label('desk', 'warn', t('desk.need')); at(el, S.desk.x, 2.2, S.desk.z); seen.add('desk'); }
   if (unlocked('maint') && R.litter.length >= 5 && !R.staff.some((rs) => rs.data.role === 'maint')) { say('litter', t('pest.needMaint'), 80); const el = label('litter', 'warn', t('pest.needMaint')); at(el, 3, 1.2, 1.5); seen.add('litter'); }
-  if (R.mgr) { const el = label('mgr', 'boss', '⭐ ' + MGR.name, openMgr); at(el, R.mgr.av.position.x, 2.5 * (MGR.tall || 1), R.mgr.av.position.z); seen.add('mgr'); }
+  // (the manager has no label on the floor any more: her portrait bubble opens her menu)
   if (R.deskQ.length >= 3 && deskHost(0)) { const el = label('deskq', R.deskQ.length >= 6 ? 'warn tap' : 'tap', '🛎️ 👥' + R.deskQ.length, openDesk); el.style.background = R.deskQ.length >= 6 ? '' : '#16963C'; at(el, S.desk.x, 2.4, S.desk.z); seen.add('deskq'); }
   if (R.rats.length) say('rat', t('pest.rat'), 70);
   R.rats.forEach((r, i) => { const el = label('rat' + i, 'warn', '🐀 ' + t('pest.rat')); at(el, r.mesh.position.x, 0.9, r.mesh.position.z); seen.add('rat' + i); });
@@ -4064,7 +4079,7 @@ function evictRoom(id) {
   for (const v of R.visitors) if ((v.room === id && (v.state === 'toRoom' || v.state === 'treat')) || ((v.state === 'toLoo' || v.state === 'loo' || v.state === 'toCafe' || v.state === 'cafe') && R.rooms[id] && R.rooms[id].spots.includes(v.lspot)) || ((v.state === 'toWash' || v.state === 'washing') && R.rooms[id] && (R.rooms[id].wash || []).includes(v.wspot))) {
     if (v.lspot) { v.lspot.busy = null; v.lspot = null; } if (v.wspot) { if (v.wspot.water) v.wspot.water.visible = false; v.wspot.busy = null; v.wspot = null; }
     v.room = null; v.rspot = null; v.prog = 0;
-    const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+    const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
     spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait';
   }
   const room = R.rooms[id]; if (room) for (const s of room.staff) if (s) s.at = null;
@@ -4409,7 +4424,7 @@ canvas.addEventListener('pointerup', (e) => {
   if (pm) { if (placingD) decorDrag(e); else if (placingR) placeDrag(e); else moveDrag(e); return; }
   ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, cam);
   if (mgrPick) { mgrPickAt(e); return; }
-  if (R.mgr && ray.intersectObject(R.mgr.av, true).length) { openMgr(); return; }
+  if (R.mgr && R.mgr.av.visible && ray.intersectObject(R.mgr.av, true).length) { openMgr(); return; }
   { const pv = pickVisitor(e); if (pv) { selectVisitor(pv); return; } }
   // decor (vending machine, radiators, AC, plants, sofas…): the modelled versions replace the primitive children after the tap
   // ids were set, so climb to the decor group instead of trusting the mesh — otherwise placed items could never be moved
@@ -4739,6 +4754,9 @@ function spawnManager() {
 }
 function mgrUpdate(dt) {
   const M = R.mgr; if (!M) return; const p = M.av.userData.p;
+  // The manager no longer walks the floor: she lives in the portrait bubble on the side. Her orders still work, at once: she is simply
+  // put where the job is (unseen), so her boosts, calming a visitor or rushing the desk apply straight away.
+  M.av.visible = false; if (M.path.length) { const e = M.path[M.path.length - 1]; M.av.position.set(e.x, 0.1, e.z); M.path = []; poseStand(p); mgrArrive(); }
   if (S.mgrCd > 0) S.mgrCd -= dt; if (S.mgrHelp) { S.mgrHelp.t -= dt; if (S.mgrHelp.t <= 0) { S.mgrHelp = null; mgrHome(); } }
   auraRing.visible = false; if (M.autoCd > 0) M.autoCd -= dt;
   if (M.cheer > 0 && p.anim) { if (p.anim.state !== 'cheer') p.anim.set('cheer'); M.cheer -= dt; if (M.cheer <= 0) poseStand(p); return; }
@@ -4757,6 +4775,7 @@ function mgrThink() {
     if (rq && rq[1] >= 3) { mgrGo({ kind: 'room', id: rq[0].id }, true); return; }
     if (allQ() >= 5 && R.staff.some((x) => x.at === 'desk')) { mgrGo({ kind: 'desk' }, true); return; }
   }
+  M.idleT = 3; return; // (no patrol any more: she is not on the floor)
   // patrol: visit a staffed room (or the lobby), have a look, move on
   const rooms = Object.values(R.rooms).filter((r) => r.id !== M.lastRoom);
   if (rooms.length && RNG() < 0.8) { const r = rnd(rooms); M.lastRoom = r.id; const d = doorPt(r.def, 0.9); M.task = { kind: 'patrol', id: r.id }; M.look = Math.atan2(r.cx - d.x, r.cz - d.z); setPath(M, findPath(M.av.position, d)); }
@@ -5649,7 +5668,7 @@ const auraRing = new THREE.Mesh(new THREE.RingGeometry(AURA_R - 0.1, AURA_R, 56)
 auraRing.rotation.x = -Math.PI / 2; auraRing.visible = false; auraRing.renderOrder = 2; scene.add(auraRing);
 { const f = new THREE.Mesh(new THREE.CircleGeometry(AURA_R, 56), new THREE.MeshBasicMaterial({ color: '#FFD25E', transparent: true, opacity: 0.1, depthWrite: false })); auraRing.add(f); }
 function mgrSpot() { return S.mgrSpot || (S.mgrSpot = { x: 3.6, z: 1.3 }); }
-function inAura(p) { if (!R.mgr || R.mgr.path.length) return false; const s = R.mgr.av.position; return Math.hypot(p.x - s.x, p.z - s.z) < 2.6; } // around the boss, wherever they stand
+function inAura(p) { if (!R.mgr || R.mgr.path.length || !R.mgr.av.visible) return false; const s = R.mgr.av.position; return Math.hypot(p.x - s.x, p.z - s.z) < 2.6; } // around the boss, wherever they stand
 const mgrRoomF = (id) => (S.mgrHelp && S.mgrHelp.kind === 'room' && S.mgrHelp.id === id ? S.mgrHelp.f || 1.6 : 1);
 const mgrDeskF = () => (S.mgrHelp && S.mgrHelp.kind === 'desk' ? S.mgrHelp.f || 2 : 1);
 function mgrHome() { const M = R.mgr; if (!M) return; M.task = null; M.idleT = 1.5; }
