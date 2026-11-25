@@ -1733,42 +1733,41 @@ const SHOP_DIMS = {"k_shelf":[0.9139,1,0.3307],"k_counter":[0.998,0.7832,0.834],
 const DETOX_DIMS = {"k_lockers":[0.998,0.9082,0.5371],"k_beanbag":[0.998,0.666,0.998],"k_rug":[0.998,0.041,0.998],"k_cushion":[0.998,0.2793,0.9512],"k_book":[0.998,0.1973,0.7598]};
 const GARAGE_DIMS = {"k_workbench":[0.998,0.7871,0.6621],"k_table":[0.998,0.6777,0.502],"k_pegboard":[0.998,0.6504,0.1465],"k_rack":[0.502,0.998,0.209],"k_boxes":[0.998,0.8145,0.6035],"k_bench":[0.998,0.5527,0.5176],"k_bike":[0.998,0.623,0.3223]};
 // Boutique (from its painting, simplified): the counter stands out from the left wall with room behind it for the host, who serves the buyer standing at its front; product shelves on the back walls, a display table with a candle pyramid
-function shopKit(g, cx, cz, room) {
-  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, sz = room.sz || 'm', S = w < 5, H = Math.PI / 2, L = [];
+function shopKit(g, cx, cz, room) { // laid out in the door frame (door on the front wall), so the doorway is always clear wherever the player put the door
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = Math.min(w, D) < 5, H = Math.PI / 2, L = [], Wp = (x, z, rot) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z, rot: rot + F.rho }; };
   const cl = S ? 1.2 : 1.45, cd = SHOP_DIMS.k_counter[2] / SHOP_DIMS.k_counter[0] * cl, ch = SHOP_DIMS.k_counter[1] / SHOP_DIMS.k_counter[0] * cl;
-  const hx = -w / 2 + 0.5, ccx = -w / 2 + 0.95 + cd / 2, ccz = S ? -0.35 : -0.55; // host lane 0.8 m behind the counter
+  const hx = -w / 2 + 0.5, ccx = -w / 2 + 0.95 + cd / 2, ccz = S ? -0.35 : -0.55; // host lane behind the counter
   L.push({ p: 'k_counter', len: cl, x: ccx, z: ccz, rot: H });
   L.push({ p: 'k_reader', h: 0.14, x: ccx, z: ccz + cl * 0.22, rot: H, solid: false, y: ch - 0.03 }, { p: 'k_bag', h: 0.3, x: ccx + 0.05, z: ccz - cl * 0.25, rot: H + 0.4, solid: false, y: ch - 0.03 });
-  L.push({ p: 'k_shelf', len: S ? 1.3 : 1.6, wall: 'back', u: S ? 0.55 : 0.2 });
+  const sl = S ? 1.3 : 1.6, spd = SHOP_DIMS.k_shelf[2] / SHOP_DIMS.k_shelf[0] * sl, su = S ? 0.55 : 0.2;
+  L.push({ p: 'k_shelf', len: sl, wall: 'back', u: su });
   if (!S) L.push({ p: 'k_shelf', len: 1.6, wall: 'right', u: -0.9 });
-  L.push({ p: 'k_display', len: S ? 0.7 : 0.85, x: S ? 0.95 : 1.0, z: S ? 0.85 : 0.75, rot: 0 });
+  const dx = S ? 1.15 : 1.0, dz = S ? 0.05 : 0.6; L.push({ p: 'k_display', len: S ? 0.65 : 0.85, x: dx, z: dz, rot: 0 });
   if (!S) L.push({ p: '@plant', s: 1.5, wall: 'left', u: 'B' });
-  const at = kitRoom(g, cx, cz, room, ROOM_STYLE.shop.model, L, SHOP_DIMS);
-  room.staffSpot = { x: cx + hx, z: cz + ccz, rot: H, sit: false, y: 0 }; // behind the counter, facing the buyer
-  const sp = [{ x: ccx + cd / 2 + 0.38, z: ccz, rot: -H }]; // the buyer at the counter
-  const sh = at.k_shelf; if (sh) sp.push({ x: sh.x - cx, z: sh.z - cz + sh.pd / 2 + 0.45, rot: Math.PI });
-  const dp = at.k_display; if (dp) sp.push({ x: dp.x - cx - 0.75, z: dp.z - cz + 0.15, rot: H });
-  if (!S) sp.push({ x: w / 2 - 0.85, z: -0.9, rot: H });
-  for (const q of sp.slice(0, seatsN(room))) room.spots.push({ x: cx + q.x, z: cz + q.z, rot: q.rot, sit: false, y: 0, busy: null });
+  kitRoom(g, cx, cz, room, ROOM_STYLE.shop.model, L, SHOP_DIMS, F);
+  room.staffSpot = { ...Wp(hx, ccz, H), sit: false, y: 0 }; // behind the counter, facing the buyer
+  const sp = [{ ...Wp(ccx + cd / 2 + 0.38, ccz, -H), till: true }, Wp(su, -D / 2 + spd + 0.5, Math.PI), Wp(dx - (S ? 0.65 : 0.75), dz + 0.1, H)]; // the till first: everyone pays there
+  if (!S) sp.push(Wp(w / 2 - 0.85, -0.9, H));
+  for (const q of sp.slice(0, seatsN(room))) room.spots.push({ ...q, sit: false, y: 0, busy: null });
 }
 // Digital detox (from its painting, sage version): the phone lockers and a low bookshelf on the back wall, a round rug with two beanbags and a floor cushion around a low table with an open book, a plant in the corner, an arched window
 function detoxKit(g, cx, cz, room) {
-  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, sz = room.sz || 'm', S = w < 5, L = [], tx = S ? 0.1 : -0.2, tz = S ? 0.2 : 0.2;
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = Math.min(w, D) < 5, L = [], tx = S ? 0.1 : -0.2, tz = S ? 0.0 : 0.2, Wp = (x, z, rot) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z, rot: rot + F.rho }; };
   L.push({ p: 'k_lockers', len: S ? 1.3 : 1.7, wall: 'back', u: S ? -0.35 : 0.1 });
   if (!S) L.push({ p: '@bookshelf', h: 1.15, wall: 'back', u: 'R' }, { p: '@plant', s: 1.7, wall: 'back', u: 'L' });
   L.push({ p: 'k_rug', len: S ? 2.4 : 3.2, x: tx, z: tz, rot: 0, solid: false }, { p: '@lowtable', h: 1, len: 0.8, x: tx, z: tz, rot: 0 }, { p: 'k_book', len: 0.34, x: tx + 0.03, z: tz, rot: 0.3, solid: false, y: 0.36 });
   const b1 = [tx - 1.25, tz - 0.3], b2 = [tx + 1.25, tz + 0.25]; // far enough from the low table for the sitters' legs
   L.push({ p: 'k_beanbag', len: 0.85, x: b1[0], z: b1[1], rot: 0.9 }, { p: 'k_beanbag', len: 0.85, x: b2[0], z: b2[1], rot: -2.0 });
   if (!S) L.push({ p: 'k_cushion', len: 0.6, x: tx - 0.1, z: tz + 0.95, rot: 0.2, solid: false });
-  kitRoom(g, cx, cz, room, ROOM_STYLE.detox.model, L, DETOX_DIMS);
+  kitRoom(g, cx, cz, room, ROOM_STYLE.detox.model, L, DETOX_DIMS, F);
   const face = (a) => Math.atan2(tx - a[0], tz - a[1]);
   const back = (a, k) => [a[0] - Math.sin(face(a)) * k, a[1] - Math.cos(face(a)) * k]; const s1 = back(b1, 0.12), s2 = back(b2, 0.12); // sit into the back of the beanbag
-  room.spots.push({ x: cx + s1[0], z: cz + s1[1], rot: face(b1), sit: true, y: -0.1, busy: null });
-  room.staffSpot = { x: cx + s2[0], z: cz + s2[1], rot: face(b2), sit: true, y: -0.1 };
+  room.spots.push({ ...Wp(s1[0], s1[1], face(b1)), sit: true, y: -0.1, busy: null });
+  room.staffSpot = { ...Wp(s2[0], s2[1], face(b2)), sit: true, y: -0.1 };
 }
 // Hustle garage (from its painting, without the roll-up door): idea board with one note circled, tool pegboard over the workbench, a trestle table in the middle with a stool each side, boxes and a product rack, a bench and a bicycle on the wall
 function garageKit(g, cx, cz, room) {
-  const w = room.w || 6, D = SIZES[room.sz || 'm'].D, sz = room.sz || 'm', S = w < 5, L = [], tx = S ? 0.2 : -0.3, tz = S ? -0.15 : 0.15;
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = Math.min(w, D) < 5, L = [], tx = S ? 0.2 : -0.3, tz = S ? -0.15 : 0.15, Wp = (x, z, rot) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z, rot: rot + F.rho }; };
   L.push({ p: '@notes', h: S ? 0.8 : 1.0, wall: 'back', u: S ? -0.6 : -1.0, hang: true, y: 1.45, gap: 0.12 });
   L.push({ p: 'k_workbench', len: S ? 1.2 : 1.6, wall: 'back', u: 'R' }, { p: 'k_pegboard', len: S ? 1.0 : 1.3, wall: 'back', u: 'R', hang: true, y: 1.25, gap: 0.12 });
   const tl = S ? 1.5 : 1.9, td = GARAGE_DIMS.k_table[2] / GARAGE_DIMS.k_table[0] * tl;
@@ -1776,9 +1775,9 @@ function garageKit(g, cx, cz, room) {
   L.push({ p: 'k_table', len: tl, x: tx, z: tz, rot: 0 }, { p: '@stool', h: 1, x: st[0][0], z: st[0][1], rot: st[0][2] }, { p: '@stool', h: 1, x: st[1][0], z: st[1][1], rot: st[1][2] });
   if (!S) { L.push({ p: 'k_rack', h: 1.5, wall: 'right', u: -1.35 }, { p: 'k_boxes', len: 1.2, wall: 'right', u: 0.5 }, { p: 'k_bench', len: 1.15, wall: 'left', u: 0.35 }, { p: 'k_bike', len: 1.45, wall: 'left', u: -1.2, hang: true, y: 0.75, gap: 0.08 }, { p: '@plant', s: 1.5, wall: 'left', u: 'F' }); }
   else L.push({ p: 'k_boxes', len: 0.95, wall: 'right', u: 0.6 });
-  kitRoom(g, cx, cz, room, ROOM_STYLE.garage.model, L, GARAGE_DIMS);
-  room.staffSpot = { x: cx + st[0][0], z: cz + st[0][1], rot: st[0][2], sit: true, y: 0.14 };
-  room.spots.push({ x: cx + st[1][0], z: cz + st[1][1], rot: st[1][2], sit: true, y: 0.14, busy: null });
+  kitRoom(g, cx, cz, room, ROOM_STYLE.garage.model, L, GARAGE_DIMS, F);
+  room.staffSpot = { ...Wp(st[0][0], st[0][1], st[0][2]), sit: true, y: 0.14 };
+  room.spots.push({ ...Wp(st[1][0], st[1][1], st[1][2]), sit: true, y: 0.14, busy: null });
 }
 const LAB_DIMS = {"k_bench":[0.998,0.7246,0.3379],"k_chair":[0.7324,0.998,0.7129],"k_shelf":[0.998,0.8223,0.4941],"k_stool":[0.6621,0.998,0.6582],"k_printer":[0.7715,0.998,0.6426],"k_pegboard":[0.998,0.6738,0.2168],"k_island":[0.998,0.791,0.5918],"k_desk":[0.998,0.8887,0.5645]};
 const MOVING_DIMS = {"k_chair":[0.6855,0.998,0.8848],"k_boxes":[0.834,0.998,0.6152],"k_trolley":[0.5762,0.998,0.9277],"k_rug":[0.998,0.041,0.8105],"k_box":[0.998,0.627,0.416],"k_openbox":[0.998,0.8848,0.998],"k_desk":[0.998,0.9473,0.834]};
@@ -3566,8 +3565,12 @@ function visitorUpdate(v, dt) {
     case 'toWait': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.spot); posePhone(p); v.state = 'wait'; } break;
     case 'toShop': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.sspot); poseStand(v.av.userData.p); v.state = 'shopping'; v.prog = 0; } break; // looks at the shelves, not at the phone
     case 'shopping': {
-      v.prog += dt / 2.5;
-      if (v.prog >= 1) { const spend = Math.round((12 + RNG() * 26) * (S.price || 1) * (done('oat') ? 1.15 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; AU.sfx('cash'); floatAt(v.av.position, '🛍️ +' + money(spend)); { const sr = roomOfSpot(v.sspot); if (sr) roomEarn(sr.id, spend); } v.sspot.busy = null; v.sspot = null; if (v.cured) { setPath(v, exitPath(v)); v.state = 'exit'; } else { v.pat = Math.min(1, v.pat + 0.1); seatVisitor(v); } }
+      v.prog += dt / (v.paying ? 1.2 : 2.5);
+      if (v.prog >= 1 && !v.sspot.till) { // picked an item at a shelf or the table: now pay at the counter (wait a moment if someone is being served)
+        const sr = roomOfSpot(v.sspot), till = sr && sr.spots.find((q) => q.till && q.st === v.sspot.st);
+        if (till && !till.busy) { v.sspot.busy = null; till.busy = v; v.sspot = till; v.paying = true; v.prog = 0; setPath(v, findPath(v.av.position, till)); v.state = 'toShop'; break; }
+        if (till && (v.tillWait = (v.tillWait || 0) + dt) < 8) { v.prog = 1; break; } }
+      if (v.prog >= 1) { v.paying = false; v.tillWait = 0; const spend = Math.round((12 + RNG() * 26) * (S.price || 1) * (done('oat') ? 1.15 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; AU.sfx('cash'); floatAt(v.av.position, '🛍️ +' + money(spend)); { const sr = roomOfSpot(v.sspot); if (sr) roomEarn(sr.id, spend); } v.sspot.busy = null; v.sspot = null; if (v.cured) { setPath(v, exitPath(v)); v.state = 'exit'; } else { v.pat = Math.min(1, v.pat + 0.1); seatVisitor(v); } }
       break; }
     case 'toLoo': if (stepWalker(v, dt, walkSpeed * (v.urgent ? 1.7 : 1))) { settle(v, v.lspot); v.state = 'loo'; v.prog = 0; } break;
     case 'toCafe': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.lspot); v.state = 'cafe'; v.prog = 0; if (p.anim) p.anim.set(v.lspot && v.lspot.sit ? 'drinksit' : 'drink'); holdCup(v.av, true); } break;
