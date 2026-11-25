@@ -2609,7 +2609,7 @@ function maintUpdate(rs, dt) {
         const o = rs.task.obj; scene.remove(o.mesh);
         const list = rs.task.kind === 'rat' ? R.rats : R.litter; const ix = list.indexOf(o); if (ix >= 0) list.splice(ix, 1);
         if (rs.task.kind === 'rat') { S.st = S.st || { prob: {}, room: {}, staff: {}, acc: 0, rats: 0, vip: 0 }; S.st.chased = (S.st.chased || 0) + 1; }
-        if (rs.task.kind === 'rat' && Math.random() < 0.5) chat(rs.data.name + ' · ' + roleN('maint'), t('maint.chat'), '🧹', { fun: true });
+        // (no more 'cleaned it' chatter from maintenance: it said nothing the player could act on)
       }
       if (!ch) floatAt(rs.av.position, '✨'); if (rs.broom) { scene.remove(rs.broom); rs.broom = null; }
       rs.task = null; holdBroom(rs.av, false); poseStand(rs.av.userData.p); rs.mode = 'free';
@@ -3627,7 +3627,6 @@ function visitorUpdate(v, dt) {
       break; }
     case 'wait': {
       v.need = (v.need || 0) + dt / 95;
-      if (v.pat < 0.45 && !v.asked && S.mode === 'career' && S.tut < 0 && S.day * DAY_LEN + S.t - (S.askWaitT ?? -99) > 45) { v.asked = true; S.askWaitT = S.day * DAY_LEN + S.t; chat(t('from.review') + ' · ' + v.name + ', ' + v.age, t('ct.w.msg', { d: gameDur(v.waitT || 0) }), '⏳', { act: { k: 'wait', id: v.id } }); }
       if (v.pat < 0.25 && RNG() < dt * 0.006) {
         if (RNG() < 0.55) { dropPuddle(v.av.position.x + 0.35, v.av.position.z + 0.2, '#9BCB4E'); floatAt(v.av.position, '🤢', true); vb('dirt', 0 - 0.6); for (const o of R.visitors) if (o !== v && Math.hypot(o.av.position.x - v.av.position.x, o.av.position.z - v.av.position.z) < 2) o.pat -= 0.05; tip('vomit'); }
         else { v.need = 1.5; v.urgent = true; floatAt(v.av.position, '💩', true); }
@@ -3693,7 +3692,7 @@ function visitorUpdate(v, dt) {
         if (v.gag) v.gag.visible = false;
         if (v.gid && S.gs && S.gs[v.gid] > 0) { S.gh = S.gh || {}; S.gh[v.gid] = (S.gh[v.gid] || 0) + 1; groupStep(v, v.gid); }
         if (v.prob === 'wedding') incCnt('wedding'); if (PROBLEMS[v.prob].room === 'yoga') incCnt('yoga'); if (PROBLEMS[v.prob].room === 'lucha') incCnt('lucha'); if (PROBLEMS[v.prob].room === 'roda') incCnt('roda'); if (S.rainy) incCnt('rain'); if (v.prob === 'quake') incCnt('quake'); if (v.wave) incCnt('wave'); if (PROBLEMS[v.prob].room === 'ahwa') incCnt('tea'); if (cityOf().evening && S.t > DAY_LEN * 0.6) incCnt('evening'); if (isNight()) incCnt('night'); if (PROBLEMS[v.prob].care) vb('misc', 0 + 1);
-        if (Math.random() < 0.08) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, crnd(tList('rev.good')), '⭐', { fun: true });
+        // generic 5-star thank-yous are gone from the chat: only reviews that point at a problem stay
         ixEnd(v); v.rspot.busy = null; v.rspot = null; v.cured = true; if (p.anim && p.anim.calm) p.anim.calm(); // cured: back to a normal walk
         v.icon.material = iconTex('😊');
         const shop = Object.values(R.rooms).filter((r) => ROOMS[r.type].shop && !r.closed).map((r) => r.spots.find((s) => !s.busy && r.staff[s.st] && r.staff[s.st].mode === 'there')).find(Boolean);
@@ -4292,19 +4291,17 @@ function receipt() { return `<div class="receipt"><div><span>${t('rc.helped')}</
 function openGoals() {
   S.tutGoals = true;
   if (S.mode !== 'career') { openSheet(`<h2>${t('title.quick')}</h2><p class="sub">${t('quick.start')}</p>${receipt()}<button class="btn y" id="qQuit" style="width:100%">${t('menu.quit')}</button>`); $('qQuit').onclick = () => { closeSheet(); toTitle(); }; return; }
-  const steps = nextSteps();
-  let h = `<h2>${t('goals.title')}</h2><p class="sub">${t('goals.sub')}</p>`;
-  if (S.daily) h += `<div class="w" style="border-radius:14px;padding:8px 12px;margin-bottom:8px;font-weight:800">🎯 ${ct('ui.daily')} : ${dailyText()} ${S.daily.won ? '✅' : S.daily.fail ? '❌' : ''}<div style="font-size:12px;color:var(--muted)">+${money(S.daily.m)}</div></div>`;
-  { const tc = topComplaints(); h += `<div class="w" style="border-radius:14px;padding:8px 12px;margin-bottom:8px"><div class="lbl" style="margin:0 0 4px">📣 ${t('cmp.title')}</div>${tc.length ? tc.map(([k, n]) => `<div style="font-size:13.5px;margin:4px 0"><b>${CMP_E[k]} ${t('cmp.' + k)} · ${n}</b><div style="color:var(--muted);font-weight:700">💡 ${t('cmp.' + k + '.fix')}</div></div>`).join('') : `<div style="font-size:13px;font-weight:700">${t('cmp.none')}</div>`}</div>`; }
-  h += `<div class="w" style="border-radius:14px;padding:8px 12px;margin-bottom:8px;font-weight:800">📒 ${ct('ui.album')} : ${ct('ui.albumN', { n: profile().album || 0 })}</div>`;
-  GOALS.forEach((G, i) => {
-    const st = S.stars > i ? 'done' : S.stars === i ? 'now' : 'later';
-    h += `<div class="goalcard w ${st}"><div class="gh"><span><span class="stars">${'★'.repeat(i + 1)}</span> ${goalText(G)}</span><small>${st === 'done' ? '✅ ' + t('goals.done') : st === 'now' ? t('goals.now') : '🔒 ' + t('goals.later')}</small></div>`;
-    if (st !== 'later') h += G.parts.map((pt) => metricRow(pt, st === 'done', i)).join('');
-    h += '</div>';
-  });
-  h += `<div class="lbl" style="margin:6px 0">👉 ${t('goals.nextSteps')}</div>` + (steps.length ? steps.map((s, i) => `<button class="stepbtn w" data-step="${i}">${s.icon} <span>${s.txt}</span></button>`).join('') : `<div class="msg">${t('goals.none')}</div>`);
-  h += receipt() + `<div class="row2"><button class="btn y" id="gWrap" style="grid-column:1/-1">🎁 ${t('wr.btn')}</button><button class="btn g" id="gMap" style="grid-column:1/-1">🌍 ${t('over.map')}</button></div>`;
+  // one read, top to bottom: the star you are working on (with its progress), then at most 3 things to do now (worst complaints first, then the next
+  // steps), then the daily challenge as one line. The album lives on the world map, the Wrapped recap pops up by itself, the map has its own button.
+  const steps = nextSteps(), cur = Math.min(S.stars, GOALS.length - 1), G = GOALS[cur], allDone = S.stars >= GOALS.length;
+  let h = `<h2>${t('goals.title')} <span class="stars" style="font-size:20px">${'★'.repeat(S.stars)}${'☆'.repeat(GOALS.length - S.stars)}</span></h2>`;
+  h += `<div class="goalcard w ${allDone ? 'done' : 'now'}"><div class="gh"><span><span class="stars">${'★'.repeat(cur + 1)}</span> ${goalText(G)}</span><small>${allDone ? '✅ ' + t('goals.done') : t('goals.now')}</small></div>${G.parts.map((pt) => metricRow(pt, allDone, cur)).join('')}</div>`;
+  const tc = topComplaints().slice(0, 2), todo = tc.length + Math.min(steps.length, 3 - tc.length);
+  h += `<div class="lbl" style="margin:10px 0 6px">👉 ${t('goals.nextSteps')}</div>`;
+  h += tc.map(([k, n]) => `<div class="stepbtn w" style="cursor:default">${CMP_E[k]} <span><b>${t('cmp.' + k + '.fix')}</b><br><small style="color:var(--muted)">📣 ${t('cmp.' + k)} · ${n}</small></span></div>`).join('');
+  h += steps.slice(0, 3 - tc.length).map((s, i) => `<button class="stepbtn w" data-step="${i}">${s.icon} <span>${s.txt}</span></button>`).join('');
+  if (!todo) h += `<div class="msg">${t('goals.none')}</div>`;
+  if (S.daily) h += `<div style="margin-top:10px;font-weight:800;font-size:14px">🎯 ${ct('ui.daily')} : ${dailyText()} → +${money(S.daily.m)} ${S.daily.won ? '✅' : S.daily.fail ? '❌' : ''}</div>`;
   { // problem guide: every problem this city can bring, and the room that fixes it
     const c = S.city || 'london', ps = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && (!PROBLEMS[k].city || PROBLEMS[k].city === c));
     const byRoom = {}; for (const k of ps) (byRoom[PROBLEMS[k].room] = byRoom[PROBLEMS[k].room] || []).push(k);
@@ -4312,8 +4309,6 @@ function openGoals() {
   }
   openSheet(h); $('sheet').querySelectorAll('[data-pi]').forEach((el) => el.onclick = () => { closeSheet(); probCard(el.dataset.pi, false); });
   $('sheet').querySelectorAll('[data-step]').forEach((b) => b.onclick = () => { closeSheet(); const a = steps[+b.dataset.step].act; if (a) a(); });
-  $('gWrap').onclick = () => { closeSheet(); showWrapped(false); };
-  $('gMap').onclick = () => { closeSheet(); toMap(); };
 }
 let chatTab = 'staff';
 // chat tabs: messages from the team · from visitors (reviews, influencers, people waiting) · everything else (HQ, landlord, inspectors, weather…)
@@ -4332,7 +4327,9 @@ function openChat() {
     return `<div class="msg${m.act && !m.ans && live ? ' ask' : ''}"><small>${m.icon || ''} ${m.from} · ${dayN(m.day)}</small>${m.text}`
       + (m.ans ? `<div class="ans">↪ <b>${m.pick}</b><br>${m.ans}</div>` : m.act ? (live ? `<div class="acts">${opts.map((x) => `<button class="btn ${x.main ? 'g' : 'w'}" data-ci="${S.chat.indexOf(m)}" data-co="${x.id}" ${x.ok === false ? 'disabled' : ''}>${x.label}</button>`).join('')}</div>` : `<div class="ans" style="opacity:.6">⌛ ${t('ct.expired')}</div>`) : '') + '</div>'; };
   openSheet(`<h2>${t('chat.title')}</h2><div class="tabs">${[['staff', '👥'], ['vis', '🙂'], ['other', '📢']].map(([c, e]) => `<button class="${chatTab === c ? 'g' : 'y'}" data-ctab="${c}">${e} ${t('ct.' + c)}${nNew(c) ? ` <b style="background:#E53E3E;color:#fff;border-radius:9px;padding:0 6px">${nNew(c)}</b>` : ''}</button>`).join('')}</div>`
-    + (list.map(row).join('') || `<div class="msg">${t('chat.empty')}</div>`));
+    + (list.filter((m) => !m.fun).map(row).join('') || `<div class="msg">${t('chat.empty')}</div>`)
+    // the chit-chat (hellos, training news, thank-yous) folds into one line at the bottom: what needs you stays on top
+    + ((n) => n.length ? `<details style="margin-top:8px"><summary class="lbl" style="cursor:pointer">💬 ${t('chat.small', { n: n.length })}</summary>${n.map(row).join('')}</details>` : '')(list.filter((m) => m.fun)));
   $('sheet').querySelectorAll('[data-ctab]').forEach((b) => b.onclick = () => { chatTab = b.dataset.ctab; openChat(); });
   $('sheet').querySelectorAll('[data-co]').forEach((b) => b.onclick = () => { const m = S.chat[+b.dataset.ci], A = m && m.act && ACTS[m.act.k]; if (!A || m.ans || !A.live(m.act)) { openChat(); return; }
     const x = A.opts(m.act).find((y) => y.id === b.dataset.co); if (!x || x.ok === false) return; const keep = x.run(); m.pick = x.label; m.ans = x.reply || ''; save(); if (keep !== 'leave') openChat(); });
@@ -4523,7 +4520,13 @@ function dayTick(dt) {
     return;
   }
   S.t += dt;
-  if ((R.rebalT = (R.rebalT || 0) + dt) > 4) { R.rebalT = 0; assignStaff(); } // every few seconds: an idle carer moves to a busier room of their speciality
+  if ((R.rebalT = (R.rebalT || 0) + dt) > 4) { R.rebalT = 0; assignStaff(); }
+  // 'about to leave' alert: one grouped message at most every 60 s, and only for clients who matter (VIP, emergency, or stuck in a queue of 4+);
+  // everyone else just shows their ⏳. Tapping it opens the most pressing one with the 4 answers (manager, matcha, priority, sorry).
+  if (S.mode === 'career' && S.tut < 0 && (R.waitAlT = (R.waitAlT || 0) + dt) > 5) { R.waitAlT = 0; const now = S.day * DAY_LEN + S.t;
+    if (now - (S.askWaitT ?? -99) > 60) { const hot = R.visitors.filter((v) => (v.state === 'wait' || v.state === 'toWait') && v.pat < 0.45 && !v.asked && (v.vip || v.em || (v.target != null && roomQ(v.target).length >= 4)));
+      if (hot.length) { hot.sort((a, b) => (b.em ? 2 : 0) + (b.vip ? 1 : 0) - (a.em ? 2 : 0) - (a.vip ? 1 : 0) || a.pat - b.pat); const v = hot[0]; for (const u of hot) u.asked = true; S.askWaitT = now;
+        chat(t('from.review') + ' · ' + v.name + ', ' + v.age, hot.length > 1 ? t('ct.w.many', { n: hot.length, who: v.name }) : t('ct.w.one'), '⏳', { act: { k: 'wait', id: v.id } }); } } } // every few seconds: an idle carer moves to a busier room of their speciality
   if (S.inspectAt > 0 && S.t >= S.inspectAt && !R.inspector) { S.inspectAt = -1; spawnInspector(); }
   if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && hasRoom(PROBLEMS[k].room)); if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
   if (S.crewAt > 0 && S.t >= S.crewAt && !modalPaused) { S.crewAt = -1; crewVisit(); }
@@ -4572,7 +4575,7 @@ function dayTick(dt) {
         S.loan = { left: (S.loan ? S.loan.left : 0) + owe, per: Math.round(((S.loan ? S.loan.left : 0) + owe) / 6) };
         setTimeout(() => { modal(`<div style="font-size:44px">🏦</div><h2>${t('bail.title')}</h2><p>${t('bail.p', { m: money(need), o: money(owe) })}</p><button class="btn g" id="mOk" style="width:100%">${t('tut.ok')}</button>`); $('mOk').onclick = closeModal; }, 600);
       } else if (S.cash < -5000) gameOver({ bill: RENT + wages + loanPay + elec, rent: RENT, wages, elec, loanPay, wk });
-    } else if (Math.random() < 0.5) chat(crnd([t('from.landlord'), t('from.hq'), t('from.group')]), crnd(tList('chat.random')), '💬', { fun: true });
+    } // (random small talk from the landlord/HQ/group chat removed: noise)
     save();
   }
 }
@@ -5633,6 +5636,7 @@ function renderMap() {
   for (const [nk, x, y] of LOCKED_PINS) { const b = document.createElement('button'); b.className = 'pin y'; b.style.cssText = `left:${x}%;top:${y}%;font-size:12px`; b.textContent = '🔒 ' + t(nk); b.onclick = () => toast(t('map.soon')); inner.appendChild(b); }
   const C = CITIES[mapCity], s = load(mapCity), st = cityStars(mapCity);
   $('mapSheet').innerHTML = `<div class="grab"></div><div class="maphead" style="background-image:linear-gradient(90deg,rgba(255,255,255,.88) 0%,rgba(255,255,255,.6) 28%,rgba(255,255,255,0) 50%),url(assets/banners/${mapCity}.webp)"><div><div class="lbl">${t('map.lvl', { n: C.lvl + 1 })} · ${t(C.region)}</div><h2 class="f" style="margin:0;font-size:30px">${t('city.' + mapCity)}</h2><div class="stars mstars">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</div></div></div>
+    <div style="font-weight:800;font-size:13.5px">📒 ${ct('ui.album')} : ${ct('ui.albumN', { n: profile().album || 0 })}</div>
     <div style="font-weight:700;color:#2D3748;font-size:14.5px">${t(C.desc)}</div>
     <button class="btn g" id="mOpen" style="font-size:20px">${s ? t('map.contC', { city: t('city.' + mapCity) }) : t('map.openC', { city: t('city.' + mapCity) })}</button>`;
   $('mOpen').onclick = openBrief;
