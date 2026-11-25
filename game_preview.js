@@ -1772,11 +1772,11 @@ function detoxKit(g, cx, cz, room) {
 }
 // Hustle garage (from its painting, without the roll-up door): idea board with one note circled, tool pegboard over the workbench, a trestle table in the middle with a stool each side, boxes and a product rack, a bench and a bicycle on the wall
 function garageKit(g, cx, cz, room) {
-  const F = kitFrame(room, true), w = F.w, D = F.D, S = Math.min(w, D) < 5, L = [], tx = S ? 0.2 : -0.3, tz = S ? -0.15 : 0.15, Wp = (x, z, rot) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z, rot: rot + F.rho }; };
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = Math.min(w, D) < 5, L = [], tx = S ? 0.1 : -0.3, tz = S ? -0.45 : 0.15, Wp = (x, z, rot) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z, rot: rot + F.rho }; };
   L.push({ p: '@notes', h: S ? 0.8 : 1.0, wall: 'back', u: S ? -0.6 : -1.0, hang: true, y: 1.45, gap: 0.12 });
   L.push({ p: 'k_workbench', len: S ? 1.2 : 1.6, wall: 'back', u: 'R' }, { p: 'k_pegboard', len: S ? 1.0 : 1.3, wall: 'back', u: 'R', hang: true, y: 1.25, gap: 0.12 });
   const tl = S ? 1.5 : 1.9, td = GARAGE_DIMS.k_table[2] / GARAGE_DIMS.k_table[0] * tl;
-  const st = S ? [[tx - tl / 2 - 0.32, tz, Math.PI / 2], [tx + tl / 2 + 0.32, tz, -Math.PI / 2]] : [[tx, tz - td / 2 - 0.4, 0], [tx, tz + td / 2 + 0.4, Math.PI]]; // small garage: one stool at each end, clear of the doorway
+  const sg = S ? 0.36 : 0.4, st = [[tx, tz - td / 2 - sg, 0], [tx, tz + td / 2 + sg, Math.PI]]; // coach and client face each other across the long side of the table, as in the painting (the small garage pulls the table back to keep the doorway clear)
   L.push({ p: 'k_table', len: tl, x: tx, z: tz, rot: 0 }, { p: '@stool', h: 1, x: st[0][0], z: st[0][1], rot: st[0][2] }, { p: '@stool', h: 1, x: st[1][0], z: st[1][1], rot: st[1][2] });
   if (!S) { L.push({ p: 'k_rack', h: 1.5, wall: 'right', u: -1.35 }, { p: 'k_boxes', len: 1.2, wall: 'right', u: 0.5 }, { p: 'k_bench', len: 1.15, wall: 'left', u: 0.35 }, { p: 'k_bike', len: 1.45, wall: 'left', u: -1.2, hang: true, y: 0.75, gap: 0.08 }, { p: '@plant', s: 1.5, wall: 'left', u: 'F' }); }
   else L.push({ p: 'k_boxes', len: 0.95, wall: 'right', u: 0.6 });
