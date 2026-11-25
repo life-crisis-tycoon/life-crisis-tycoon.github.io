@@ -1127,7 +1127,8 @@ ROOM_STYLE.parent = { v2: true, model: 'parent_kit', kit: true, winSide: 'none',
 for (const k of ['detox', 'lab', 'parent', 'moving', 'jjim', 'yoga', 'lucha', 'ahwa', 'roda', 'garage', 'shop', 'staffroom', 'toilet']) { const st = ROOM_STYLE[k]; if (!st || st.v2) continue;
   const c = new THREE.Color(st.wall), h = {}; c.getHSL(h); const tone = (s2, l2) => '#' + new THREE.Color().setHSL(h.h, Math.min(1, s2), l2).getHexString(); // a bit more colour inside, a door in the deep version of the room's hue
   const dc = tone(h.s * 0.55 + 0.25, 0.42); Object.assign(st, { v2: true, chunky: true, ao: true, wall: tone(h.s * 1.25, h.l * 0.9), inBase: tone(h.s * 0.9, h.l * 0.72), door: dc, panel: dc, pop: '#E3B341' }); }
-Object.assign(ROOM_STYLE.staffroom, { model: 'staffroom_kit', kit: true }); Object.assign(ROOM_STYLE.yoga, { model: 'yoga_kit', kit: true }); // the Tripo pieces of the break-room and yoga paintings
+Object.assign(ROOM_STYLE.staffroom, { model: 'staffroom_kit', kit: true, wall: '#9A7D66', inBase: '#76604E', door: '#7E5F47', panel: '#7E5F47', pop: '#E9785F', wood: ['#C98E52', '#B97E45'], floor: '#C98E52' }); // the painting: warm taupe walls, wooden floor
+Object.assign(ROOM_STYLE.yoga, { model: 'yoga_kit', kit: true, wall: '#F1E2C4', inBase: '#D6BE98', door: '#8A5A36', panel: '#B48CE8', pop: '#B48CE8', wood: ['#D59D5F', '#C68C50'], floor: '#D59D5F' }); // cream terrace walls, wooden deck // the Tripo pieces of the break-room and yoga paintings
 for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 // one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
@@ -1756,8 +1757,10 @@ function staffroomKit(g, cx, cz, room) {
   const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
   const seat = (x, z, rot, o = {}) => { const q = W(x, z); room.spots.push({ x: q.x, z: q.z, rot: rot + F.rho, sit: true, y: 0.05, busy: null, ...o }); };
   const sk = S ? 0.95 : 1.05, sx = lx + 0.12 + 0.55; // sink counter, back-left
-  L.push({ p: 'k_sink', h: 0.95, x: sx, z: bz + 0.33, rot: 0 }, { p: 'k_coffee', h: 0.42, x: sx + 0.22, z: bz + 0.3, rot: 0, y: 0.92, solid: false }, { p: 'k_mugshelf', len: 0.8, wall: 'back', u: sx - 0 - (lx + rx) / 2, hang: true, y: 1.55, gap: 0.1 });
-  L.push({ p: 'k_fridge', h: 0.95, x: sx + 0.95, z: bz + 0.3, rot: 0 });
+  const sw = 1.07, cw = 0.62, ccx = sx + sw / 2 + cw / 2; // the sink counter, then a stretch of worktop for the coffee machine (not on the sink), then the fridge
+  L.push({ p: 'k_sink', h: 0.95, x: sx, z: bz + 0.33, rot: 0 }, { p: 'k_coffee', h: 0.42, x: ccx, z: bz + 0.3, rot: 0, y: 0.9, solid: false }, { p: 'k_mugshelf', len: 0.8, wall: 'back', u: ccx - 0.1, hang: true, y: 1.55, gap: 0.1 });
+  { const q = W(ccx, bz + 0.33), t = grp(q.x, q.z, F.rho, g); put(rbox(cw, 0.82, 0.56, '#E0C9A4', 0.04), 0, 0.52, 0, t); put(rbox(cw + 0.02, 0.06, 0.6, '#EFE2CC', 0.02), 0, 0.96, 0, t); put(rbox(0.04, 0.12, 0.02, '#C9A46A', 0.01), 0.18, 0.75, 0.29, t); }
+  L.push({ p: 'k_fridge', h: 0.95, x: ccx + cw / 2 + 0.42, z: bz + 0.3, rot: 0 });
   const ax = rx - (S ? 0.55 : 0.75), ah = S ? 1.25 : 1.35, ad = 0.6465 * ah; L.push({ p: 'k_arcade', h: ah, x: ax, z: bz + ad / 2 + 0.06, rot: 0 }, { p: 'k_stool', h: 0.5, x: ax, z: bz + ad + 0.42, rot: 0 });
   seat(ax, bz + ad + 0.42, Math.PI, { anim: 'worksit', y: 0.2 }); // playing the arcade
   const rz = S ? 0.55 : 0.6, rl = S ? 1.9 : 2.4; L.push({ p: 'k_jute', len: rl, x: 0, z: rz, rot: 0, solid: false }, { p: 'k_coffeetable', len: S ? 0.75 : 0.95, x: 0, z: rz, rot: 0 });
@@ -1765,8 +1768,8 @@ function staffroomKit(g, cx, cz, room) {
   L.push({ p: 'k_sofa', len: sl, x: lx + sd / 2 + 0.06, z: rz, rot: H }); for (const o of [-0.42, 0.42]) seat(lx + sd / 2 + 0.12, rz + o * sl / 1.85, H);
   if (!S) { L.push({ p: 'k_sofa', len: sl, x: rx - sd / 2 - 0.06, z: rz + 0.25, rot: -H }); for (const o of [-0.42, 0.42]) seat(rx - sd / 2 - 0.12, rz + 0.25 + o, -H);
     L.push({ p: 'k_sidetable', len: 0.6, x: rx - 0.42, z: rz - 1.05, rot: 0 }, { p: 'k_lamp', h: 1.25, x: rx - 0.4, z: D / 2 - 0.45, rot: 0, solid: true });
-    L.push({ p: 'k_monstera', h: 1.15, x: lx + 0.62, z: D / 2 - 0.5, rot: 0 }); }
-  else L.push({ p: 'k_monstera', h: 0.9, x: rx - 0.5, z: D / 2 - 0.45, rot: 0 });
+    L.push({ p: 'k_monstera', h: 1.15, x: lx + 0.62, z: D / 2 - 0.5, rot: 0 }, { p: 'k_monstera', h: 1.0, x: ax - 1.05, z: bz + 0.42, rot: 0 }, { p: '@plant', s: 1.1, x: rx - 0.4, z: rz - 1.75 }); }
+  else L.push({ p: 'k_monstera', h: 0.9, x: rx - 0.5, z: D / 2 - 0.45, rot: 0 }, { p: '@plant', s: 0.9, x: lx + 0.35, z: D / 2 - 0.4 });
   kitRoom(g, cx, cz, room, 'staffroom_kit', L, STAFF_DIMS, F);
 }
 // Yoga terrace (from the yoga painting): the teacher's wooden dais with its purple mat at the back, a speaker and a singing bowl beside it, rows of mats in
@@ -4828,11 +4831,11 @@ function staffEnergy(rs, dt) {
     return;
   }
   if (rs.onBreak) {
-    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'idle') pa.anim.set('idle'); } else if (rs.onBreak && rs.onBreak.anim) { if (pa.anim.state !== rs.onBreak.anim) pa.anim.set(rs.onBreak.anim); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : 22)); if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
+    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'idle') pa.anim.set('idle'); } else if (rs.onBreak && rs.onBreak.anim) { if (pa.anim.state !== rs.onBreak.anim) pa.anim.set(rs.onBreak.anim); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : rs.onBreak && rs.onBreak.anim ? 14 : 22)); /* a nap is fastest, a round of arcade beats a coffee */ if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
   } else if (rs.mode === 'there' || rs.task) {
     if (rs.at !== 'idle' && rs.at !== 'train' && rs.at !== 'heal') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (185 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
     if (d.energy < 0.25) {
-      const free = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).flatMap((r) => r.spots.filter((s) => !s.busy)), spot = free.find((s) => s.bed) || free[0]; // a free bunk first: napping is faster
+      const free = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).flatMap((r) => r.spots.filter((s) => !s.busy)), spot = free.find((s) => s.bed) || free.find((s) => s.anim) || free[0]; // a free bunk first (napping is fastest), then the arcade
       if (spot && !rs.task && !patientOf(rs)) { spot.busy = rs; rs.onBreak = spot; /* never walk out mid-session */ rs.goingTo = null; goStaff(rs, spot); tip('break'); }
       else if (!hasRoom('staffroom')) tip('tired');
       // at most one "we're exhausted" message for the whole team every 2 days (it names how many are worn out)
