@@ -879,6 +879,17 @@ const KIT_C = { rim: '#E3AD89', trim: '#FBF5EA', plinth: '#F2E7D5', glass: '#A8C
 let RKIT = null;
 try { const gl = await propModel('room_kit'); RKIT = {}; const sc = gl.scene || gl; sc.updateMatrixWorld(true); sc.traverse((o) => { if (o.isMesh) { const g2 = o.geometry.clone(); g2.applyMatrix4(o.matrixWorld); RKIT[o.name] = g2; } }); if (!RKIT.k_wall_in) RKIT = null; } catch (e) { console.warn('[room kit]', e); RKIT = null; }
 const KIT_PO = {};
+// Each room's kit walls are pushed toward the camera by a depth offset of their own so that two rooms' walls standing in the same plane
+// (back to back, or a room against the plot wall) never flicker. The offset used to come from the room id (id % 6), so two neighbours
+// whose ids differed by a multiple of 6 got the same one and flickered again. Now a room takes an offset that none of the rooms
+// touching it uses (kept across rebuilds while it stays free).
+const PO_OF = {}, PO_LIST = [-2, -5, -8, -11, -14, -17, -20, -23, -26, -29];
+function roomPO(r) {
+  const q = roomRect(r), near = (o) => { if (!o || o === r || o.id === r.id) return false; const p = roomRect(o); return p.x0 < q.x1 + 0.8 && p.x1 > q.x0 - 0.8 && p.z0 < q.z1 + 0.8 && p.z1 > q.z0 - 0.8; };
+  const used = new Set((S.rooms || []).filter(near).map((o) => PO_OF[o.id]).filter((v) => v != null));
+  if (PO_OF[r.id] != null && !used.has(PO_OF[r.id])) return PO_OF[r.id];
+  return (PO_OF[r.id] = PO_LIST.find((v) => !used.has(v)) ?? PO_LIST[0]);
+}
 const KM = (name, c, r = 0.9) => { const m = new THREE.Mesh(RKIT[name], mat(c, { r })); m.castShadow = m.receiveShadow = true; m.userData.kitW = true; return m; };
 const INST = {}, INST_NAMES = new Set(['pt_oak', 'pt_lime', 'pt_cherry', 'pt_fir', 'pt_palm', 'pt_flame', 'lon_oak', 'lon_leafy', 'lon_cherry', 'lon_cypress', ...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
@@ -1438,7 +1449,7 @@ function buildRoom(r) {
   room.wallG = wallG; roomObs(room);
   // two rooms side by side build their kit walls, corners and crowns in the very same planes: the GPU then flickers between the two
   // colours. Each room gets its own small depth priority (and the kit wins over the plot walls it is pushed against).
-  { const off = -(2 + ((parseInt(String(r.id).replace(/\D/g, "")) || 0) % 6) * 3); g.traverse((o) => { if (o.isMesh && o.userData.kitW && o.material && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
+  { const off = roomPO(r); g.traverse((o) => { if (o.isMesh && o.userData.kitW && o.material && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
       o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off })); } }); }
   if (GFX.batch) { for (const w of wallG) { const keep = w.children.filter((c) => c.userData.keepY || c.userData.kitW); batchNode(w, new Set(keep), { userData: { roomId: r.id } }); for (const k of keep) batchNode(k, new Set(), { userData: { roomId: r.id } }); } batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
   { const ca = Math.cos(r.a), sa = Math.sin(r.a), hs = []; g.traverse((o) => { if (o.userData.whang) hs.push({ o, n: o.userData.whang }); else if (o.userData.hang) { const [lx, lz] = o.userData.hang; hs.push({ o, n: [Math.round(lx * ca + lz * sa), Math.round(-lx * sa + lz * ca)] }); } });
