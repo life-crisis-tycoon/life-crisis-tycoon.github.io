@@ -1531,7 +1531,7 @@ function ambience(dt) {
 // people on a bed lie flat on their back, head to the pillow, under a duvet (feet to chest); back upright when they get up
 const LIE_V = new THREE.Vector3(), DUVET_C = ['#9C7BD4', '#E07FA6', '#6FA3D8', '#7FBF8E', '#E9A35B'];
 function napDuvet(col) { // a thick, soft duvet that hides the whole body up to the chest, with the white sheet folded back over its top edge
-  const dv = rbox(1.0, 0.3, 1, col, 0.12, { r: 0.95 }); const f = rbox(1.02, 0.03, 0.14, '#F4F0F6', 0.012, { r: 0.9 }); f.position.set(0, 0.145, -0.43); f.castShadow = false; dv.add(f); return dv;
+  const dv = rbox(1.0, 0.3, 1, col, 0.12, { r: 0.95 }); const f = rbox(1.01, 0.1, 0.13, '#EDE6EF', 0.05, { r: 0.95 }); f.position.set(0, 0.12, -0.44); /* a soft rolled-over sheet edge, not a flat board */ f.castShadow = false; dv.add(f); return dv;
 }
 const LIE_DV = new Set(); // every duvet in the scene, so one never stays behind when its sleeper is removed mid-nap
 function lieUpdate() {
@@ -1550,7 +1550,7 @@ function lieUpdate() {
       if (sp.duvetC) { // the nap beds: lay the duvet on where the body really is (the clip shifts it toward the pillow), from past the feet up to the chest
         let hd = ud.headB, ft = ud.footB; if (hd === undefined) { hd = ft = null; av.traverse((b) => { if (!b.isBone) return; if (!hd && /head/i.test(b.name) && !/end|top/i.test(b.name)) hd = b; if (!ft && /foot|ankle/i.test(b.name)) ft = b; }); ud.headB = hd; ud.footB = ft; }
         if (hd && ft) { av.updateMatrixWorld(true); hd.getWorldPosition(LIE_V); const hz = LIE_V.x * s + LIE_V.z * c; ft.getWorldPosition(LIE_V); const fz = LIE_V.x * s + LIE_V.z * c; // positions along the bed axis
-          const sg = Math.sign(fz - hz) || 1, top = hz + (fz - hz) * 0.3, foot = fz + 0.24 * sg, k = o.prob ? clamp((performance.now() - (ud.lieS || 0)) / 1100, 0.25, 1) : 1, end = foot + (top - foot) * k, l2 = Math.abs(end - foot), mid = (foot + end) / 2, hb2 = ud.hipsB; let side = sp.x * c - sp.z * s; if (hb2) { hb2.getWorldPosition(LIE_V); side = clamp(LIE_V.x * c - LIE_V.z * s, side - 0.12, side + 0.12); } /* centred on the body, not the bed */
+          const sg = Math.sign(fz - hz) || 1, top = hz + (fz - hz) * 0.17, foot = fz + 0.24 * sg, k = o.prob ? clamp((performance.now() - (ud.lieS || 0)) / 1100, 0.25, 1) : 1, end = foot + (top - foot) * k, l2 = Math.abs(end - foot), mid = (foot + end) / 2, hb2 = ud.hipsB; let side = sp.x * c - sp.z * s; if (hb2) { hb2.getWorldPosition(LIE_V); side = clamp(LIE_V.x * c - LIE_V.z * s, side - 0.12, side + 0.12); } /* centred on the body, not the bed */
           dv.scale.z = Math.max(0.2, l2); dv.rotation.y = sg > 0 ? r : r + Math.PI; /* the folded sheet on the head side */ dv.position.set(side * c + mid * s, base + dy, -side * s + mid * c); } } dv.visible = av.visible !== false; }
     else { if (av.userData.sleep) { const p0 = av.userData.p; if (p0 && p0.anim && p0.anim.mixer) for (const ac of p0.anim.mixer._actions || []) ac.paused = false; } av.userData.lieT = 0; av.userData.sleep = false; if (av.rotation.x && !(o.ix && o.ix.mat)) { av.rotation.x = 0; av.rotation.z = 0; } const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
   for (const dv of LIE_DV) if (!seenDv.has(dv)) { if (dv.parent) dv.parent.remove(dv); LIE_DV.delete(dv); }
