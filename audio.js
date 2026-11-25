@@ -1,5 +1,5 @@
 // Procedural audio: per-city music loops, SFX, and PA-style voice announcements (Web Audio + speechSynthesis).
-const KEY = 'ahq_audio';
+const KEY = 'ahq_audio2'; // v2: the game starts silent (music, sounds and voice off); each can be turned back on in Settings
 const VOICE_LANG = { en: 'en-GB', fr: 'fr-FR', es: 'es-ES', pt: 'pt-BR', de: 'de-DE', ja: 'ja-JP', ko: 'ko-KR' };
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -25,7 +25,7 @@ function sayNumbers(txt, lang) {
     .replace(/\b\d{1,3}(?:,\d{3})+\b/g, (m) => plain(m));
 }
 export function makeAudio() {
-  let st = { music: true, sfx: true, voice: true };
+  let st = { music: false, sfx: false, voice: false };
   try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
   let ctx = null, master, musicG, sfxG, noiseBuf, city = 'london', timer = null, nextT = 0, step = 0, playing = false, lastSfx = {};
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };

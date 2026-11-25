@@ -107,6 +107,11 @@ const EMERGENCIES = { subway: { room: 'yoga', probs: ['grind'], city: 'newyork' 
   school: { room: 'parent', probs: ['schoolrun', 'homework', 'sugar', 'tablet', 'toddler'], city: 'lagos', stars: 2, n: 15, need: 11, time: 240, gap: 1.1, reward: 8500 } };
 const CITY_NAMES = { newyork: ['Jess', 'Marcus', 'Priya', 'Danny', 'Aaliyah', 'Ethan', 'Mei', 'Carlos', 'Rachel', 'Malik', 'Sofia', 'Tyler', 'Grace', 'Omar', 'Brooke', 'Kenji'], mexico: ['Sofía', 'Diego', 'Valeria', 'Luis', 'Ximena', 'Carlos', 'Fernanda', 'Jorge', 'Mariana', 'Alejandro', 'Daniela', 'Mateo', 'Lupita', 'Emiliano', 'Camila', 'Andrés'], cairo: ['Omar', 'Noor', 'Yasmin', 'Karim', 'Mariam', 'Ahmed', 'Salma', 'Youssef', 'Hana', 'Mostafa', 'Laila', 'Tarek', 'Nadia', 'Amr', 'Dina', 'Sherif'] };
 const FIRST = ['Priya', 'Marcus', 'Jade', 'Omar', 'Zoe', 'Kai', 'Amara', 'Leo', 'Noor', 'Mateo', 'Hana', 'Tunde', 'Ines', 'Sam', 'Riya', 'Ezra', 'Lola', 'Dev', 'Maya', 'Femi', 'Chloe', 'Arjun', 'Sofia', 'Kwame', 'Yuki', 'Min-jun', 'Lucas', 'Aiko'];
+// each role is played by one character model, so its first names follow that character: women at the desk, coaching, maintenance and the pharmacy; men as therapist, wellness guide and researcher
+const ROLE_SEX = { host: 'f', coach: 'f', maint: 'f', pharmacist: 'f', therapist: 'm', guide: 'm', researcher: 'm' };
+const FIRST_F = ['Priya', 'Jade', 'Zoe', 'Amara', 'Noor', 'Hana', 'Ines', 'Riya', 'Lola', 'Maya', 'Chloe', 'Sofia', 'Yuki', 'Aiko', 'Grace', 'Mei', 'Lina', 'Ama', 'Nadia', 'Elena'];
+const FIRST_M = ['Marcus', 'Omar', 'Kai', 'Leo', 'Mateo', 'Tunde', 'Sam', 'Ezra', 'Dev', 'Femi', 'Arjun', 'Kwame', 'Min-jun', 'Lucas', 'Malik', 'Hiro', 'Rafael', 'Theo', 'Idris', 'Tomas'];
+const staffFirst = (role) => crnd(ROLE_SEX[role] === 'm' ? FIRST_M : ROLE_SEX[role] === 'f' ? FIRST_F : FIRST);
 const LAST = ['Shah', 'Bello', 'Kim', 'Haddad', 'Okafor', 'Nguyen', 'Silva', 'Brown', 'Patel', 'Rossi', 'Mensah', 'Garcia', 'Ito', 'Kowalski', 'Adeyemi', 'Murphy', 'Park', 'Dubois'];
 const CITIES = {
   london: { lvl: 0, region: 'rg.europe', cash: 15000, rent: 2400, rain: 0.45, pin: [44.5, 17.0], desc: 'map.desc', tag: 'brief.tag', brief: 'brief.desc', rules: [['🌧️', 'brief.r1'], ['📝', 'brief.r2'], ['🧍', 'brief.r3']], chips: [['b', 'chip.rain'], ['b', 'chip.planning'], ['r', 'chip.strike']], start: 'start.landlord',
@@ -2065,13 +2070,14 @@ function socialKit(g, cx, cz, room) {
   L.push({ p: 'k_vase', h: 0.2, x: 0.05, z: tz - 0.05, y: 0.72, solid: false });
   if (last && !S) L.push({ p: 'k_cart', len: 0.95, wall: 'right', u: 0.6 });
   if (first) L.push({ p: '@plant', s: 1.6, wall: 'left', u: 'B' });
-  kitRoom(g, cx, cz, room, ROOM_STYLE.social.model, L, SOCIAL_DIMS);
+  const at = kitRoom(g, cx, cz, room, ROOM_STYLE.social.model, L, SOCIAL_DIMS);
   const tb = grp(cx, cz + tz, 0, g); put(cyl(0.45, 0.45, 0.05, '#F4F1EC', { r: 0.25 }), 0, 0.76, 0, tb); put(cyl(0.05, 0.05, 0.62, '#C9A24A', { m: 0.6, r: 0.3 }), 0, 0.43, 0, tb); put(cyl(0.26, 0.3, 0.05, '#C9A24A', { m: 0.6, r: 0.3 }), 0, 0.14, 0, tb); // marble table on a brass foot
   for (const [gx, gz, c] of [[-0.24, 0.1, '#F2A3A8'], [0.26, 0.14, '#8E1F38']]) { const gl = grp(gx, gz, 0, tb); put(cyl(0.006, 0.006, 0.1, '#FFFFFF', { op: 0.7 }), 0, 0.84, 0, gl); put(cyl(0.045, 0.02, 0.07, c, { op: 0.75 }), 0, 0.92, 0, gl); }
   for (const s of seats) room.spots.push({ x: cx + s.x, z: cz + s.z, rot: Math.atan2(-s.x, tz - s.z), sit: true, y: 0, busy: null });
   { const lg = wallHung(g, cx, cz, room, 0, -1, 0, 2.15), nb = Math.max(6, Math.round(w * 2)); // string lights along the back wall
     for (let i = 0; i < nb; i++) { const t = i / (nb - 1), x = (t - 0.5) * (w - 0.6), y = -0.18 * Math.sin(t * Math.PI * 2) ** 2; put(sph(0.045, '#FFE7A8', { e: '#FFD27A', ei: 1.4 }), x, y - 0.05, 0.08, lg); put(cyl(0.004, 0.004, (w - 0.6) / (nb - 1), '#5A4A3A'), x, y + 0.02, 0.06, lg).rotation.z = Math.PI / 2; } }
-  room.staffSpot = { x: cx + (S ? -1.15 : -1.55), z: cz + tz + (S ? 0.9 : 1.2), rot: Math.atan2(1.4, -1.0), sit: false, y: 0 };
+  // the guide hosts the circle from the sofa (it used to be decor nobody sat on); fallback: standing beside the poufs
+  const sf = at && at.k_sofa; room.staffSpot = sf ? { x: sf.x + Math.sin(sf.rot) * 0.1, z: sf.z + Math.cos(sf.rot) * 0.1, rot: sf.rot, sit: true, y: 0 } : { x: cx + (S ? -1.15 : -1.55), z: cz + tz + (S ? 0.9 : 1.2), rot: Math.atan2(1.4, -1.0), sit: false, y: 0 };
 }
 // Wedding Calm Bureau (Mumbai; layout = the wedding bureau painting): carved desk with the planner behind it, two red armchairs on a red rug, the lehenga on its mannequin, marigolds, the flower arch in the corner
 function weddingKit(g, cx, cz, room) {
@@ -2468,7 +2474,7 @@ function makeCandidate(role) {
   const skill = 1 + Math.floor(Math.random() * 5);
   let wage = Math.round((r.wage[0] + (r.wage[1] - r.wage[0]) * (skill - 1) / 4 + Math.random() * 80) / 10) * 10;
   if (traits.includes('Always on LinkedIn')) wage = Math.round(wage * 1.1 / 10) * 10;
-  return { id: 0, role, name: crnd(FIRST) + ' ' + crnd(LAST), skill, wage, traits,
+  return { id: 0, role, name: staffFirst(role) + ' ' + crnd(LAST), skill, wage, traits,
     look: { skin: crnd(SKIN), hair: crnd(HAIR.slice(0, 7)), style: crnd(STYLES.filter((s) => s !== 'beanie')), tall: 0.9 + Math.random() * 0.25, wide: 0.9 + Math.random() * 0.25, glasses: Math.random() < 0.35, nose: Math.random() < 0.4 } };
 }
 function staffLook(st) {
@@ -2486,6 +2492,7 @@ const energyF = (rs) => ((rs.data.energy ?? 1) < 0.25 ? 0.6 : 1) * (rs.data.sadT
 const staffPerson = (st) => (st.role === 'trainer' && CHAR.A.full.sp_trainer ? visPerson('sp_trainer', staffLook(st)) : person(staffLook(st), 'staff'));
 function traitVal(st, key, def = 1) { let v = def; for (const n of st.traits) { const x = TRAITS.find((y) => y.n === n); if (x && x[key] != null) v *= x[key]; } return v; }
 function spawnStaffAvatar(st) {
+  { const sx = ROLE_SEX[st.role], f = (st.name || '').split(' ')[0]; if (sx && (sx === 'm' ? FIRST_F : FIRST_M).includes(f)) st.name = staffFirst(st.role) + st.name.slice(f.length); } // older saves: a name that doesn't fit the character gets one that does
   const av = staffPerson(st); av.position.set(3, 0.1, 11); scene.add(av);
   const rs = { data: st, av, at: null, path: [], ph: 0, mode: 'walk', task: null, work: 0 };
   R.staff.push(rs); return rs;
@@ -2494,8 +2501,14 @@ const MAINT_HOME = (i) => ({ x: 5.9 - i * 0.6, z: 1.0, rot: Math.PI / 4, sit: fa
 function assignStaff() {
   for (const rs of R.staff) if (rs.at != null && !['desk', 'idle', 'maint', 'train', 'heal'].includes(rs.at) && (!R.rooms[rs.at] || R.rooms[rs.at].staff[rs.st] !== rs)) rs.at = null;
   desks().forEach((_, di) => { if (deskHost(di)) return; const h = R.staff.find((rs) => rs.data.role === 'host' && (!rs.at || rs.at === 'idle')); if (h) { h.at = 'desk'; h.desk = di; goStaff(h, deskSpot(di)); } });
-  for (const room of Object.values(R.rooms)) {
-    if (!ROOMS[room.type].role) continue;
+  // free staff go where they are needed most: a room with an emergency waiting first, then the longest queue (was: whichever room was built first)
+  const need = (room) => { const q = roomQ(room.id); return q.some((v) => v.em) * 100 + q.length; };
+  const byNeed = Object.values(R.rooms).filter((r) => ROOMS[r.type].role).sort((a, b) => need(b) - need(a));
+  // and a carer standing in an empty room moves over to an unstaffed room of their speciality where 2+ people (or an emergency) wait
+  for (const room of byNeed) { if (need(room) < 2 || room.closed || room.staff.some((s, i) => s && R.staff.includes(s) && s.at === room.id && s.st === i)) continue;
+    const role = ROOMS[room.type].role, idle = R.staff.find((rs) => rs.data.role === role && !rs.onBreak && !rs.data.train && !(rs.data.awayT > 0) && R.rooms[rs.at] && rs.at !== room.id && need(R.rooms[rs.at]) === 0 && !R.visitors.some((u) => u.room === rs.at && (u.state === 'treat' || u.state === 'toRoom')));
+    if (idle) { const old = R.rooms[idle.at]; if (old.staff[idle.st] === idle) old.staff[idle.st] = null; idle.at = null; } }
+  for (const room of byNeed) {
     room.staff.forEach((s, i) => {
       if (s && R.staff.includes(s) && s.at === room.id && s.st === i) return;
       room.staff[i] = null;
@@ -4041,14 +4054,13 @@ function openBuild() {
   const nOwn = (k) => S.rooms.filter((r) => r.type === k).length;
   const roomRow = (k, r) => { const ok = unlocked(k);
     return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b>${ok && nOwn(k) ? ` <span class="own" style="background:#E7EEF7;color:#2D3748;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800;white-space:nowrap">${t('build.have', { n: nOwn(k) })}</span>` : ''}<div>${t('r.' + k + '.d')}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : t('lock.at', { n: UNLOCK[k] })}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
-  h += hdr('desk') + `<div class="opt w"><div class="oi" style="background:#DDF3E2">🛎️</div><div class="ot"><b>${t('build.moveDesk')}</b><div>${t('build.moveDeskD')}</div></div><button class="btn y" id="bMoveDesk">${t('build.moveBtn')}</button></div><div class="opt w"><div class="oi" style="background:#FFF3C4">➕</div><div class="ot"><b>${t('desk2.title')}</b><div>${t('desk2.D', { n: (S.desks2 || []).length + 2 })}</div></div><button class="btn g" id="bDesk2">${money(DESK_COST)}</button></div>`;
+  h += hdr('desk') + `<div class="opt w"><div class="oi" style="background:#FFF3C4">➕</div><div class="ot"><b>${t('desk2.title')}</b><div>${t('desk2.D', { n: (S.desks2 || []).length + 2 })}</div></div><button class="btn g" id="bDesk2">${money(DESK_COST)}</button></div>`;
   for (const c of ['care', 'comfort', 'staff']) {
-    const ks = Object.entries(ROOMS).filter(([k, r]) => (!r.city || r.city === (S.city || 'london')) && !(r.train && !epiCity()) && cat(k) === c); if (!ks.length) continue;
+    const ks = Object.entries(ROOMS).filter(([k, r]) => (!r.city || r.city === (S.city || 'london')) && !(r.train && !epiCity()) && cat(k) === c).sort(([a], [b]) => unlocked(b) - unlocked(a)); if (!ks.length) continue; // what you can build right now first, locked rooms after
     h += hdr(c) + ks.map(([k, r]) => roomRow(k, r)).join('');
   }
   h += buildExtras();
   buildSheet(h);
-  $('bMoveDesk').onclick = () => { closeSheet(); startMove(); };
   if ($('bDesk2')) $('bDesk2').onclick = () => { closeSheet(); if (S.cash < DESK_COST) { toast(t('build.noCash'), 1600); return; } startMove(true); };
   $('sheet').querySelectorAll('[data-room]').forEach((b) => b.onclick = () => openSize(b.dataset.room));
   bindExtras();
@@ -4235,16 +4247,17 @@ function openStaffList(filter) {
   if (typeof filter === 'string') staffFilter = filter;
   const roles = Object.keys(ROLES).filter((r) => unlocked(r) || S.staff.some((s) => s.role === r));
   const count = (r) => S.staff.filter((s) => s.role === r).length;
-  let h = `<div class="stHead"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><h2 style="margin:0">${t('staff.title')}</h2><p class="sub" style="margin:0">${t('staff.sub', { n: S.staff.length, w: money(S.staff.reduce((a, s) => a + s.wage, 0)) })}</p>${S.mode === 'career' ? `<p class="sub" style="margin:2px 0 0;font-weight:800;color:${maintJobs().length > 4 ? 'var(--red)' : 'inherit'}">🧹 ${t('mt.pending', { n: maintJobs().length, m: S.staff.filter((x) => x.role === 'maint').length })}</p>` : ''}</div><button class="btn g" id="toHire" style="padding:9px 14px;font-size:15px;white-space:nowrap">+ ${t('staff.hireNew')}</button></div>`;
+  let h = `<div class="stHead"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><h2 style="margin:0">${t('staff.title')}</h2><p class="sub" style="margin:0">${t('staff.sub', { n: S.staff.length, w: money(S.staff.reduce((a, s) => a + s.wage, 0)) })}</p></div></div>`; // one way to hire: the + button of each team below (the big duplicate is gone); the maintenance backlog sits in its own team
   h += `<div class="tabs" style="margin-top:8px"><button class="${staffFilter === 'all' ? 'g' : 'y'}" data-sf="all">${t('staff.all')} · ${S.staff.length}</button>` + roles.map((r) => `<button class="${staffFilter === r ? 'g' : 'w'}" data-sf="${r}" style="border-left:5px solid ${ROLES[r].strip}">${roleN(r)} · ${count(r)}</button>`).join('') + `</div></div>`;
   if (!S.staff.length) h += `<div class="msg">${t('staff.none')}</div>`;
+  const mj = S.mode === 'career' ? maintJobs().length : 0;
   for (const r of roles) {
     if (staffFilter !== 'all' && staffFilter !== r) continue;
     const list = S.staff.filter((s) => s.role === r);
     const rooms = Object.values(R.rooms).filter((x) => ROOMS[x.type].role === r);
     const seats = r === 'host' ? 1 : rooms.reduce((a, x) => a + x.staff.length, 0), filled = r === 'host' ? Math.min(1, list.length) : rooms.reduce((a, x) => a + x.staff.filter(Boolean).length, 0);
-    if (!list.length && staffFilter === 'all') continue;
-    h += `<div class="stGroup" style="border-left-color:${ROLES[r].strip}"><b>${roleN(r)} · ${list.length}</b><span>${r === 'maint' || r === 'researcher' && !rooms.length ? t('job.' + r) : seats ? t('staff.seats', { a: filled, b: seats }) : t('job.' + r)}</span><button class="w" data-hr="${r}">+ ${t('staff.hireRole')}</button></div>`;
+    if (!list.length && staffFilter === 'all' && !(seats > filled) && !(r === 'maint' && mj)) continue; // empty teams show only when a post waits for them
+    h += `<div class="stGroup" style="border-left-color:${ROLES[r].strip}"><b>${roleN(r)} · ${list.length}</b><span>${r === 'maint' && S.mode === 'career' ? `<b style="color:${mj > 4 ? 'var(--red)' : 'inherit'}">🧹 ${t('mt.pending', { n: mj, m: list.length })}</b>` : r === 'maint' || r === 'researcher' && !rooms.length ? t('job.' + r) : seats ? t('staff.seats', { a: filled, b: seats }) : t('job.' + r)}</span><button class="w" data-hr="${r}">+ ${t('staff.hireRole')}</button></div>`;
     for (const st of list) {
       const rs = R.staff.find((x) => x.data === st), en = st.energy ?? 1;
       const where = st.sickHome && st.awayT > 0 ? '🏠 ' + t('epi.atHome') : st.awayT > 0 ? '🏠 ' + t('life.away') : rs && rs.at === 'train' ? '📘 ' + t('trn.inClass') : rs && rs.at === 'heal' ? '💊 ' + t('epi.atPharm') : st.train ? '📘 ' + t('trn.going') : rs && rs.onBreak ? '☕ ' + t('st.break') : rs && rs.at === 'desk' ? t('staff.desk') : rs && R.rooms[rs.at] ? rn(R.rooms[rs.at].type) : rs && rs.at === 'maint' ? t('job.maint') : t('staff.waiting');
@@ -4254,7 +4267,6 @@ function openStaffList(filter) {
     }
   }
   openSheet(h);
-  $('toHire').onclick = () => openHire(staffFilter !== 'all' ? staffFilter : undefined);
   $('sheet').querySelectorAll('[data-sf]').forEach((b) => b.onclick = () => openStaffList(b.dataset.sf));
   $('sheet').querySelectorAll('[data-hr]').forEach((b) => b.onclick = () => openHire(b.dataset.hr));
   $('sheet').querySelectorAll('[data-so]').forEach((b) => b.onclick = () => { const id = +b.dataset.so; staffOpen = staffOpen === id ? null : id; const top = $('sheet').scrollTop; openStaffList(); $('sheet').scrollTop = top; });
@@ -4511,6 +4523,7 @@ function dayTick(dt) {
     return;
   }
   S.t += dt;
+  if ((R.rebalT = (R.rebalT || 0) + dt) > 4) { R.rebalT = 0; assignStaff(); } // every few seconds: an idle carer moves to a busier room of their speciality
   if (S.inspectAt > 0 && S.t >= S.inspectAt && !R.inspector) { S.inspectAt = -1; spawnInspector(); }
   if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && hasRoom(PROBLEMS[k].room)); if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
   if (S.crewAt > 0 && S.t >= S.crewAt && !modalPaused) { S.crewAt = -1; crewVisit(); }
@@ -4862,7 +4875,7 @@ $('crDone').onclick = () => {
 const TUT = [
   { k: 'tut.0', ok: true },
   { k: 'tut.1', target: 'nBuild', inSheet: ['[data-size]:not([disabled])', '[data-room]'], place: true, done: () => S.rooms.length > 0 },
-  { k: 'tut.2', target: 'nStaff', inSheet: ['[data-hire]:not([disabled])', '#toHire', '[data-role]'], done: () => Object.values(R.rooms).every((r) => !ROOMS[r.type].role || r.staff.some(Boolean)) },
+  { k: 'tut.2', target: 'nStaff', inSheet: ['[data-hire]:not([disabled])', '[data-hr]', '[data-role]'], done: () => Object.values(R.rooms).every((r) => !ROOMS[r.type].role || r.staff.some(Boolean)) },
   { k: 'tut.3b', done: () => !!sel || S.served >= 1 }, // something to do, not just wait: tap a visitor
   { k: 'tut.3c', ok: true, done: () => S.served >= 1 },
   { k: 'tut.4b', target: 'pep', done: () => S.pepUsed },
@@ -4935,7 +4948,7 @@ function staffEnergy(rs, dt) {
     return;
   }
   if (rs.onBreak) {
-    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'idle') pa.anim.set('idle'); } else if (rs.onBreak && rs.onBreak.anim) { if (pa.anim.state !== rs.onBreak.anim) pa.anim.set(rs.onBreak.anim); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : rs.onBreak && rs.onBreak.anim ? 14 : 22)); /* a nap is fastest, a round of arcade beats a coffee */ if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
+    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'idle') pa.anim.set('idle'); } else if (rs.onBreak && rs.onBreak.anim) { if (pa.anim.state !== rs.onBreak.anim) pa.anim.set(rs.onBreak.anim); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : rs.onBreak && rs.onBreak.anim ? 14 : 22)); /* a nap is fastest, a round of arcade beats a coffee */ if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; const old = R.rooms[rs.at]; if (old) { if (old.staff[rs.st] === rs) old.staff[rs.st] = null; rs.at = null; assignStaff(); } if (rs.at == null || rs.mode !== 'walk') goStaff(rs, postSpot(rs)); } } /* back from a break: to the room that needs them most (emergency, then longest queue), not just their old post */
   } else if (rs.mode === 'there' || rs.task) {
     if (rs.at !== 'idle' && rs.at !== 'train' && rs.at !== 'heal') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (185 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
     if (d.energy < 0.25) {
