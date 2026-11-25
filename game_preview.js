@@ -1531,7 +1531,7 @@ function ambience(dt) {
 // people on a bed lie flat on their back, head to the pillow, under a duvet (feet to chest); back upright when they get up
 const LIE_V = new THREE.Vector3(), DUVET_C = ['#9C7BD4', '#E07FA6', '#6FA3D8', '#7FBF8E', '#E9A35B'];
 function napDuvet(col) { // a thick, soft duvet that hides the whole body up to the chest, with the white sheet folded back over its top edge
-  const dv = rbox(1.02, 0.36, 1, col, 0.14, { r: 0.95 }); const f = rbox(1.05, 0.38, 0.07, '#F4F0F6', 0.03, { r: 0.9 }); f.position.z = -0.47; f.castShadow = false; dv.add(f); return dv;
+  const dv = rbox(1.02, 0.36, 1, col, 0.14, { r: 0.95 }); const f = rbox(1.04, 0.05, 0.16, '#F4F0F6', 0.02, { r: 0.9 }); f.position.set(0, 0.17, -0.42); f.castShadow = false; dv.add(f); return dv;
 }
 function lieUpdate() {
   const who = []; for (const v of R.visitors) who.push([v, v.state === 'treat' && v.rspot]); for (const rs of R.staff) who.push([rs, rs.mode === 'break' && rs.onBreak]);
@@ -1540,11 +1540,11 @@ function lieUpdate() {
       av.rotation.order = 'YXZ'; av.rotation.set(-Math.PI / 2, r, 0); av.position.set(sp.x + s * L * 0.5, base + 0.13, sp.z + c * L * 0.5); // feet at +z, head toward -z (the pillow end)
       const ud = av.userData, now = performance.now(); if (!ud.lieT) { ud.lieS = now; ud.roll = 0; ud.rollT = 0; ud.rollAt = now + 1500; }
       ud.roll = 0; // once in bed a client lies still under the duvet (no tossing: it read as bodies falling out of the bed)
-      const p = av.userData.p; if (p && p.anim && p.anim.state !== 'idle') p.anim.set('idle');
+      const p = av.userData.p; if (sp.duvetC && p && p.anim && p.anim.calm && /^~/.test(p.anim.state || '')) p.anim.calm(); /* resting in a nap bed: the plain idle, not a fidgety styled one */ if (p && p.anim && p.anim.state !== 'idle') { p.anim.set('idle'); if (ud.sleep) { ud.sleep = false; ud.lieT = 15; } } /* something else changed the pose: settle and hold still again */
       let hb = av.userData.hipsB; if (hb === undefined) { hb = null; av.traverse((b) => { if (!hb && b.isBone && /hips|pelvis/i.test(b.name)) hb = b; }); av.userData.hipsB = hb; }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + 0.14 - LIE_V.y; } // the clip's pelvis offset: lay the hips on the mattress
       let dv = av.userData.duvet; if (dv && dv.userData.wide !== !!sp.duvetC) { if (dv.parent) dv.parent.remove(dv); dv = null; } if (!dv) { dv = av.userData.duvet = sp.duvetC ? napDuvet(sp.duvetC) : rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; dv.userData.wide = !!sp.duvetC; } // the nap beds: a wide, thick duvet in the bed's colour that covers the arms and comes up to the chest
-      av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
+      av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); else if (p && p.anim && p.anim.mixer) { const mx = p.anim.mixer; for (const ac of mx._actions || []) if (ac.isRunning()) ac.time = 0; mx.update(0); mx.stopAllAction(); } /* the modelled characters: hold the first frame of their idle, so no hand waves out of the duvet */ av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
       if (!dv.parent) scene.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.y = r; dv.rotation.z = 0; dv.scale.y = sp.duvetC ? 1 : 1.3; const dy = sp.duvetC ? 0.27 : 0.19; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + dy, sp.z + c * (L * 0.5 - len / 2 + 0.06));
       if (sp.duvetC) { // the nap beds: lay the duvet on where the body really is (the clip shifts it toward the pillow), from past the feet up to the chest
         let hd = ud.headB, ft = ud.footB; if (hd === undefined) { hd = ft = null; av.traverse((b) => { if (!b.isBone) return; if (!hd && /head/i.test(b.name) && !/end|top/i.test(b.name)) hd = b; if (!ft && /foot|ankle/i.test(b.name)) ft = b; }); ud.headB = hd; ud.footB = ft; }
