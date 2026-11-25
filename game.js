@@ -914,7 +914,7 @@ function glbSwap(g, name, o = {}) {
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
     const sl = o.len ? o.len / Math.max(sz.x, sz.z) : null, sh = o.h ? o.h / sz.y : null;
     const k = sl || sh || 1; m.scale.set(k, sh && sl ? sh : k, k);
-    if (/rug|carpet|playmat/i.test(name) && sz.y * m.scale.y > (o.rugH || 0.035)) m.scale.y = (o.rugH || 0.035) / sz.y; // a rug is walked on: flat, so feet stay above it
+    if (/rug|carpet|playmat|jute/i.test(name) && sz.y * m.scale.y > (o.rugH || 0.035)) m.scale.y = (o.rugH || 0.035) / sz.y; // a rug is walked on: flat, so feet stay above it
     if (o.fit) { const fx = o.fit[0] / sz.x, fz = o.fit[1] / sz.z; m.scale.set(fx, o.h ? sh : Math.min(fx, fz) * (o.hk || 1), fz); } // fit a footprint [w, d] (group axes); height follows the narrower side unless h is given
     let rid; g.traverse((c) => { if (c.userData.roomId != null && rid == null) rid = c.userData.roomId; });
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
@@ -1087,7 +1087,9 @@ ROOM_STYLE.parent = { v2: true, model: 'parent_kit', kit: true, winSide: 'none',
 for (const k of ['detox', 'lab', 'parent', 'moving', 'jjim', 'yoga', 'lucha', 'ahwa', 'roda', 'garage', 'shop', 'staffroom', 'toilet']) { const st = ROOM_STYLE[k]; if (!st || st.v2) continue;
   const c = new THREE.Color(st.wall), h = {}; c.getHSL(h); const tone = (s2, l2) => '#' + new THREE.Color().setHSL(h.h, Math.min(1, s2), l2).getHexString(); // a bit more colour inside, a door in the deep version of the room's hue
   const dc = tone(h.s * 0.55 + 0.25, 0.42); Object.assign(st, { v2: true, chunky: true, ao: true, wall: tone(h.s * 1.25, h.l * 0.9), inBase: tone(h.s * 0.9, h.l * 0.72), door: dc, panel: dc, pop: '#E3B341' }); }
-for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
+Object.assign(ROOM_STYLE.staffroom, { model: 'staffroom_kit', kit: true, wall: '#9A7D66', inBase: '#76604E', door: '#7E5F47', panel: '#7E5F47', pop: '#E9785F', wood: ['#C98E52', '#B97E45'], floor: '#C98E52' }); // the painting: warm taupe walls, wooden floor
+Object.assign(ROOM_STYLE.yoga, { model: 'yoga_kit', kit: true, wall: '#F1E2C4', inBase: '#D6BE98', door: '#8A5A36', panel: '#B48CE8', pop: '#B48CE8', wood: ['#D59D5F', '#C68C50'], floor: '#D59D5F' }); // cream terrace walls, wooden deck // the Tripo pieces of the break-room and yoga paintings
+for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 // one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
 function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
@@ -1409,8 +1411,9 @@ function buildRoom(r) {
   room.wallG = wallG; roomObs(room);
   // two rooms side by side build their kit walls, corners and crowns in the very same planes: the GPU then flickers between the two
   // colours. Each room gets its own small depth priority (and the kit wins over the plot walls it is pushed against).
-  { const off = roomPO(r); g.traverse((o) => { if (o.isMesh && o.userData.kitW && o.material && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
-      o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off })); } }); }
+  { const off = roomPO(r), po = (o) => { if (o.isMesh && o.material && !Array.isArray(o.material) && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
+      o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off })); } };
+    g.traverse((o) => { if (o.userData.kitW) po(o); }); for (const w of wallG) w.traverse(po); } // every piece of the walls, not only the kit parts: the painted inner layers and caps met the centre's walls in the same plane too
   if (GFX.batch) { for (const w of wallG) { const keep = w.children.filter((c) => c.userData.keepY || c.userData.kitW); batchNode(w, new Set(keep), { userData: { roomId: r.id } }); for (const k of keep) batchNode(k, new Set(), { userData: { roomId: r.id } }); } batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
   { const ca = Math.cos(r.a), sa = Math.sin(r.a), hs = []; g.traverse((o) => { if (o.userData.whang) hs.push({ o, n: o.userData.whang }); else if (o.userData.hang) { const [lx, lz] = o.userData.hang; hs.push({ o, n: [Math.round(lx * ca + lz * sa), Math.round(-lx * sa + lz * ca)] }); } });
     world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
@@ -1489,7 +1492,7 @@ function lieUpdate() {
 function doorsUpdate(dt) {
   ambience(dt); lieUpdate();
   const ds = world.doors; if (!ds || !ds.length) return;
-  const movers = []; for (const v of R.visitors) movers.push(v.av.position); for (const rs of R.staff) movers.push(rs.av.position); if (R.mgr && R.mgr.av) movers.push(R.mgr.av.position);
+  const movers = []; for (const v of R.visitors) movers.push(v.av.position); for (const rs of R.staff) movers.push(rs.av.position); if (R.mgr && R.mgr.av && R.mgr.av.visible) movers.push(R.mgr.av.position);
   for (const d of ds) {
     if (!d.g.parent) continue;
     let want = 0; for (const p of movers) if (Math.abs(p.x - d.x) < 1.25 && Math.abs(p.z - d.z) < 1.25) { want = 1; break; }
@@ -1705,6 +1708,50 @@ function parentKit(g, cx, cz, room) {
     pts: { chair: P(mx + 0.2, mz + 0.42, Math.PI), mat: P(mx - 0.4, mz + 0.2, 0), matSide: P(mx - 1.0, mz, H), board: P(S ? 0.6 : 1.1, -D / 2 + 0.75, Math.PI), basket: P(w / 2 - 0.9, -0.3, -H), table: P(mx + 0.2, mz - 0.2, 0), kidNear: P(mx - 0.5, mz + 0.4, H) } });
   room.staffSpot = { x: cx + ax, z: cz + sz + 0.35, rot: -H * 0.75, sit: true, y: 0 };
 }
+const STAFF_DIMS = {"k_mugshelf":[0.998,0.6035,0.4668],"k_stool":[0.9707,0.998,0.9434],"k_lamp":[0.5605,0.998,0.5684],"k_coffeetable":[0.998,0.4434,0.998],"k_coffee":[0.6699,0.998,0.7051],"k_jute":[0.998,0.0801,0.998],"k_sink":[0.998,0.8887,0.5879],"k_monstera":[0.8887,0.998,0.6738],"k_fridge":[0.834,0.998,0.6191],"k_sofa":[0.998,0.5918,0.6191],"k_arcade":[0.5527,0.998,0.6465],"k_sidetable":[0.998,0.7949,0.9746]};
+const YOGA_DIMS = {"k_lantern":[0.502,0.998,0.5684],"k_bowl":[0.998,0.9121,0.998],"k_towels":[0.998,0.5684,0.373],"k_lemon":[0.8418,0.998,0.5879],"k_mat":[0.5684,0.1348,0.998],"k_matpink":[0.5684,0.1348,0.998],"k_matblue":[0.5684,0.1348,0.998],"k_matyellow":[0.5684,0.1348,0.998],"k_matpurple":[0.5684,0.1348,0.998],"k_cushion":[0.998,0.3496,0.998],"k_dais":[0.998,0.2598,0.6699],"k_teatable":[0.998,0.5059,0.9863],"k_rug":[0.998,0.041,0.998],"k_speaker":[0.5723,0.998,0.502]};
+// Break room (from the break-room painting): kitchenette on the back wall (sink counter with the coffee machine on it, mug shelf above, mini fridge),
+// the "Wellness Quest" arcade with its stool, two coral sofas facing each other across a jute rug and a round coffee table, a side table and floor lamp, potted monsteras.
+// Seats: 2 per sofa, plus the arcade stool (a staff member on a break there plays instead of drinking).
+function staffroomKit(g, cx, cz, room) {
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = w < 5 || D < 5, H = Math.PI / 2, L = [], bz = -D / 2, lx = -w / 2, rx = w / 2;
+  const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
+  const seat = (x, z, rot, o = {}) => { const q = W(x, z); room.spots.push({ x: q.x, z: q.z, rot: rot + F.rho, sit: true, y: 0.05, busy: null, ...o }); };
+  const sk = S ? 0.95 : 1.05, sx = lx + 0.12 + 0.55; // sink counter, back-left
+  const sw = 1.07, cw = 0.62, ccx = sx + sw / 2 + cw / 2; // the sink counter, then a stretch of worktop for the coffee machine (not on the sink), then the fridge
+  L.push({ p: 'k_sink', h: 0.95, x: sx, z: bz + 0.33, rot: 0 }, { p: 'k_coffee', h: 0.42, x: ccx, z: bz + 0.3, rot: 0, y: 0.9, solid: false }, { p: 'k_mugshelf', len: 0.8, wall: 'back', u: ccx - 0.1, hang: true, y: 1.55, gap: 0.1 });
+  { const q = W(ccx, bz + 0.33), t = grp(q.x, q.z, F.rho, g); put(rbox(cw, 0.82, 0.56, '#E0C9A4', 0.04), 0, 0.52, 0, t); put(rbox(cw + 0.02, 0.06, 0.6, '#EFE2CC', 0.02), 0, 0.96, 0, t); put(rbox(0.04, 0.12, 0.02, '#C9A46A', 0.01), 0.18, 0.75, 0.29, t); }
+  L.push({ p: 'k_fridge', h: 0.95, x: ccx + cw / 2 + 0.42, z: bz + 0.3, rot: 0 });
+  const ax = rx - (S ? 0.55 : 0.75), ah = S ? 1.25 : 1.35, ad = 0.6465 * ah; L.push({ p: 'k_arcade', h: ah, x: ax, z: bz + ad / 2 + 0.06, rot: 0 }, { p: 'k_stool', h: 0.5, x: ax, z: bz + ad + 0.42, rot: 0 });
+  seat(ax, bz + ad + 0.42, Math.PI, { anim: 'worksit', y: 0.2 }); // playing the arcade
+  const rz = S ? 0.55 : 0.6, rl = S ? 1.9 : 2.4; L.push({ p: 'k_jute', len: rl, x: 0, z: rz, rot: 0, solid: false }, { p: 'k_coffeetable', len: S ? 0.75 : 0.95, x: 0, z: rz, rot: 0 });
+  const sl = S ? 1.55 : 1.85, sd = 0.62 * sl / 1; // sofas: left wall facing right, and (M) right wall facing left
+  L.push({ p: 'k_sofa', len: sl, x: lx + sd / 2 + 0.06, z: rz, rot: H }); for (const o of [-0.42, 0.42]) seat(lx + sd / 2 + 0.12, rz + o * sl / 1.85, H);
+  if (!S) { L.push({ p: 'k_sofa', len: sl, x: rx - sd / 2 - 0.06, z: rz + 0.25, rot: -H }); for (const o of [-0.42, 0.42]) seat(rx - sd / 2 - 0.12, rz + 0.25 + o, -H);
+    L.push({ p: 'k_sidetable', len: 0.6, x: rx - 0.42, z: rz - 1.05, rot: 0 }, { p: 'k_lamp', h: 1.25, x: rx - 0.4, z: D / 2 - 0.45, rot: 0, solid: true });
+    L.push({ p: 'k_monstera', h: 1.15, x: lx + 0.62, z: D / 2 - 0.5, rot: 0 }, { p: 'k_monstera', h: 1.0, x: ax - 1.05, z: bz + 0.42, rot: 0 }, { p: '@plant', s: 1.1, x: rx - 0.4, z: rz - 1.75 }); }
+  else L.push({ p: 'k_monstera', h: 0.9, x: rx - 0.5, z: D / 2 - 0.45, rot: 0 }, { p: '@plant', s: 0.9, x: lx + 0.35, z: D / 2 - 0.4 });
+  kitRoom(g, cx, cz, room, 'staffroom_kit', L, STAFF_DIMS, F);
+}
+// Yoga terrace (from the yoga painting): the teacher's wooden dais with its purple mat at the back, a speaker and a singing bowl beside it, rows of mats in
+// five colours for the clients, the towel bench with water bottles, a tea corner with floor cushions on a round rug, a lemon tree and lanterns
+function yogaKit(g, cx, cz, room) {
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = w < 5 || D < 5, H = Math.PI / 2, L = [], bz = -D / 2, lx = -w / 2, rx = w / 2;
+  const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
+  const dl = S ? 1.5 : 1.9, dz = bz + 0.45; // dais (kept low: fitted to a footprint, not scaled up)
+  { const q = W(0, dz), d = grp(q.x, q.z, F.rho, g); put(rbox(dl, 0.22, dl * 0.6, '#C98A4B', 0.05), 0, 0.2, 0, d); glbSwap(d, 'yoga_kit/k_dais', { fit: [dl, dl * 0.62], h: 0.24, y: 0.11 }); }
+  room.staffSpot = (() => { const q = W(0, dz + 0.05); return { x: q.x, z: q.z, rot: F.rho, sit: false, y: 0.24 }; })();
+  L.push({ p: 'k_speaker', h: 0.85, x: -dl / 2 - 0.4, z: bz + 0.35, rot: 0.3 }, { p: 'k_bowl', h: 0.22, x: dl / 2 + 0.3, z: bz + 0.35, rot: 0, solid: false });
+  const n = seatsN(room), cols = ['k_matpink', 'k_matblue', 'k_matyellow', 'k_matpurple', 'k_mat', 'k_matpink'];
+  const xs = n <= 2 ? [-0.55, 0.55] : n === 3 ? [-1.05, 0, 1.05] : [-1.5, -0.5, 0.5, 1.5], mz = S ? 0.55 : 0.5, ml = S ? 1.45 : 1.6;
+  for (let i = 0; i < n; i++) { L.push({ p: cols[i], len: ml, x: xs[i], z: mz, rot: 0, solid: false }); const q = W(xs[i], mz + 0.15); room.spots.push({ x: q.x, z: q.z, rot: Math.PI + F.rho, sit: true, y: 0.02, busy: null }); }
+  if (!S) { L.push({ p: 'k_towels', len: 1.1, wall: 'right', u: -1.3 }, { p: 'k_lemon', h: 1.4, x: rx - 0.66, z: D / 2 - 0.55, rot: 0 });
+    L.push({ p: 'k_rug', len: 1.3, x: lx + 0.95, z: D / 2 - 0.95, rot: 0, solid: false }, { p: 'k_teatable', len: 0.6, x: lx + 0.95, z: D / 2 - 0.95, rot: 0 });
+    L.push({ p: 'k_cushion', len: 0.5, x: lx + 0.4, z: D / 2 - 1.35, rot: 0, solid: false, tint: '#7FC8B8' }, { p: 'k_cushion', len: 0.5, x: lx + 1.5, z: D / 2 - 0.55, rot: 0, solid: false, tint: '#E9B949' });
+    L.push({ p: 'k_lantern', h: 0.45, x: lx + 0.35, z: bz + 0.35, rot: 0, solid: false }, { p: 'k_monstera', kit: 'staffroom_kit', dm: STAFF_DIMS.k_monstera, h: 1.1, x: rx - 0.6, z: bz + 0.45, rot: 0 }); }
+  else L.push({ p: 'k_lemon', h: 1.1, x: rx - 0.55, z: D / 2 - 0.45, rot: 0 }, { p: 'k_lantern', h: 0.4, x: lx + 0.3, z: bz + 0.3, rot: 0, solid: false });
+  kitRoom(g, cx, cz, room, 'yoga_kit', L, YOGA_DIMS, F);
+}
 const KITK = new Proxy({}, { get: (o, kit) => { const st = Object.values(ROOM_STYLE).find((x) => x && x.model === kit); return st && st.kscale || 1; } }); // per-kit piece scale (diorama look)
 function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
   const w = F.w, D = F.D, lx = -w / 2, rx = w / 2, bz = -D / 2, fz = D / 2, H = Math.PI / 2, out = [], rep = [], door = F.door;
@@ -1734,7 +1781,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
     glbSwap(p, (it.kit || kit) + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}), ...(it.tint ? { tint: it.tint } : {}), ...(it.rugH ? { rugH: it.rugH } : {}), ...(it.onModel ? { onModel: it.onModel } : {}) }); box.g = p;
-    if (!it.hang && !/rug/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
+    if (!it.hang && !/rug|jute|k_mat/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
 }
@@ -2134,7 +2181,7 @@ const furniture = {
     const st = grp(cx - 2.2 * K, cz - 2.6 * K, 0, g); put(rbox(1.2, 1.6, 0.5, '#C2703A', 0.06), 0, 0.85, 0, st); put(rbox(1.0, 0.4, 0.05, '#FFB067', 0.02, { e: '#FFB067', ei: 0.8 }), 0, 1.2, 0.26, st);
     room.staffSpot = { x: cx + 0.2 * K, z: cz + 1.3 * K, rot: Math.PI, sit: false, y: 0 };
   },
-  yoga(g, cx, cz, room, K = 1) {
+  yoga(g, cx, cz, room, K = 1) { if (ROOM_STYLE.yoga && ROOM_STYLE.yoga.kit && PROPS_ON) { yogaKit(g, cx, cz, room); return; }
     const win = grp(cx, cz - 2.75 * K, 0, g); put(rbox(3.4 * K, 1.4, 0.06, '#BFE6F6', 0.02, { e: '#9FCBE8', ei: 0.25 }), 0, 1.5, 0, win); for (let i = 0; i < 7; i++) put(rbox(0.32, 0.4 + (i * 37 % 9) / 10, 0.02, '#5E6B78', 0.01), -1.4 * K + i * 0.47 * K, 1.0 + (0.4 + (i * 37 % 9) / 10) / 2, 0.04, win);
     put(rbox(0.9, 0.06, 0.6, '#3B8D99', 0.02), cx, 0.13, cz - 1.7 * K, g); room.staffSpot = { x: cx, z: cz - 1.7 * K, rot: 0, sit: false, y: 0.03 };
     const n = seatsN(room), pos = [[-0.8, 0], [0.8, 0], [-0.8, 1.3], [0.8, 1.3], [-2.0, 0.6], [2.0, 0.6]];
@@ -2221,6 +2268,7 @@ const furniture = {
     const bag = (x, z, rot, c) => { const b = grp(x, z, rot, g); const bb = sph(0.48, c); bb.scale.set(1, 0.6, 1); put(bb, 0, 0.3, 0, b); glbSwap(b, 'beanbag', { len: 0.95, y: 0.1 }); seat(x, z, rot, 0); };
     const table = (x, z) => { const tb = grp(x, z, 0, g); put(cyl(0.45, 0.45, 0.06, '#FFFFFF'), 0, 0.45, 0, tb); put(cyl(0.06, 0.06, 0.4, '#7A8088'), 0, 0.23, 0, tb); put(cyl(0.07, 0.06, 0.14, '#E9785F'), 0.1, 0.55, 0, tb); glbSwap(tb, 'sidetable', { h: 0.55, y: 0.1 }); };
     const H = Math.PI / 2, half = room.nst === 2 && room.st === 1;
+    if (!half && ROOM_STYLE.staffroom && ROOM_STYLE.staffroom.kit && PROPS_ON) { staffroomKit(g, cx, cz, room); return; } // the break room painting; a big room's 2nd half keeps the bunk-bed rest corner
     if (half) { // rest corner: a bunk bed against the back wall (2 beds: a nap restores energy twice as fast), a foosball table and an armchair
       { const bx = cx - 0.7 * K, bz = cz - 2.0 * K, bk = grp(bx, bz, H, g), wood = '#C98F5A';
         for (const px of [-0.95, 0.95]) for (const pz of [-0.45, 0.45]) put(rbox(0.1, 2.0, 0.1, wood, 0.03), px, 1.0, pz, bk);
@@ -2840,12 +2888,26 @@ function lineTick(v, dt) {
   lineDrop(v); sp.busy = v;
   if (v.lineKind === 'cafe') { v.lspot = sp; setPath(v, findPath(v.av.position, sp)); v.state = 'toCafe'; } else { v.sspot = sp; setPath(v, findPath(v.av.position, sp)); v.state = 'toShop'; }
 }
+// Clients who already know which room they need wait right outside its door (standing, to either side of the doorway, so the way in stays clear),
+// so the player sees who is waiting for what; the lobby seats are for the others and for when that spot by the door is full.
+function nearRoomSpot(v) {
+  const room = v.target != null && R.rooms[v.target]; if (!room || room.closed) return null;
+  if (!room.waitPts) { const r = room.def, d0 = doorPt(r, 0), c = { x: room.cx, z: room.cz }, L = Math.hypot(d0.x - c.x, d0.z - c.z) || 1, nx = (d0.x - c.x) / L, nz = (d0.z - c.z) / L, tx = -nz, tz = nx;
+    room.waitPts = []; for (const [d, lat] of [[1.05, 0.85], [1.05, -0.85], [1.05, 1.6], [1.05, -1.6], [1.8, 0.85], [1.8, -0.85]]) { const x = d0.x + nx * d + tx * lat, z = d0.z + nz * d + tz * lat; room.waitPts.push({ x, z, rot: Math.atan2(d0.x - x, d0.z - z), sit: false, y: 0, busy: null, near: room.id }); } }
+  const okPt = (p) => { if (!inFloor(p.x, p.z)) return false; const [i, j] = ci(p.x, p.z); if (!free(gridBlk, i, j)) return false;
+    return !S.rooms.some((o) => { const q = roomRect(o); return p.x > q.x0 - 0.3 && p.x < q.x1 + 0.3 && p.z > q.z0 - 0.3 && p.z < q.z1 + 0.3; }) && !desks().some((D) => Math.hypot(p.x - D.x, p.z - D.z) < 1.5); };
+  for (const p of room.waitPts) { if (p.busy && !R.visitors.includes(p.busy)) p.busy = null; if (!p.busy && okPt(p)) return p; }
+  return null;
+}
+const waitSpotFor = (v) => nearRoomSpot(v) || WAIT_SPOTS.find((s) => !s.busy && !s.blocked);
 function seatVisitor(v) {
-  const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || OVERFLOW.find((s) => !s.busy || !R.visitors.includes(s.busy)); v.prog = 0;
+  const spot = waitSpotFor(v) || OVERFLOW.find((s) => !s.busy || !R.visitors.includes(s.busy)); v.prog = 0;
   if (!spot) { floatAt(v.av.position, '🚪 ' + t('cmp.crowd')); v.crowdOut = true; leave(v, false); return; }
   spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot));
   v.state = 'toWait';
 }
+// a wait told in the game's own time (a day lasts DAY_LEN seconds), not in real minutes
+function gameDur(sec) { const h = sec / DAY_LEN * 24; if (h < 1.5) return t('dur.h1'); if (h < 23.5) return t('dur.h', { n: Math.round(h) }); const d = Math.round(h / 24); return d <= 1 ? t('dur.d1') : t('dur.d', { n: d }); }
 const needOf = (v) => (isMystK(v.prob) ? null : PROBLEMS[v.prob].room);
 function roomQ(id) { return R.visitors.filter((v) => v.target === id && (v.state === 'wait' || v.state === 'toWait')); }
 function pickRoomFor(v) { const need = needOf(v); if (!need) return null; const rs = Object.values(R.rooms).filter((r) => r.type === need); if (!rs.length) return null; rs.sort((a, b) => (roomQ(a.id).length - a.spots.length) - (roomQ(b.id).length - b.spots.length)); return rs[0].id; }
@@ -3391,7 +3453,7 @@ function visitorUpdate(v, dt) {
       v.prog += dt / 3;
       if (v.prog >= 1) { const spend = Math.round((7 + RNG() * 6) * (S.price || 1) * (done('oat') ? 1.2 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.25); incCnt('matcha'); { const cr = roomOfSpot(v.lspot); if (cr) { roomEarn(cr.id, spend); addDirt(cr, 0.03); } } if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 1, null, 0.5);
         AU.sfx('cash'); floatAt(v.av.position, '🍵 +' + money(spend)); holdCup(v.av, false); v.lspot.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
-        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'toLine': if (stepWalker(v, dt, walkSpeed)) { const lp = v.linePt; if (lp) { v.av.rotation.y = lp.rot; } posePhone(v.av.userData.p); v.state = 'line'; } // fall through to 'line' next frame
@@ -3404,7 +3466,7 @@ function visitorUpdate(v, dt) {
         if (A.k === 'vending') { const spend = Math.round((4 + RNG() * 5) * (S.price || 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.15); incCnt('snack'); if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 2, null, 0.55); AU.sfx('cash'); floatAt(v.av.position, '🥤 +' + money(spend)); }
         else { v.pat = Math.min(1, v.pat + 0.4); vb('decor', 0 + 0.3); floatAt(v.av.position, '💆'); }
         A.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
-        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'loo': {
@@ -3413,7 +3475,7 @@ function visitorUpdate(v, dt) {
         const lroom = roomOfSpot(v.lspot); v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️'); AU.sfx('flush', hearVol(v.av.position));
         const ws = lroom && lroom.wash && lroom.wash.filter((w) => !w.busy).sort((a, b) => Math.hypot(a.x - v.av.position.x, a.z - v.av.position.z) - Math.hypot(b.x - v.av.position.x, b.z - v.av.position.z))[0];
         if (ws) { ws.busy = v; v.wspot = ws; v.wroom = lroom; setPath(v, findPath(v.av.position, ws)); v.state = 'toWash'; break; } // hands are washed before leaving
-        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'toWash': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.wspot); v.state = 'washing'; v.prog = 0; if (v.wspot.water) v.wspot.water.visible = true; } break;
@@ -3422,12 +3484,12 @@ function visitorUpdate(v, dt) {
       if (v.prog >= 1) { const ws = v.wspot, rm = v.wroom; if (ws) { if (ws.water) ws.water.visible = false; ws.busy = null; } v.wspot = null; v.wroom = null; v.prog = 0; floatAt(v.av.position, '🧼');
         const bn = rm && rm.bins && rm.bins.reduce((a, b) => (!a || Math.hypot(b.x - v.av.position.x, b.z - v.av.position.z) < Math.hypot(a.x - v.av.position.x, a.z - v.av.position.z) ? b : a), null);
         if (bn) tossPaper(v.av.position, bn); // the paper towel goes in the bin
-        const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+        const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'wait': {
       v.need = (v.need || 0) + dt / 95;
-      if (v.pat < 0.45 && !v.asked && S.mode === 'career' && S.tut < 0 && S.day * DAY_LEN + S.t - (S.askWaitT ?? -99) > 45) { v.asked = true; S.askWaitT = S.day * DAY_LEN + S.t; chat(t('from.review') + ' · ' + v.name + ', ' + v.age, t('ct.w.msg', { m: Math.max(1, Math.round((v.waitT || 0) / 60)) }), '⏳', { act: { k: 'wait', id: v.id } }); }
+      if (v.pat < 0.45 && !v.asked && S.mode === 'career' && S.tut < 0 && S.day * DAY_LEN + S.t - (S.askWaitT ?? -99) > 45) { v.asked = true; S.askWaitT = S.day * DAY_LEN + S.t; chat(t('from.review') + ' · ' + v.name + ', ' + v.age, t('ct.w.msg', { d: gameDur(v.waitT || 0) }), '⏳', { act: { k: 'wait', id: v.id } }); }
       if (v.pat < 0.25 && RNG() < dt * 0.006) {
         if (RNG() < 0.55) { dropPuddle(v.av.position.x + 0.35, v.av.position.z + 0.2, '#9BCB4E'); floatAt(v.av.position, '🤢', true); vb('dirt', 0 - 0.6); for (const o of R.visitors) if (o !== v && Math.hypot(o.av.position.x - v.av.position.x, o.av.position.z - v.av.position.z) < 2) o.pat -= 0.05; tip('vomit'); }
         else { v.need = 1.5; v.urgent = true; floatAt(v.av.position, '💩', true); }
@@ -3836,7 +3898,7 @@ function updateLabels() {
   if (S.desk.segs && !deskHost(1) && deskHost(0)) { const d1 = desks()[1], el = label('desk1', 'warn', t('desk.need')); at(el, d1.x, 2.2, d1.z); seen.add('desk1'); }
   if (!deskHost(0)) { if (R.deskQ.length) say('desk', t('desk.need'), 50); const el = label('desk', 'warn', t('desk.need')); at(el, S.desk.x, 2.2, S.desk.z); seen.add('desk'); }
   if (unlocked('maint') && R.litter.length >= 5 && !R.staff.some((rs) => rs.data.role === 'maint')) { say('litter', t('pest.needMaint'), 80); const el = label('litter', 'warn', t('pest.needMaint')); at(el, 3, 1.2, 1.5); seen.add('litter'); }
-  if (R.mgr) { const el = label('mgr', 'boss', '⭐ ' + MGR.name, openMgr); at(el, R.mgr.av.position.x, 2.5 * (MGR.tall || 1), R.mgr.av.position.z); seen.add('mgr'); }
+  // (the manager has no label on the floor any more: her portrait bubble opens her menu)
   if (R.deskQ.length >= 3 && deskHost(0)) { const el = label('deskq', R.deskQ.length >= 6 ? 'warn tap' : 'tap', '🛎️ 👥' + R.deskQ.length, openDesk); el.style.background = R.deskQ.length >= 6 ? '' : '#16963C'; at(el, S.desk.x, 2.4, S.desk.z); seen.add('deskq'); }
   if (R.rats.length) say('rat', t('pest.rat'), 70);
   R.rats.forEach((r, i) => { const el = label('rat' + i, 'warn', '🐀 ' + t('pest.rat')); at(el, r.mesh.position.x, 0.9, r.mesh.position.z); seen.add('rat' + i); });
@@ -3901,7 +3963,7 @@ function evictRoom(id) {
   for (const v of R.visitors) if ((v.room === id && (v.state === 'toRoom' || v.state === 'treat')) || ((v.state === 'toLoo' || v.state === 'loo' || v.state === 'toCafe' || v.state === 'cafe') && R.rooms[id] && R.rooms[id].spots.includes(v.lspot)) || ((v.state === 'toWash' || v.state === 'washing') && R.rooms[id] && (R.rooms[id].wash || []).includes(v.wspot))) {
     if (v.lspot) { v.lspot.busy = null; v.lspot = null; } if (v.wspot) { if (v.wspot.water) v.wspot.water.visible = false; v.wspot.busy = null; v.wspot = null; }
     v.room = null; v.rspot = null; v.prog = 0;
-    const spot = WAIT_SPOTS.find((s) => !s.busy && !s.blocked) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
+    const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
     spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait';
   }
   const room = R.rooms[id]; if (room) for (const s of room.staff) if (s) s.at = null;
@@ -4246,7 +4308,7 @@ canvas.addEventListener('pointerup', (e) => {
   if (pm) { if (placingD) decorDrag(e); else if (placingR) placeDrag(e); else moveDrag(e); return; }
   ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, cam);
   if (mgrPick) { mgrPickAt(e); return; }
-  if (R.mgr && ray.intersectObject(R.mgr.av, true).length) { openMgr(); return; }
+  if (R.mgr && R.mgr.av.visible && ray.intersectObject(R.mgr.av, true).length) { openMgr(); return; }
   { const pv = pickVisitor(e); if (pv) { selectVisitor(pv); return; } }
   // decor (vending machine, radiators, AC, plants, sofas…): the modelled versions replace the primitive children after the tap
   // ids were set, so climb to the decor group instead of trusting the mesh — otherwise placed items could never be moved
@@ -4556,6 +4618,9 @@ function spawnManager() {
 }
 function mgrUpdate(dt) {
   const M = R.mgr; if (!M) return; const p = M.av.userData.p;
+  // The manager no longer walks the floor: she lives in the portrait bubble on the side. Her orders still work, at once: she is simply
+  // put where the job is (unseen), so her boosts, calming a visitor or rushing the desk apply straight away.
+  M.av.visible = false; if (M.path.length) { const e = M.path[M.path.length - 1]; M.av.position.set(e.x, 0.1, e.z); M.path = []; poseStand(p); mgrArrive(); }
   if (S.mgrCd > 0) S.mgrCd -= dt; if (S.mgrHelp) { S.mgrHelp.t -= dt; if (S.mgrHelp.t <= 0) { S.mgrHelp = null; mgrHome(); } }
   auraRing.visible = false; if (M.autoCd > 0) M.autoCd -= dt;
   if (M.cheer > 0 && p.anim) { if (p.anim.state !== 'cheer') p.anim.set('cheer'); M.cheer -= dt; if (M.cheer <= 0) poseStand(p); return; }
@@ -4574,6 +4639,7 @@ function mgrThink() {
     if (rq && rq[1] >= 3) { mgrGo({ kind: 'room', id: rq[0].id }, true); return; }
     if (allQ() >= 5 && R.staff.some((x) => x.at === 'desk')) { mgrGo({ kind: 'desk' }, true); return; }
   }
+  M.idleT = 3; return; // (no patrol any more: she is not on the floor)
   // patrol: visit a staffed room (or the lobby), have a look, move on
   const rooms = Object.values(R.rooms).filter((r) => r.id !== M.lastRoom);
   if (rooms.length && RNG() < 0.8) { const r = rnd(rooms); M.lastRoom = r.id; const d = doorPt(r.def, 0.9); M.task = { kind: 'patrol', id: r.id }; M.look = Math.atan2(r.cx - d.x, r.cz - d.z); setPath(M, findPath(M.av.position, d)); }
@@ -4724,11 +4790,11 @@ function staffEnergy(rs, dt) {
     return;
   }
   if (rs.onBreak) {
-    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'idle') pa.anim.set('idle'); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : 22)); if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
+    if (rs.mode === 'break') { { const pa = rs.av.userData.p; if (pa.anim && !/drink|lie/.test(pa.anim.state || '')) { if (rs.onBreak && rs.onBreak.bed) { if (pa.anim.state !== 'idle') pa.anim.set('idle'); } else if (rs.onBreak && rs.onBreak.anim) { if (pa.anim.state !== rs.onBreak.anim) pa.anim.set(rs.onBreak.anim); } else { pa.anim.set(rs.onBreak && rs.onBreak.sit ? 'drinksit' : 'drink'); holdCup(rs.av, true); } } } d.energy = Math.min(1, d.energy + dt / (rs.onBreak && rs.onBreak.bed ? 11 : rs.onBreak && rs.onBreak.anim ? 14 : 22)); /* a nap is fastest, a round of arcade beats a coffee */ if (d.energy >= 1) { holdCup(rs.av, false); rs.onBreak.busy = null; rs.onBreak = null; goStaff(rs, postSpot(rs)); } }
   } else if (rs.mode === 'there' || rs.task) {
     if (rs.at !== 'idle' && rs.at !== 'train' && rs.at !== 'heal') d.energy = Math.max(0.05, d.energy - dt * (cityOf().altitude ? 1.15 : 1) * (S.mode === 'career' && S.temp != null && tempOff() > 0 ? 1 + 0.05 * Math.min(tempOff(), 8) : 1) / (185 * (d.traits.includes('Gym Rat') ? 1.3 : 1) * (d.wfh ? 1.3 : 1) / (cityOf().night ? 1.25 : 1)));
     if (d.energy < 0.25) {
-      const free = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).flatMap((r) => r.spots.filter((s) => !s.busy)), spot = free.find((s) => s.bed) || free[0]; // a free bunk first: napping is faster
+      const free = Object.values(R.rooms).filter((r) => ROOMS[r.type].staffOnly).flatMap((r) => r.spots.filter((s) => !s.busy)), spot = free.find((s) => s.bed) || free.find((s) => s.anim) || free[0]; // a free bunk first (napping is fastest), then the arcade
       if (spot && !rs.task && !patientOf(rs)) { spot.busy = rs; rs.onBreak = spot; /* never walk out mid-session */ rs.goingTo = null; goStaff(rs, spot); tip('break'); }
       else if (!hasRoom('staffroom')) tip('tired');
       // at most one "we're exhausted" message for the whole team every 2 days (it names how many are worn out)
@@ -5466,7 +5532,7 @@ const auraRing = new THREE.Mesh(new THREE.RingGeometry(AURA_R - 0.1, AURA_R, 56)
 auraRing.rotation.x = -Math.PI / 2; auraRing.visible = false; auraRing.renderOrder = 2; scene.add(auraRing);
 { const f = new THREE.Mesh(new THREE.CircleGeometry(AURA_R, 56), new THREE.MeshBasicMaterial({ color: '#FFD25E', transparent: true, opacity: 0.1, depthWrite: false })); auraRing.add(f); }
 function mgrSpot() { return S.mgrSpot || (S.mgrSpot = { x: 3.6, z: 1.3 }); }
-function inAura(p) { if (!R.mgr || R.mgr.path.length) return false; const s = R.mgr.av.position; return Math.hypot(p.x - s.x, p.z - s.z) < 2.6; } // around the boss, wherever they stand
+function inAura(p) { if (!R.mgr || R.mgr.path.length || !R.mgr.av.visible) return false; const s = R.mgr.av.position; return Math.hypot(p.x - s.x, p.z - s.z) < 2.6; } // around the boss, wherever they stand
 const mgrRoomF = (id) => (S.mgrHelp && S.mgrHelp.kind === 'room' && S.mgrHelp.id === id ? S.mgrHelp.f || 1.6 : 1);
 const mgrDeskF = () => (S.mgrHelp && S.mgrHelp.kind === 'desk' ? S.mgrHelp.f || 2 : 1);
 function mgrHome() { const M = R.mgr; if (!M) return; M.task = null; M.idleT = 1.5; }
