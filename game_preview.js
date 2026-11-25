@@ -1751,14 +1751,15 @@ function detoxKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, sz = room.sz || 'm', S = w < 5, L = [], tx = S ? 0.1 : -0.2, tz = S ? 0.2 : 0.2;
   L.push({ p: 'k_lockers', len: S ? 1.3 : 1.7, wall: 'back', u: S ? -0.35 : 0.1 });
   if (!S) L.push({ p: '@bookshelf', h: 1.15, wall: 'back', u: 'R' }, { p: '@plant', s: 1.7, wall: 'back', u: 'L' });
-  L.push({ p: 'k_rug', len: S ? 2.2 : 2.8, x: tx, z: tz, rot: 0, solid: false }, { p: '@lowtable', h: 1, len: 0.8, x: tx, z: tz, rot: 0 }, { p: 'k_book', len: 0.34, x: tx + 0.03, z: tz, rot: 0.3, solid: false, y: 0.36 });
-  const b1 = [tx - 1.0, tz - 0.25], b2 = [tx + 1.0, tz + 0.2];
+  L.push({ p: 'k_rug', len: S ? 2.4 : 3.2, x: tx, z: tz, rot: 0, solid: false }, { p: '@lowtable', h: 1, len: 0.8, x: tx, z: tz, rot: 0 }, { p: 'k_book', len: 0.34, x: tx + 0.03, z: tz, rot: 0.3, solid: false, y: 0.36 });
+  const b1 = [tx - 1.25, tz - 0.3], b2 = [tx + 1.25, tz + 0.25]; // far enough from the low table for the sitters' legs
   L.push({ p: 'k_beanbag', len: 0.85, x: b1[0], z: b1[1], rot: 0.9 }, { p: 'k_beanbag', len: 0.85, x: b2[0], z: b2[1], rot: -2.0 });
   if (!S) L.push({ p: 'k_cushion', len: 0.6, x: tx - 0.1, z: tz + 0.95, rot: 0.2, solid: false });
   kitRoom(g, cx, cz, room, ROOM_STYLE.detox.model, L, DETOX_DIMS);
   const face = (a) => Math.atan2(tx - a[0], tz - a[1]);
-  room.spots.push({ x: cx + b1[0], z: cz + b1[1], rot: face(b1), sit: true, y: -0.05, busy: null });
-  room.staffSpot = { x: cx + b2[0], z: cz + b2[1], rot: face(b2), sit: true, y: -0.05 };
+  const back = (a, k) => [a[0] - Math.sin(face(a)) * k, a[1] - Math.cos(face(a)) * k]; const s1 = back(b1, 0.12), s2 = back(b2, 0.12); // sit into the back of the beanbag
+  room.spots.push({ x: cx + s1[0], z: cz + s1[1], rot: face(b1), sit: true, y: -0.1, busy: null });
+  room.staffSpot = { x: cx + s2[0], z: cz + s2[1], rot: face(b2), sit: true, y: -0.1 };
 }
 // Hustle garage (from its painting, without the roll-up door): idea board with one note circled, tool pegboard over the workbench, a trestle table in the middle with a stool each side, boxes and a product rack, a bench and a bicycle on the wall
 function garageKit(g, cx, cz, room) {
