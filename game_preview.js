@@ -1144,11 +1144,12 @@ for (const k of ['detox', 'lab', 'parent', 'moving', 'jjim', 'yoga', 'lucha', 'a
   const c = new THREE.Color(st.wall), h = {}; c.getHSL(h); const tone = (s2, l2) => '#' + new THREE.Color().setHSL(h.h, Math.min(1, s2), l2).getHexString(); // a bit more colour inside, a door in the deep version of the room's hue
   const dc = tone(h.s * 0.55 + 0.25, 0.42); Object.assign(st, { v2: true, chunky: true, ao: true, wall: tone(h.s * 1.25, h.l * 0.9), inBase: tone(h.s * 0.9, h.l * 0.72), door: dc, panel: dc, pop: '#E3B341' }); }
 Object.assign(ROOM_STYLE.staffroom, { model: 'staffroom_kit', kit: true, wall: '#9A7D66', inBase: '#76604E', door: '#7E5F47', panel: '#7E5F47', pop: '#E9785F', wood: ['#C98E52', '#B97E45'], floor: '#C98E52' }); // the painting: warm taupe walls, wooden floor
+Object.assign(ROOM_STYLE.roda, { model: 'roda_kit', kit: true, archWin: true, wall: '#8DBF5A', inBase: '#F2C94C', door: '#4E9A5B', panel: '#4E9A5B', pop: '#F2C94C', floor: '#EFE6D2', floorM: () => mat('#FFFFFF', { map: CALCADAO(), mapK: 'calcadao', r: 0.85 }) }); // green walls over a sunny yellow skirting, Copacabana wave pavement
 Object.assign(ROOM_STYLE.lucha, { model: 'lucha_kit', kit: true, wall: '#D9346E', inBase: '#1E9C8E', door: '#1FA39A', panel: '#1FA39A', pop: '#F2B33D', wood: ['#2F2C35', '#3A3640'], floor: '#2F2C35' }); // magenta walls over a teal skirting, black rubber floor
 Object.assign(ROOM_STYLE.ahwa, { model: 'ahwa_kit', kit: true, wall: '#E2B77E', inBase: '#2E8C86', door: '#2E8C86', panel: '#2E8C86', pop: '#C9873A', wood: ['#E6CFA8', '#D9BF94'], floor: '#E6CFA8' }); // sand plaster, teal tile skirting, pale tiles
 Object.assign(ROOM_STYLE.jjim, { model: 'jjim_kit', kit: true, wall: '#C98A4E', inBase: '#9C6436', door: '#9A6234', panel: '#9A6234', pop: '#F2B33D', wood: ['#E9B949', '#E0AE3F'], floor: '#E9B949' }); // warm wood walls, the heated yellow ondol floor
 Object.assign(ROOM_STYLE.yoga, { model: 'yoga_kit', kit: true, wall: '#F1E2C4', inBase: '#D6BE98', door: '#8A5A36', panel: '#B48CE8', pop: '#B48CE8', wood: ['#D59D5F', '#C68C50'], floor: '#D59D5F' }); // cream terrace walls, wooden deck // the Tripo pieces of the break-room and yoga paintings
-for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga', 'shop', 'detox', 'garage', 'lucha', 'ahwa', 'jjim']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
+for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga', 'shop', 'detox', 'garage', 'lucha', 'ahwa', 'jjim', 'roda']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 // one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
 function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
@@ -1976,6 +1977,29 @@ function jjimKit(g, cx, cz, room) {
   else L.push({ p: 'k_bamboo', h: 0.95, x: lx + 0.35, z: fz - 0.4, rot: 0 });
   kitRoom(g, cx, cz, room, 'jjim_kit', L, JJIM_DIMS, F);
 }
+const RODA_DIMS = {"k_cavaco":[0.4849,0.9995,0.5356],"k_mic":[0.5425,0.9995,0.3989],"k_rug":[0.9995,0.0317,0.9946],"k_speaker":[0.5952,0.9995,0.5103],"k_stool":[0.9829,0.8979,0.9995],"k_bench":[0.999,0.6147,0.439],"k_surdo":[0.8931,0.9995,0.8979]};
+// Copacabana's wavy black-and-white pavement, for the roda floor
+const CALCADAO = () => GC.calcadao || (GC.calcadao = canvasTex(256, 256, (c, W, H) => { c.fillStyle = '#EFE6D2'; c.fillRect(0, 0, W, H); c.fillStyle = '#6E6F73';
+  for (let k = -1; k < 3; k++) { c.beginPath(); for (let x = 0; x <= W; x += 4) c.lineTo(x, k * 128 + 40 + Math.sin(x / W * Math.PI * 2) * 34); for (let x = W; x >= 0; x -= 4) c.lineTo(x, k * 128 + 92 + Math.sin(x / W * Math.PI * 2) * 34); c.closePath(); c.fill(); }
+  c.globalAlpha = 0.18; c.strokeStyle = '#3B3B3E'; for (let i = 0; i < 260; i++) { const x = (i * 53) % W, y = (i * 97) % H; c.strokeRect(x, y, 9 + (i % 4), 8 + (i % 3)); } c.globalAlpha = 1; }, [1.4, 1.4]));
+// Roda de samba, São Paulo (from the roda painting): an orange rug in the middle with stools all round it — the clients sit in the circle, the musician
+// sits with them next to the big surdo drum and leads the singing; a speaker and a mic at the back, cavaquinho and guitar on their stands, a cushioned bench
+function rodaKit(g, cx, cz, room) {
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = w < 5 || D < 5, H = Math.PI / 2, L = [], bz = -D / 2, fz = D / 2, lx = -w / 2, rx = w / 2;
+  const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
+  const rr = S ? 0.75 : Math.min(1.1, w / 2 - 1.1), rcz = S ? -0.05 : 0.1, R = rr + 0.42; // rug, then the ring of stools
+  L.push({ p: 'k_rug', len: rr * 2, x: 0, z: rcz, rot: 0, solid: false });
+  const n = seatsN(room), m = n + 1, a0 = Math.PI * 0.62, a1 = Math.PI * 2.38; // stools round the rug, leaving the door side (front) open
+  for (let i = 0; i < m; i++) { const a = a0 + (a1 - a0) * i / (m - 1), x = Math.cos(a) * R, z = rcz - Math.sin(a) * R, face = Math.atan2(-x, rcz - z); // facing the middle
+    L.push({ p: 'k_stool', h: 0.44, x, z, rot: 0, solid: false, tint: ['#F2C14E', '#F4D88A', '#EFC56B'][i % 3] });
+    const q = W(x, z); if (i === 0) { room.staffSpot = { x: q.x, z: q.z, rot: face + F.rho, sit: true, y: 0.05 }; L.push({ p: 'k_surdo', h: 0.6, x: x - Math.cos(a) * 0.05 - 0.55, z: z + 0.15, rot: 0 }); }
+    else room.spots.push({ x: q.x, z: q.z, rot: face + F.rho, sit: true, y: 0.05, busy: null }); }
+  L.push({ p: 'k_speaker', h: S ? 0.8 : 0.95, x: lx + 0.45, z: bz + 0.35, rot: 0.25 }, { p: 'k_mic', h: 1.35, x: lx + (S ? 1.05 : 1.2), z: bz + 0.55, rot: 0.6, solid: false });
+  L.push({ p: 'k_cavaco', h: 0.62, x: rx - (S ? 0.9 : 1.3), z: bz + 0.3, rot: -0.2, solid: false }, { p: 'k_cavaco', h: 0.95, x: rx - (S ? 0.4 : 0.75), z: bz + 0.35, rot: -0.3, solid: false, tint: '#E3A15A' }); // cavaquinho and guitar
+  if (!S) L.push({ p: 'k_bench', len: 1.5, wall: 'right', u: 0.9 }, { p: '@plant', s: 1.2, x: lx + 0.45, z: fz - 0.45 });
+  else L.push({ p: '@plant', s: 0.9, x: lx + 0.35, z: fz - 0.4 });
+  kitRoom(g, cx, cz, room, 'roda_kit', L, RODA_DIMS, F);
+}
 const KITK = new Proxy({}, { get: (o, kit) => { const st = Object.values(ROOM_STYLE).find((x) => x && x.model === kit); return st && st.kscale || 1; } }); // per-kit piece scale (diorama look)
 function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
   const w = F.w, D = F.D, lx = -w / 2, rx = w / 2, bz = -D / 2, fz = D / 2, H = Math.PI / 2, out = [], rep = [], door = F.door;
@@ -2435,6 +2459,7 @@ const furniture = {
     room.staffSpot = { x: cx + 0.5 * K, z: cz - 1.8 * K, rot: Math.PI, sit: false, y: 0 };
   },
   roda(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.roda && ROOM_STYLE.roda.kit && PROPS_ON) { rodaKit(g, cx, cz, room); return; }
     const rug = new THREE.Mesh(new THREE.CylinderGeometry(1.5 * K + 0.4, 1.5 * K + 0.4, 0.02, 32), mat('#FFD25E', { r: 1 })); rug.position.set(cx, 0.13, cz - 0.6 * K); g.add(rug);
     for (const [a, sit] of [[Math.PI * 0.75, true], [Math.PI * 1.25, true], [Math.PI * 1.0, true], [Math.PI * 1.6, true], [Math.PI * 0.45, true], [Math.PI * 1.85, true]].slice(0, seatsN(room)).concat([[Math.PI * 0.25, false]])) { const x = cx + Math.cos(a) * 1.1 * K, z = cz - 0.6 * K + Math.sin(a) * 1.1 * K; put(cyl(0.22, 0.2, 0.45, '#2E9E5B'), x, 0.33, z, g); if (sit) room.spots.push({ x, z, rot: -a + Math.PI / 2 + Math.PI, sit: true, y: 0.08, busy: null }); }
     put(cyl(0.25, 0.25, 0.5, '#E9785F'), cx, 0.35, cz - 0.6 * K, g); put(cyl(0.26, 0.26, 0.04, '#F4EFE6'), cx, 0.62, cz - 0.6 * K, g);
@@ -2940,7 +2965,7 @@ const IX = {
   grind: [[0.04, { fv: '☕☕☕' }], [0.15, { stand: 1, v: 'breath', s: 'show', fs: '🙆' }], [0.4, { mat: 1, fv: '🧘' }], [0.72, { mat: 0, sitback: 1, v: 'think', fv: '😌' }]],
   coraje: [[0.02, { vp: 'lmask', fv: '😤' }], [0.25, { go: 'near', s: 'show', sp: 'pad', fs: '🛡️' }], [0.45, { v: 'angry', fv: '👊💥' }], [0.6, { fv: '🗣️❗' }], [0.72, { go: 'home', sp: '-' }], [0.8, { vp: '-', v: 'happy', fv: '😌' }], [0.86, { sp: 'trophy', s: 'show', fs: '🏆🔔' }], [0.95, { sp: '-' }]], // lucha: mask on, punches into the coach's pad, then the coach raises a trophy from the ring
   paperwork: [[0.04, { vp: 'paper', fv: '📑📑' }], [0.22, { go: 'near', s: 'show', sp: 'tea', fs: '🍵' }], [0.36, { sp: '-', vp: 'tea', v: 'drink', fv: '😌' }], [0.48, { go: 'home', fv: '🎲' }], [0.62, { sp: 'pen', s: 'work', fs: '📑🖊️' }], [0.78, { fs: '✅' }], [0.88, { vp: '-', sp: '-', v: 'happy' }]], // ahwa: the host brings tea to the bench, then stamps the papers at the counter
-  saudade: [[0.04, { fv: '🥹' }], [0.25, { s: 'clap', fs: '🥁🎶' }], [0.45, { v: 'clap', fv: '👏🎶' }], [0.8, { v: 'happy', fv: '🎶😊' }]],
+  saudade: [[0.04, { fv: '🥹' }], [0.22, { sp: 'drum', s: 'clap', fs: '🥁🎶' }], [0.4, { v: 'clap', fv: '👏🎶' }], [0.6, { fs: '🎤🎶' }], [0.8, { sp: '-', v: 'happy', fv: '🎶😊' }]], // roda: the musician beats the pandeiro and sings, the circle claps along
 };
 const IX_DEF = [[0.1, { s: 'talk' }], [0.4, { v: 'talk' }], [0.7, { s: 'show' }], [0.9, { v: 'happy' }]]; // anything without its own scene
 const _ixw = new THREE.Vector3();
