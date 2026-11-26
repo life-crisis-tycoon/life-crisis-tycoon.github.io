@@ -34,7 +34,7 @@ async function demo(){const city=q.get('demo')==='1'?'lagos':q.get('demo');$('pv
  S.known=all.filter(k=>built.has(P[k].room)&&!['lonely','gloom','subs'].includes(k));S.discAt=null;S.cash=42000;S.vibes=82;
  for(const dec of [['bench3',-8.5,-0.9],['plant',-11.6,-0.5],['vending',3.2,-0.9],['plant',6.9,1.5]])try{d.startDecor(dec[0]);d.decorTo(dec[1],dec[2]);d.endDecor(true)}catch(e){}
  d.setSpeed(1);for(let i=0;i<8;i++)d.spawnVisitor();
- setInterval(()=>{const n=d.R.visitors.filter(v=>!['exit','angry'].includes(v.state)).length;if(n<20)d.spawnVisitor()},1800); // a busy centre: clients keep coming in
+ setInterval(()=>{const n=d.R.visitors.filter(v=>!['exit','angry'].includes(v.state)).length;if(n<14)d.spawnVisitor();if(d.S.vibes<75)d.S.vibes=75;},2200); // a busy centre: clients keep coming in
  const v=d.view;v.tx=-4;v.tz=0;v.half=9;d.placeCam();document.title='Life Crisis Tycoon · démo';window.__demoMiss=miss;window.__demoReady=ok;}
 if(q.get('demo'))setTimeout(demo,800);else setTimeout(show,800);
 </script>
