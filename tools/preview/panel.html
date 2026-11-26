@@ -20,15 +20,21 @@ function show(){const type=sel.value;history.replaceState(null,'','?room='+type+
 // DEMO (?demo=lagos): a centre already running, real characters only (it waits for every model before opening the doors)
 async function demo(){const city=q.get('demo')==='1'?'lagos':q.get('demo');$('pv').style.display='none';
  try{d.closeModal()}catch(e){}d.startNew(city);try{d.closeModal()}catch(e){}const S=d.S;S.tut=-1;S.cash=1e6;S.stars=1;d.setSpeed(0);S.annex='owned';S.annex2='owned';try{d.buildAnnexLot()}catch(e){}
- const rooms=[['budget','m'],['nap','m'],['pharmacy','s'],['detox','s'],['therapy','s'],['social','m'],['lab','m'],['cafe','s'],['toilet','s'],['staffroom','s']];
- if(city==='lagos')rooms.splice(1,0,['garage','m']);S.dev=['social','parent','career','moving','glowup'];
- for(const [type,size] of rooms){d.startPlace({type,size});const pr=d.placingR;let ok=false;
-  if(pr){outer:for(const a of [0,1])for(let z=4;z>=-26;z--)for(let x=-20;x<=20;x++){pr.x=x;pr.z=z;pr.a=a*Math.PI/2;if(d.placeValid(pr)){ok=true;break outer}}}
+ const ok=await d.modelsReady(city); // every real character first: nobody is built from a stand-in
+ // a planned centre: two straight rows of regular rooms facing one corridor, small rooms in the side plot (falls back to the first free spot elsewhere)
+ const PI=Math.PI, PLAN={lagos:[['budget','m',-14.5,3.5,PI],['garage','m',-8.5,3.5,PI],['nap','m',-2.5,3.5,PI],['therapy','m',-14.5,-4.5,0],['social','m',-8.5,-4.5,0],['lab','m',-2.5,-4.5,0],['pharmacy','s',8.5,4.5,PI],['detox','s',12.5,4.5,PI],['cafe','s',8.5,-1.5,0],['toilet','s',12.5,-1.5,0]]};
+ const plan=PLAN[city]||[['budget','m'],['nap','m'],['pharmacy','s'],['detox','s'],['therapy','s'],['social','m'],['lab','m'],['cafe','s'],['toilet','s']];
+ S.dev=['social','parent','career','moving','glowup'];const miss=[];
+ for(const [type,size,x,z,a] of plan){d.startPlace({type,size});const pr=d.placingR;let ok=false;
+  if(pr&&x!=null){for(const aa of [a,a+PI,a+PI/2,a-PI/2]){pr.x=x;pr.z=z;pr.a=aa;if(d.placeValid(pr)){ok=true;break}}}
+  if(pr&&!ok){miss.push(type);outer:for(const aa of [0,1])for(let zz=4;zz>=-26;zz--)for(let xx=-20;xx<=20;xx++){pr.x=xx;pr.z=zz;pr.a=aa*PI/2;if(d.placeValid(pr)){ok=true;break outer}}}
   if(ok){d.placeShow();d.endPlace(true)}else d.endPlace(false);try{d.closeSheet()}catch(e){}}
- for(const role of ['coach','coach','guide','guide','guide','pharmacist','therapist','researcher','host','maint'])try{d.openHire(role);d.hire(0,role);d.closeSheet()}catch(e){}
- const P=d.PROBLEMS,all=Object.keys(P).filter(k=>!P[k].myst&&!P[k].epi&&(!P[k].city||P[k].city===city));const built=new Set(d.S.rooms.map(r=>r.type));S.known=all.filter(k=>built.has(P[k].room)&&!['lonely','gloom','subs'].includes(k));S.discAt=null;
- S.cash=42000;S.discAt=null;S.vibes=78;
- const ok=await d.modelsReady(city);d.setSpeed(1);for(let i=0;i<3;i++)d.spawnVisitor();
- const r=d.S.rooms.find(x=>x.type==='budget')||d.S.rooms[0];const v=d.view;v.tx=r.x+3;v.tz=r.z+2;v.half=9;d.placeCam();document.title='Life Crisis Tycoon · démo';window.__demoReady=ok;}
+ for(const role of ['coach','coach','guide','guide','guide','pharmacist','therapist','therapist','researcher','researcher','host','maint','maint'])try{d.openHire(role);d.hire(0,role);d.closeSheet()}catch(e){}
+ const P=d.PROBLEMS,all=Object.keys(P).filter(k=>!P[k].myst&&!P[k].epi&&(!P[k].city||P[k].city===city));const built=new Set(d.S.rooms.map(r=>r.type));
+ S.known=all.filter(k=>built.has(P[k].room)&&!['lonely','gloom','subs'].includes(k));S.discAt=null;S.cash=42000;S.vibes=82;
+ for(const dec of [['bench3',-8.5,-0.9],['plant',-11.6,-0.5],['vending',3.2,-0.9],['plant',6.9,1.5]])try{d.startDecor(dec[0]);d.decorTo(dec[1],dec[2]);d.endDecor(true)}catch(e){}
+ d.setSpeed(1);for(let i=0;i<8;i++)d.spawnVisitor();
+ setInterval(()=>{const n=d.R.visitors.filter(v=>!['exit','angry'].includes(v.state)).length;if(n<20)d.spawnVisitor()},1800); // a busy centre: clients keep coming in
+ const v=d.view;v.tx=-4;v.tz=0;v.half=9;d.placeCam();document.title='Life Crisis Tycoon · démo';window.__demoMiss=miss;window.__demoReady=ok;}
 if(q.get('demo'))setTimeout(demo,800);else setTimeout(show,800);
 </script>
