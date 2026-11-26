@@ -4667,6 +4667,7 @@ function camAnim(rdt) {
 // Two camera buttons (the old ⟲ ⟳ pair becomes one): each is a little joystick.
 //  turn: slide your finger left/right on it to spin the view freely, all the way round; a tap turns it 45°
 //  tilt: slide up/down on it to raise or lower the camera smoothly; a tap jumps between the top view and the normal view
+const bgMode = () => false; // the painted-background view exists only in the preview
 const PITCH_TOP = 1.3, PITCH_STD = 0.72;
 function camTiltTap() { if (bgMode()) return; const p = view.pitchT ?? view.pitch; view.pitchT = p < (PITCH_TOP + PITCH_STD) / 2 ? PITCH_TOP : PITCH_STD; }
 function camStick(btn, onDrag, onTap) {
