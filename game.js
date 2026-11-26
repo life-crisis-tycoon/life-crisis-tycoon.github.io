@@ -2610,7 +2610,9 @@ function assignStaff() {
   for (const room of byNeed) { if (need(room) < 2 || room.closed || room.staff.some((s, i) => s && R.staff.includes(s) && s.at === room.id && s.st === i)) continue;
     const role = ROOMS[room.type].role, idle = R.staff.find((rs) => rs.data.role === role && !rs.onBreak && !rs.data.train && !(rs.data.awayT > 0) && R.rooms[rs.at] && rs.at !== room.id && need(R.rooms[rs.at]) === 0 && !R.visitors.some((u) => u.room === rs.at && (u.state === 'treat' || u.state === 'toRoom')));
     if (idle) { const old = R.rooms[idle.at]; if (old.staff[idle.st] === idle) old.staff[idle.st] = null; idle.at = null; } }
+  for (const room of Object.values(R.rooms)) if (room.closed) room.staff.forEach((s, i) => { if (s && s.at === room.id && !s.onBreak && !s.ixGo) { room.staff[i] = null; s.at = null; } }); // a closed room (leak…) doesn't keep its carer sitting inside
   for (const room of byNeed) {
+    if (room.closed) continue;
     room.staff.forEach((s, i) => {
       if (s && R.staff.includes(s) && s.at === room.id && s.st === i) return;
       room.staff[i] = null;
@@ -2810,7 +2812,7 @@ function spawnVisitor(prob, em, vip, look0) {
   const gag = addGag(av, prob, look);
   const v = { gag, id: S.nextId++, name: rnd(CITY_NAMES[S.city] && RNG() < 0.75 ? CITY_NAMES[S.city] : FIRST), age: 19 + Math.floor(RNG() * 22), prob, known: false, av, hud, icon, bg, fg, pat: 1, prog: 0, state: 'toQueue', path: [], ph: Math.random() * 6, spot: null, room: null, look, em: !!em };
   if (vip) { v.vip = true; v.name = '@' + crnd(['glowwithjade', 'kaivibes', 'lunchbreaklena', 'mainchar.mo', 'softlifesam']); const cr = new THREE.Sprite(iconTex('👑')); cr.scale.set(0.45, 0.45, 1); cr.position.set(0.35, 2.5 * look.tall, -0.35); cr.renderOrder = 10; hud.add(cr); }
-  if (em) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.08, 8, 32), mat('#FF2D2D', { e: '#FF2D2D', ei: 1.5 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; hud.add(ring); v.emRing = ring; const sb = new THREE.Sprite(iconTex('🚨')); sb.scale.set(0.42, 0.42, 1); sb.position.set(-0.4, 2.45 * look.tall, 0.4); sb.renderOrder = 10; hud.add(sb); v.prio = true; }
+  if (em) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.08, 8, 32), mat('#FF2D2D', { e: '#FF2D2D', ei: 1.5 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; ring.visible = false; v.emRing = null; /* no red ring at their feet: the 🚨 over the head says it */ const sb = new THREE.Sprite(iconTex('🚨')); sb.scale.set(0.42, 0.42, 1); sb.position.set(-0.4, 2.45 * look.tall, 0.4); sb.renderOrder = 10; hud.add(sb); v.prio = true; }
   v.need = RNG() < 0.35 ? 0.3 + RNG() * 0.4 : 0; // some arrive already needing the loo
   if (PROBLEMS[prob] && PROBLEMS[prob].epi) v.virus = true;
   R.visitors.push(v); if (!wavePending) behSpawn(v); if (!em && beh('nolines') && ['grind', 'rentshock'].includes(prob) && DQ(0).length >= 6 && desks().length <= 1) { behSeen('nolines'); floatAt(v.av.position, '🙅 nope'); joinQueue(v); leave(v, false); return v; } if (em) { finishCheckin(v, true); return v; } joinQueue(v); return v;
@@ -3137,7 +3139,7 @@ function nearRoomSpot(v) {
 }
 // a free bench seat near the door of the room they wait for comes first: sitting beats standing
 function benchFor(v) {
-  const room = v.target != null && R.rooms[v.target]; if (!room || room.closed) return null; const d0 = doorPt(room.def, 0.5); let best = null, bd = 5.5;
+  const room = v.target != null && R.rooms[v.target]; if (!room || room.closed) return null; const d0 = doorPt(room.def, 0.5); let best = null, bd = 8;
   for (const w of WAIT_SPOTS) { if (!w.bench) continue; if (w.busy && !R.visitors.includes(w.busy)) w.busy = null; if (w.busy) continue; const d = Math.hypot(w.x - d0.x, w.z - d0.z); if (d < bd) { bd = d; best = w; } }
   return best;
 }
@@ -3839,7 +3841,8 @@ function visitorUpdate(v, dt) {
       if (st && st.av && !v.rspot.lie) { const dx = st.av.position.x - v.av.position.x, dz = st.av.position.z - v.av.position.z, base = v.rspot.rot || 0; if (dx * dx + dz * dz > 0.04) { const d = angW(Math.atan2(dx, dz) - base); turnTo(v.av, base + (v.rspot.sit ? clamp(d, -0.6, 0.6) : d), dt, 4); } }
       // staff gone (sent home, life event…): don't leave the client sitting alone in the room; back to the waiting area
       if (!st || st.mode !== 'there') { v.aloneT = (v.aloneT || 0) + dt; if (v.aloneT > 2.5) { v.aloneT = 0; v.rspot.busy = null; v.rspot = null; v.room = null; seatVisitor(v); } break; } v.aloneT = 0;
-      if (room.closed || (S.ev && S.ev.k === 'power' && (!S.ev.gen || S.ev.off.includes(room.id))) || S.quake) break;
+      if (room.closed) { v.closedT = (v.closedT || 0) + dt; if (v.closedT > 1.2) { v.closedT = 0; if (v.ix) ixEnd(v); poseStand(v.av.userData.p); v.av.position.y = 0.1; v.rspot.busy = null; v.rspot = null; v.room = null; v.target = null; seatVisitor(v); } break; } // a leak or a breakdown closes the room: out they go, back to waiting (their place in the queue is kept by the wait)
+      if ((S.ev && S.ev.k === 'power' && (!S.ev.gen || S.ev.off.includes(room.id))) || S.quake) break;
       v.prog += dirtF(room) * dt / (ROOMS[room.type].time / (0.7 + st.data.skill * 0.12) / traitVal(st.data, 'speed') / roomSpeed(room.type) / sizeSpd(room) / incSpd(room) / boost() / energyF(st) / evSlow(room.type) * mgrRoomF(room.id) * (inAura(st.av.position) ? 1.15 : 1));
       ixTick(v, st, room, dt);
       if (v.prog >= 1 && v.diag) { diagDone(v, room); break; }
@@ -5400,7 +5403,7 @@ function openDecorMenu(id) {
 }
 function buildExtras() {
   let h = `<div class="lbl" style="margin:12px 0 6px">🔧 ${t('eq.title')}</div>`;
-  for (const [k, cost] of [['gen', 1500], ['ac', 2000], ['net', 1200], ['quiet', 1800], ['garden', 3000]].concat(S.garden ? [['gardenRoof', 2500], ['gardenHeat', 1200], ['gardenCool', 1200]] : [])) h += `<div class="opt w"><div class="oi" style="background:#E3ECF5">${{ gen: '🔋', ac: '❄️', net: '📡', quiet: '🔇', garden: '🌳', gardenRoof: '🏠', gardenHeat: '🔥', gardenCool: '🌬️' }[k]}</div><div class="ot"><b>${t('eq.' + k)} · ${money(cost)}</b><div>${t('eq.' + k + 'D')}</div></div>${S[k] ? `<span class="tr good">${t('eq.owned')}</span>` : `<button class="btn g" data-eq="${k}" data-cost="${cost}" ${S.cash < cost ? 'disabled' : ''}>${t('build.btn')}</button>`}</div>`;
+  for (const [k, cost] of [['gen', 1500], ['ac', 2000], ['garden', 3000]].filter(([k]) => S[k] || (k === 'gen' ? cityOf().power : k === 'ac' ? cityOf().hot : true)).concat(S.garden ? [['gardenRoof', 2500], ['gardenHeat', 1200], ['gardenCool', 1200]] : [])) h += `<div class="opt w"><div class="oi" style="background:#E3ECF5">${{ gen: '🔋', ac: '❄️', net: '📡', quiet: '🔇', garden: '🌳', gardenRoof: '🏠', gardenHeat: '🔥', gardenCool: '🌬️' }[k]}</div><div class="ot"><b>${t('eq.' + k)} · ${money(cost)}</b><div>${t('eq.' + k + 'D')}</div></div>${S[k] ? `<span class="tr good">${t('eq.owned')}</span>` : `<button class="btn g" data-eq="${k}" data-cost="${cost}" ${S.cash < cost ? 'disabled' : ''}>${t('build.btn')}</button>`}</div>`;
   // (no 'your placed items' list: tap an item in the HQ to move or sell it)
   if (S.gen) h += `<div class="opt w"><div class="oi" style="background:#FFF3CF">⛽</div><div class="ot"><b>${t('gen.status', { f: genFuel(), tank: GEN_TANK, n: genCap() })}${S.genBroken ? ' · 💥 ' + t('gen.brokenShort') : ''}</b><div>${t('gen.info')}</div></div>${S.genBroken ? `<button class="btn y" id="genFix" ${S.cash < 350 ? 'disabled' : ''}>🔧 ${money(350)}</button>` : genFuel() < GEN_TANK ? `<button class="btn g" id="genFuel" ${S.cash < (GEN_TANK - genFuel()) * fuelPrice() ? 'disabled' : ''}>⛽ ${money((GEN_TANK - genFuel()) * fuelPrice())}</button>` : ''}${!S.genBig ? `<button class="btn w" id="genBig" ${S.cash < 3500 ? 'disabled' : ''}>⚡ ${money(3500)}</button>` : ''}</div>`;
   h += `<div class="lbl" style="margin:12px 0 6px">🪴 ${t('dc.title')} · ✨ ${kudos()} ${t('kd.name')}</div><p class="sub">${t('kd.info')}</p>`;
@@ -5468,7 +5471,7 @@ const evSlow = (type) => (S.ev && S.ev.k === 'noise' && (type === 'nap' || type 
 function evPatience() { if (!S.ev) return 1; const k = S.ev.k; return k === 'wifi' ? 1.4 : k === 'noise' ? 1.2 : k === 'heat' ? 1 : k === 'power' ? (S.ev.gen ? 1.12 : 1.2) : 1; }
 function startEvent() {
   const keys = Object.keys(EVENTS).filter((k) => k !== 'leak' || ((S.city || 'london') === 'london' && S.rooms.some((r) => !ROOMS[r.type].staffOnly)));
-  const k = cityOf().power && RNG() < 0.5 ? 'power' : cityOf().hot && RNG() < 0.45 ? 'heat' : rnd(keys);
+  const k = cityOf().power && RNG() < 0.5 ? 'power' : cityOf().hot && RNG() < 0.45 ? 'heat' : rnd(keys.filter((x) => (x !== 'power' || cityOf().power) && (x !== 'heat' || cityOf().hot))); // power cuts and heatwaves only where the city has them (that's where the generator and the AC are sold)
   let genRun = false;
   if (k === 'power' && S.gen) {
     if (S.genBroken) chat(t('from.hq'), t('gen.stillBroken'), '🔧', { act: { k: 'gen' } });
@@ -5495,7 +5498,7 @@ function startEvent() {
     const drip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 8), mat('#7FC7F0')); drip.rotation.x = Math.PI; drip.position.set(room.cx + 0.6, 2.4, room.cz + 0.6); scene.add(drip); pd.userData.drip = drip;
     const leak = { mesh: pd, heavy: true, leak: r.id }; R.litter.push(leak); S.ev.obj = leak; S.ev.fixT = 45;
     chat(t('from.hq'), t('ev.leak', { room: rn(r.type) }) + ' ' + t('ev.leakD'), '💧', { act: { k: 'leak' } });
-  } else chat(t('from.hq'), t('ev.' + k) + ' ' + (k === 'heat' ? t('ev.heatD2', { o: Math.round(outsideT()) }) : t('ev.' + k + 'D')) + ({ wifi: 1, noise: 1, power: 1, heat: 1 }[k] ? ' ' + t('ev.fix.' + k) : ''), EVENTS[k].e, k === 'heat' ? { act: { k: 'heat' } } : {});
+  } else chat(t('from.hq'), t('ev.' + k) + ' ' + (k === 'heat' ? t('ev.heatD2', { o: Math.round(outsideT()) }) : t('ev.' + k + 'D')) + ({ power: 1, heat: 1 }[k] ? ' ' + t('ev.fix.' + k) : ''), EVENTS[k].e, k === 'heat' ? { act: { k: 'heat' } } : {});
   if (k === 'power') renderer.toneMappingExposure = 0.5;
   toast(EVENTS[k].e + ' ' + (k === 'leak' ? t('ev.leak', { room: rn(R.rooms[S.ev.room].type) }) : t('ev.' + k)), 2600);
 }
