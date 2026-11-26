@@ -3307,7 +3307,7 @@ function diagDone(v, room) {
   const fee = Math.round(PROBLEMS[k].fee * 0.5 * (S.price || 1)); S.cash += fee; S.earned += fee; roomEarn(room.id, fee); floatAt(v.av.position, '🔎 +' + money(fee)); AU.sfx('cash');
   ixEnd(v); if (v.rspot) v.rspot.busy = null; v.rspot = null; v.room = null; v.target = null; v.prog = 0; v.icon.material = iconTex(PROBLEMS[k].e);
   const has = hasRoom(r), st = has ? t('disc.have', { room: rn(r) }) : unlocked(r) ? t('disc.build', { room: rn(r) }) : t('disc.dev', { room: rn(r) });
-  toast('🔎 ' + t('disc.title') + ' : ' + PROBLEMS[k].e + ' ' + t('p.' + k), 4000); probSeen(k); piCool = Math.min(piCool, 1); // its card (what it is, where it's treated) comes up right away chat(t('disc.title'), PROBLEMS[k].e + ' <b>' + t('p.' + k) + '</b>. ' + st, '🔎'); save();
+  toast('🔎 ' + t('disc.title') + ' : ' + PROBLEMS[k].e + ' ' + t('p.' + k), 4000); probSeen(k); if (S.pQ) { S.pQ = S.pQ.filter((q) => q !== k); S.pQ.unshift(k); } piCool = Math.min(piCool, 1); // its card (what it is, where it's treated) comes up right away chat(t('disc.title'), PROBLEMS[k].e + ' <b>' + t('p.' + k) + '</b>. ' + st, '🔎'); save();
   if (has) { v.target = pickRoomFor(v); seatVisitor(v); } else { v.icon.material = iconTex('😕'); setPath(v, exitPath(v)); v.state = 'exit'; } // nowhere to treat it yet: they go home, no review
 }
 function devDone(k) { S.dev = S.dev || []; if (!S.dev.includes(k)) S.dev.push(k); toast('🧪 ' + t('rp.devDone', { room: rn(k) }), 4000); chat(t('research.title'), t('rp.devDone', { room: rn(k) }), ROOMS[k].e); save(); }
