@@ -3952,6 +3952,19 @@ function emFail(E) {
   for (const v of R.visitors.filter((u) => u.em && !u.cured && !['exit', 'angry'].includes(u.state))) leave(v, false); // the ones you could not help walk out angry
   S.em = null; emNext(); toast(t('em.fail') + ' −' + money(fine), 3500); chat(t('from.hq'), t('em.failFine', { m: money(fine) }), '😬');
 }
+// which care rooms this emergency will send people to: the ones you have (staffed or not), and any you'd still need to build
+function emRoomsHtml(E) {
+  const city = S.city || 'london', ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && ROOMS[PROBLEMS[pk].room] && !PROBLEMS[pk].myst && (!PROBLEMS[pk].city || PROBLEMS[pk].city === city);
+  let need = [], maybe = false;
+  if (E.mix) { const bias = (E.bias || []).filter(ok).map((pk) => PROBLEMS[pk].room); need = [...new Set(bias.concat(Object.keys(PROBLEMS).filter((pk) => ok(pk) && hasRoom(PROBLEMS[pk].room)).map((pk) => PROBLEMS[pk].room)))];
+    maybe = !!E.stars && Object.keys(PROBLEMS).some((pk) => ok(pk) && !hasRoom(PROBLEMS[pk].room) && unlocked(PROBLEMS[pk].room)); }
+  else need = [...new Set((E.probs || []).filter(ok).map((pk) => PROBLEMS[pk].room))];
+  if (!need.length && E.room) need = [E.room];
+  const staffed = (type) => Object.values(R.rooms).some((r) => r.type === type && r.staff.some((x) => x));
+  const chip = (type) => { const has = hasRoom(type), st = has && staffed(type);
+    return `<span style="display:inline-block;margin:3px;padding:4px 10px;border-radius:12px;background:${has ? (st ? '#EEE8FB' : '#FFF3CF') : '#FDE3E3'};font-weight:700;white-space:nowrap">${ROOMS[type].e} ${rn(type)}${has ? (st ? '' : ' · ' + t('em.noStaff')) : ' · ' + t('em.toBuild')}</span>`; };
+  return `<p style="margin:8px 0 2px;font-weight:800">${t('em.rooms')}</p><div style="line-height:1.4">${need.map(chip).join('')}</div>${maybe ? `<p style="font-size:14px;opacity:.8;margin-top:4px">${t('em.maybe')}</p>` : ''}`;
+}
 function offerEmergency() {
   tip('em');
   const city = S.city || 'london';
@@ -3964,7 +3977,7 @@ function offerEmergency() {
   S.emLast = k; S.emBurst = Math.max(0, (S.emBurst || 1) - 1);
   const missing = !hasRoom(E.room);
   const clk = emClock(E), mmss = Math.floor(clk / 60) + ':' + String(clk % 60).padStart(2, '0');
-  modal(`<div style="font-size:44px">🚨</div><h2>${t('em.' + k)}</h2><p>${t('em.' + k + '.d').replace(/\b\d:\d\d\b/, mmss)}</p><p style="font-weight:800">⏱️ ${t('em.clock', { t: mmss })}</p><p style="color:var(--green-d)">${E.reward ? t('em.rewardN', { m: money(E.reward) }) : t('em.reward')}</p>${missing ? `<p style="color:var(--red)">${t('em.missing')} (${rn(E.room)})</p>` : ''}
+  modal(`<div style="font-size:44px">🚨</div><h2>${t('em.' + k)}</h2><p>${t('em.' + k + '.d').replace(/\b\d:\d\d\b/, mmss)}</p><p style="font-weight:800">⏱️ ${t('em.clock', { t: mmss })}</p><p style="color:var(--green-d)">${E.reward ? t('em.rewardN', { m: money(E.reward) }) : t('em.reward')}</p>${emRoomsHtml(E)}
   <div class="row2" style="margin-top:10px"><button class="btn y" id="emNo">${t('em.decline')}</button><button class="btn g" id="emYes">${t('em.accept')}</button></div>`);
   $('emNo').onclick = () => { closeModal(); emNext(); };
   $('emYes').onclick = () => { closeModal(); AU.sfx('siren'); E.time0 = clk; say('em', t('pa.em', { name: t('em.' + k) }), 0); S.em = { k, need: E.need || 4, got: 0, t: clk, left: E.n || 6, spawnT: 0, gap: E.gap || 3, reward: E.reward || 2500 }; S.em.t0 = S.em.t; chat(t('from.hq'), '🚨 ' + t('em.' + k), '🚨'); };
