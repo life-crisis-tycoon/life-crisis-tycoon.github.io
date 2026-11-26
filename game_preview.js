@@ -1562,6 +1562,7 @@ function lieUpdate() {
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + (sp.duvetC ? 0.2 : 0.14) - LIE_V.y; } /* nap beds: on the thick mattress, head on the pillow */ // the clip's pelvis offset: lay the hips on the mattress
       let dv = av.userData.duvet; if (dv && dv.userData.wide !== !!sp.duvetC) { if (dv.parent) dv.parent.remove(dv); dv = null; } if (!dv) { dv = av.userData.duvet = sp.duvetC ? napDuvet(sp.duvetC) : rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; dv.userData.wide = !!sp.duvetC; } // the nap beds: a wide, thick duvet in the bed's colour that covers the arms and comes up to the chest
       av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); else if (p && p.anim && p.anim.mixer) { for (const ac of p.anim.mixer._actions || []) if (ac.isRunning()) { ac.time = 0; ac.paused = true; } } /* the modelled characters: hold the first idle frame still (paused, not stopped: a stopped clip snaps back to the T-pose) */ /* the modelled characters: hold the first frame of their idle, so no hand waves out of the duvet */ av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
+      dv.visible = !sp.noDuvet; // jjimjilbang mats: people lie on the heated floor, uncovered
       if (!dv.parent) scene.add(dv); LIE_DV.add(dv); seenDv.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.y = r; dv.rotation.z = 0; dv.scale.y = sp.duvetC ? 1 : 1.3; const dy = sp.duvetC ? 0.28 : 0.19; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + dy, sp.z + c * (L * 0.5 - len / 2 + 0.06));
       if (sp.duvetC) { // the nap beds: lay the duvet on where the body really is (the clip shifts it toward the pillow), from past the feet up to the chest
         let hd = ud.headB, ft = ud.footB; if (hd === undefined) { hd = ft = null; av.traverse((b) => { if (!b.isBone) return; if (!hd && /head/i.test(b.name) && !/end|top/i.test(b.name)) hd = b; if (!ft && /foot|ankle/i.test(b.name)) ft = b; }); ud.headB = hd; ud.footB = ft; }
@@ -1570,7 +1571,7 @@ function lieUpdate() {
           dv.scale.z = Math.max(0.2, l2); dv.rotation.y = sg > 0 ? r : r + Math.PI;
           if (ud.sleep) { let hi = 0; if (!ud.pokeB) { ud.pokeB = []; av.traverse((b) => { if (b.isBone && /^(Left|Right)(ToeBase|Foot|Leg)$/.test(b.name)) ud.pokeB.push(b); }); } for (const b of ud.pokeB) { b.getWorldPosition(LIE_V); hi = Math.max(hi, LIE_V.y); }
             ud.dvLift = Math.min(0.14, Math.max(0, hi + 0.13 - (base + dy + 0.15))); } /* a raised knee or upturned shoe: puff the duvet up over it instead of letting it poke through */
-          else ud.dvLift = 0; /* the folded sheet on the head side */ dv.position.set(side * c + mid * s, base + dy + (ud.dvLift || 0) / 2, -side * s + mid * c); dv.scale.y = 1 + (ud.dvLift || 0) / 0.3; } } dv.visible = av.visible !== false; }
+          else ud.dvLift = 0; /* the folded sheet on the head side */ dv.position.set(side * c + mid * s, base + dy + (ud.dvLift || 0) / 2, -side * s + mid * c); dv.scale.y = 1 + (ud.dvLift || 0) / 0.3; } } dv.visible = av.visible !== false && !sp.noDuvet; }
     else { if (av.userData.sleep) { const p0 = av.userData.p; if (p0 && p0.anim && p0.anim.mixer) for (const ac of p0.anim.mixer._actions || []) ac.paused = false; } av.userData.lieT = 0; av.userData.sleep = false; av.userData.rollQ = null; av.userData.rollN = 0; av.userData.rollSg = 0; if (av.rotation.x && !(o.ix && o.ix.mat)) { av.rotation.x = 0; av.rotation.z = 0; } const dv = av.userData.duvet; if (dv && dv.parent) dv.parent.remove(dv); } }
   for (const dv of LIE_DV) if (!seenDv.has(dv)) { if (dv.parent) dv.parent.remove(dv); LIE_DV.delete(dv); }
 }
@@ -1915,7 +1916,7 @@ function luchaKit(g, cx, cz, room) {
   const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
   const rl = S ? 1.85 : w >= 6 ? 2.5 : 2.2, rd = rl * 0.998 / 0.998, rz = bz + rd / 2 + 0.3; // ring (len = its longer side)
   L.push({ p: 'k_ring', len: rl, x: 0, z: rz, rot: 0 });
-  room.staffSpot = (() => { const q = W(-rl * 0.12, rz - 0.05); return { x: q.x, z: q.z, rot: F.rho, sit: false, y: 0.36 * rl * 0.58 }; })(); // the coach on the canvas
+  room.staffSpot = (() => { const q = W(-rl * 0.3, rz + rd / 2 + 0.22); return { x: q.x, z: q.z, rot: F.rho, sit: false, y: 0 }; })(); // the coach at the ring's apron, facing the poufs (the ring itself is solid: nobody can walk into it)
   const n = seatsN(room), sp = Math.min(0.95, (w - 1.0) / n), pz = rz + rd / 2 + (S ? 0.6 : 0.75);
   for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * sp; L.push({ p: 'k_pouf', h: 0.44, x, z: pz, rot: 0, tint: '#E2457A' }); const q = W(x, pz); room.spots.push({ x: q.x, z: q.z, rot: Math.PI + F.rho, sit: true, y: 0.06, busy: null }); }
   const side = (w - rl) / 2; // room left beside the ring
@@ -1961,7 +1962,7 @@ function jjimKit(g, cx, cz, room) {
   room.staffSpot = (() => { const q = W(tx - tl / 2 - 0.35, tz + 0.45); return { x: q.x, z: q.z, rot: F.rho, sit: true, y: 0.04 }; })(); // the attendant on the pouf, watching the mats
   const n = seatsN(room), ml = S ? 1.45 : 1.6, sp = Math.min(1.15, (w - 0.6) / n), mz = S ? 0.55 : 0.45;
   for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * sp; L.push({ p: 'k_mat', len: ml, x, z: mz, rot: 0, solid: false }, { p: 'k_sheep', len: 0.5, x, z: mz - ml / 2 + 0.22, rot: 0, solid: false, y: 0.04 });
-    const q = W(x, mz + 0.05); room.spots.push({ x: q.x, z: q.z, rot: F.rho, sit: true, lie: true, y: 0.05, busy: null }); }
+    const q = W(x, mz + 0.05); room.spots.push({ x: q.x, z: q.z, rot: F.rho, sit: true, lie: true, y: 0.05, busy: null, noDuvet: true }); } // on the warm floor: no duvet
   if (!S) { L.push({ p: 'k_lockers', h: 1.4, wall: 'right', u: 'F' }, { p: 'k_towels', len: 0.9, wall: 'back', u: (lx + kw + 0.2 + tx - tl / 2) / 2 }, { p: 'k_bamboo', h: 1.2, x: lx + 0.4, z: fz - 0.45, rot: 0 }); }
   else L.push({ p: 'k_bamboo', h: 0.95, x: lx + 0.35, z: fz - 0.4, rot: 0 });
   kitRoom(g, cx, cz, room, 'jjim_kit', L, JJIM_DIMS, F);
@@ -2926,10 +2927,10 @@ const IX = {
   // city rooms
   hustle: [[0.04, { fv: '💼💼💼' }], [0.2, { go: 'piece:easel|cork|board|chart', s: 'show', fs: '📝📝📝' }], [0.45, { s: 'pickup', fs: '🗑️' }], [0.62, { fs: '📝' }], [0.7, { go: 'home' }], [0.85, { v: 'happy', fv: '🎯' }]],
   wedding: [[0.02, { vp: 'scroll', fv: '📜×600' }], [0.35, { s: 'show', sp: 'scissors', fs: '✂️' }], [0.6, { sp: '-', fv: '📜➡️📃' }], [0.85, { vp: '-', v: 'happy', fv: '😮‍💨' }]],
-  overtime: [[0.04, { fv: '🌃💻' }], [0.25, { fv: '🐑' }], [0.4, { go: 'near', s: 'pickup', sp: 'egg', fs: '🥚' }], [0.7, { go: 'home', sp: '-', fv: '📵😌' }]],
+  overtime: [[0.04, { fv: '🌃💻' }], [0.22, { fv: '🐑😴' }], [0.38, { go: 'near', s: 'pickup', sp: 'egg', fs: '🥚' }], [0.5, { s: 'show', sp: 'bottle', fs: '🍶' }], [0.62, { go: 'home', sp: '-', fv: '😋' }], [0.78, { fv: '📵😌' }]], // jjimjilbang: lying on the warm mat, the attendant brings a baked egg and sikhye
   grind: [[0.04, { fv: '☕☕☕' }], [0.15, { stand: 1, v: 'breath', s: 'show', fs: '🙆' }], [0.4, { mat: 1, fv: '🧘' }], [0.72, { mat: 0, sitback: 1, v: 'think', fv: '😌' }]],
-  coraje: [[0.02, { vp: 'lmask', fv: '😤' }], [0.25, { go: 'near', s: 'show', sp: 'pad', fs: '🛡️' }], [0.45, { v: 'angry', fv: '👊💥' }], [0.6, { fv: '🗣️❗' }], [0.75, { go: 'home', sp: '-' }], [0.8, { vp: '-', v: 'happy', fv: '😌' }]],
-  paperwork: [[0.04, { vp: 'paper', fv: '📑📑' }], [0.3, { s: 'drink', sp: 'tea', fs: '🍵' }], [0.45, { vp: 'tea', v: 'drink', fv: '🎲' }], [0.7, { sp: 'pen', s: 'work', fs: '🖊️✅' }], [0.88, { vp: '-', sp: '-', v: 'happy' }]],
+  coraje: [[0.02, { vp: 'lmask', fv: '😤' }], [0.25, { go: 'near', s: 'show', sp: 'pad', fs: '🛡️' }], [0.45, { v: 'angry', fv: '👊💥' }], [0.6, { fv: '🗣️❗' }], [0.72, { go: 'home', sp: '-' }], [0.8, { vp: '-', v: 'happy', fv: '😌' }], [0.86, { sp: 'trophy', s: 'show', fs: '🏆🔔' }], [0.95, { sp: '-' }]], // lucha: mask on, punches into the coach's pad, then the coach raises a trophy from the ring
+  paperwork: [[0.04, { vp: 'paper', fv: '📑📑' }], [0.22, { go: 'near', s: 'show', sp: 'tea', fs: '🍵' }], [0.36, { sp: '-', vp: 'tea', v: 'drink', fv: '😌' }], [0.48, { go: 'home', fv: '🎲' }], [0.62, { sp: 'pen', s: 'work', fs: '📑🖊️' }], [0.78, { fs: '✅' }], [0.88, { vp: '-', sp: '-', v: 'happy' }]], // ahwa: the host brings tea to the bench, then stamps the papers at the counter
   saudade: [[0.04, { fv: '🥹' }], [0.25, { s: 'clap', fs: '🥁🎶' }], [0.45, { v: 'clap', fv: '👏🎶' }], [0.8, { v: 'happy', fv: '🎶😊' }]],
 };
 const IX_DEF = [[0.1, { s: 'talk' }], [0.4, { v: 'talk' }], [0.7, { s: 'show' }], [0.9, { v: 'happy' }]]; // anything without its own scene
