@@ -44,7 +44,10 @@ export async function loadCharacters(url) {
     if (!man.enabled || !man.enabled.length) { CHAR.status = 'off'; return false; }
     const dir = url.slice(0, url.lastIndexOf('/') + 1); CHAR.dir = dir; const at = (f) => (/^(https?:)?\//.test(f) ? f : new URL(dir + f, location.href).href);
     if (man.characters) {
-      await Promise.all(Object.entries(man.characters).map(([k, f]) => loadGLB(at(f)).then((g) => { CHAR.A.full[k] = g; if (CHAR.onModel) CHAR.onModel(k); }).catch((e) => CHAR.errors.push('char ' + k + ': ' + (e && e.message)))));
+      // a staff/manager model that fails to load (a dropped request, a busy phone) is tried again a few times in the background: otherwise that
+      // role stayed as the simple placeholder figure for the whole session. When it finally arrives, onModel swaps the people already on screen
+      const retry = (k, f, n) => setTimeout(() => loadGLB(at(f)).then((g) => { CHAR.A.full[k] = g; if (CHAR.onModel) CHAR.onModel(k); }).catch((e) => { CHAR.errors.push('char ' + k + ' (retry ' + n + '): ' + (e && e.message)); if (n < 4) retry(k, f, n + 1); }), 3000 * n);
+      await Promise.all(Object.entries(man.characters).map(([k, f]) => loadGLB(at(f)).then((g) => { CHAR.A.full[k] = g; if (CHAR.onModel) CHAR.onModel(k); }).catch((e) => { CHAR.errors.push('char ' + k + ': ' + (e && e.message)); retry(k, f, 1); })));
       if (Object.keys(CHAR.A.full).length) CHAR.status = 'ready';
       if (!man.base) return CHAR.status === 'ready';
     }
