@@ -931,6 +931,8 @@ function glbSwap(g, name, o = {}) {
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
     if (o.fabric) m.traverse((c) => { if (!c.isMesh || !c.material) return; const s0 = c.material; // upholstery: soft velvet sheen and a fine weave instead of plastic
       c.material = new THREE.MeshPhysicalMaterial({ map: s0.map, color: s0.color, vertexColors: s0.vertexColors, roughness: 0.92, metalness: 0, sheen: 1, sheenRoughness: 0.42, sheenColor: new THREE.Color(o.fabric), normalMap: FABRIC_N(), normalScale: new THREE.Vector2(0.35, 0.35) }); });
+    if (o.lift) m.traverse((c) => { if (c.isMesh && c.material && c.material.map) { c.material = c.material.clone(); c.material.map = LIFT_TEX(c.material.map, o.lift); } }); /* paler purples in the texture, other colours untouched */
+    if (o.recol) m.traverse((c) => { if (c.isMesh && c.material && c.material.map) { c.material = c.material.clone(); c.material.map = RECOL_TEX(c.material.map, o.recol[0], o.recol[1]); } }); /* repaint one fabric of a model in a room's colour */
     if (o.tint) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.color.multiply(new THREE.Color(o.tint)); } });
     if (o.glow) m.traverse((c) => { if (c.isMesh && c.material) { c.material = c.material.clone(); c.material.emissive = new THREE.Color(o.glow); c.material.emissiveIntensity = o.gi || 0.8; if (c.material.map) c.material.emissiveMap = c.material.map; } }); // recolour a shared model for one room's palette
     if (TREE_RX.test(name) && !GFX.low) m.traverse((c) => { if (c.isMesh && c.material) { c.material = windify(c.material.clone(), name === 'nap_plant' ? 0.03 : 0.12, 4.5); if (/^lon_(oak|leafy|cypress)/.test(name)) c.material.color.multiply(new THREE.Color('#CDD5C2')); } }); // leaves stir in the wind; calmer greens
@@ -1085,7 +1087,7 @@ ROOM_STYLE.therapy = { v2: true, model: 'therapy_kit', kit: true, winSide: '-1,0
 ROOM_STYLE.glowup = { v2: true, model: 'glowup_kit', kit: true, winSide: '-1,0', winOuter: true, floorMap: () => TERRAZZO(), wall: '#EFA7AE', inBase: '#D9858F', floor: '#F2C2C4', door: '#E98C98', panel: '#E98C98', pop: '#E7B04A', posts: true, h: ROOM_H };
 ROOM_STYLE.cafe = { v2: true, chunky: true, ao: true, plinth: '#9DB38C', floorM: () => mat('#FFFFFF', { map: CHECKER_M(), mapK: 'cafeM', r: 0.6 }), model: 'cafe_kit', kit: true, winSide: '0,-1', winOff: 1.0, winOuter: true, floorMap: () => CHECKER_SOFT(), wall: '#93A97C', inBase: '#73895E', floor: '#F1EAD8', door: '#6E8A5A', panel: '#6E8A5A', pop: '#C98A3A', posts: true, h: ROOM_H };
 ROOM_STYLE.budget = { v2: true, model: 'budget_kit', kit: true, wall: '#2A8550', inBase: '#17643A', floor: '#167A42', door: '#1D6B40', panel: '#1D6B40', pop: '#F2845C', posts: true, h: ROOM_H };
-ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, archWin: true, rim: '#3E3560', wall: '#4A4271', inBase: '#3A325C', floor: '#7E7299', floorM: () => mat('#FFFFFF', { map: NAP_CARPET(), mapK: 'napCarpet', r: 1 }), door: '#5B3A86', panel: '#5B3A86', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
+ROOM_STYLE.nap = { v2: true, model: 'nap_kit', kit: true, archWin: true, rim: '#8A78C2', wall: '#B4A4E2', inBase: '#9A88D0', floor: '#C3B6E6', floorM: () => mat('#FFFFFF', { map: NAP_CARPET(), mapK: 'napCarpet', r: 1 }), door: '#8D72C9', panel: '#8D72C9', pop: '#FFD866', icon: 'moon', stars: true, posts: true, h: ROOM_H };
 // diorama look (validated on the café) for every room built from Tripo/Meshy pieces: rounded walls and floor, sage plinth, soft contact shadows, pieces ×1.1
 // the older rooms (code-built furniture, interiors not redone yet) get the same walls and floors: their pastel tint inside, cream outside, arched door
 const LAB_FLOOR = () => GC.labFloor || (GC.labFloor = canvasTex(256, 256, (c, W) => { c.fillStyle = '#B9B5C3'; c.fillRect(0, 0, W, W); let sd = 3; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
@@ -1094,7 +1096,7 @@ const LAB_FLOOR = () => GC.labFloor || (GC.labFloor = canvasTex(256, 256, (c, W)
   c.beginPath(); c.moveTo(256, 190); c.lineTo(110, 190); c.arcTo(70, 190, 70, 150, 40); c.lineTo(70, 0); c.stroke(); }, [3, 3]));
 ROOM_STYLE.lab = { v2: true, model: 'lab_kit', kit: true, winSide: '0,-1', winOuter: true, wall: '#E6E2EC', inBase: '#B7AFC6', floor: '#B9B5C3', floorM: () => mat('#FFFFFF', { map: LAB_FLOOR(), mapK: 'labFloor', r: 0.7 }), door: '#8E6CC9', panel: '#8E6CC9', pop: '#B48CE8', posts: true, h: ROOM_H };
 ROOM_STYLE.moving = { v2: true, model: 'moving_kit', kit: true, winSide: '1,0', winOuter: true, wood: ['#C98E52', '#B97E45'], wall: '#E9D3A6', inBase: '#C9AD78', floor: '#C98E52', door: '#2F7F78', panel: '#2F7F78', pop: '#E3B341', posts: true, h: ROOM_H };
-ROOM_STYLE.parent = { v2: true, model: 'parent_kit', kit: true, winSide: 'none', wood: ['#E0A06A', '#D6955E'], wall: '#E4B9A5', inBase: '#CF9B84', floor: '#E0A06A', door: '#D9864A', panel: '#D9864A', pop: '#9DB38C', posts: true, h: ROOM_H };
+ROOM_STYLE.parent = { v2: true, model: 'parent_kit', kit: true, winSide: 'none', wood: ['#EBD3AE', '#E2C79F'], rim: '#E4CBA2', wall: '#A8C8EC', inBase: '#8CB2DC', floor: '#EBD3AE', door: '#6E9FD3', panel: '#6E9FD3', pop: '#9DB38C', posts: true, h: ROOM_H };
 const GARAGE_FLOOR = () => GC.garFloor || (GC.garFloor = canvasTex(256, 256, (c, W) => { c.fillStyle = '#9A9C9A'; c.fillRect(0, 0, W, W); let sd = 9; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 2600; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(40,40,40,0.07)'; c.fillRect(rr() * W, rr() * W, 2, 2); }
   c.strokeStyle = 'rgba(70,70,70,0.25)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, 128); c.lineTo(W, 128); c.moveTo(128, 0); c.lineTo(128, W); c.stroke(); }, [2, 2]));
@@ -1141,7 +1143,18 @@ const CHECKER_M = () => GC.checkerM || (GC.checkerM = canvasTex(256, 256, (c, W)
 const CHECKER_SOFT = () => GC.checkerSoft || (GC.checkerSoft = canvasTex(256, 256, (c, W) => { const t = W / 2; c.fillStyle = '#D9D0BA'; c.fillRect(0, 0, W, W);
   for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const x = i * t + 3, y = j * t + 3, s = t - 6, base = (i + j) % 2 ? '#B7C69C' : '#F3EDDF';
     c.fillStyle = base; c.fillRect(x, y, s, s); const gr = c.createLinearGradient(x, y, x + s, y + s); gr.addColorStop(0, 'rgba(255,255,255,0.22)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(70,60,40,0.10)'); c.fillStyle = gr; c.fillRect(x, y, s, s); } }, [6, 6]));
-const NAP_CARPET = () => GC.napCarpet || (GC.napCarpet = canvasTex(256, 256, (c, W) => { c.fillStyle = '#7F7299'; c.fillRect(0, 0, W, W); let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+const LIFT_TEX = (map, amt) => { const k = map.uuid + '|' + amt; if (GC[k]) return GC[k]; const im = map.image; if (!im || !im.width) return map; const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; const c = cv.getContext('2d'); c.drawImage(im, 0, 0); let D; try { D = c.getImageData(0, 0, cv.width, cv.height); } catch (e) { return map; } const a = D.data;
+  for (let i = 0; i < a.length; i += 4) { const r = a[i] / 255, g = a[i + 1] / 255, b = a[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (d < 0.08) continue; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; if (h < 235 || h > 335) continue; /* purples and violets only */
+    let l = (mx + mn) / 2, s = d / (1 - Math.abs(2 * l - 1)); l = l + (1 - l) * amt; s *= 0.78; const q = (1 - Math.abs(2 * l - 1)) * s, x = q * (1 - Math.abs(((h / 60) % 2) - 1)), m0 = l - q / 2; const [R, G, B] = h < 300 ? [x, 0, q] : [q, 0, x]; a[i] = (R + m0) * 255; a[i + 1] = (G + m0) * 255; a[i + 2] = (B + m0) * 255; }
+  c.putImageData(D, 0, 0); const t = map.clone(); t.image = cv; t.needsUpdate = true; return (GC[k] = t); };
+const RECOL_TEX = (map, kind, col) => { const k = map.uuid + '|' + kind + col; if (GC[k]) return GC[k]; const im = map.image; if (!im || !im.width) return map; const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; const c = cv.getContext('2d'); c.drawImage(im, 0, 0); let D; try { D = c.getImageData(0, 0, cv.width, cv.height); } catch (e) { return map; } const a = D.data, T = new THREE.Color(col), hit = new Uint8Array(a.length / 4); let sum = 0, n = 0;
+  for (let i = 0, j = 0; i < a.length; i += 4, j++) { const r = a[i] / 255, g = a[i + 1] / 255, b = a[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2, sat = d < 1e-4 ? 0 : d / (1 - Math.abs(2 * l - 1)); let h = d < 1e-4 ? 0 : mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360;
+    const ok = kind === 'cream' ? (l > 0.66 && d < 0.47 && h > 15 && h < 65 || l > 0.74 && d < 0.05) : kind === 'green' ? (h > 75 && h < 175 && sat > 0.12 && d > 0.06) : false; /* cream: pale upholstery (dark wood and bright cushions kept); green: the green fabric */
+    if (ok) { hit[j] = 1; sum += l; n++; } }
+  if (!n) return map; const avg = sum / n;
+  for (let i = 0, j = 0; i < a.length; i += 4, j++) if (hit[j]) { const l = (Math.max(a[i], a[i + 1], a[i + 2]) + Math.min(a[i], a[i + 1], a[i + 2])) / 510, f = Math.min(1.6, l / avg); a[i] = Math.min(255, T.r * f * 255); a[i + 1] = Math.min(255, T.g * f * 255); a[i + 2] = Math.min(255, T.b * f * 255); } /* new colour, same folds and shading */
+  c.putImageData(D, 0, 0); const t = map.clone(); t.image = cv; t.needsUpdate = true; return (GC[k] = t); };
+const NAP_CARPET = () => GC.napCarpet || (GC.napCarpet = canvasTex(256, 256, (c, W) => { c.fillStyle = '#BEB0E2'; c.fillRect(0, 0, W, W); let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 9000; i++) { const v = rr(); c.fillStyle = v < 0.5 ? 'rgba(70,50,110,0.10)' : 'rgba(235,225,250,0.10)'; c.fillRect(rr() * W, rr() * W, 1 + rr() * 2, 1 + rr() * 2); } }, [2, 2]));
 const FLUFF = () => GC.fluff || (GC.fluff = canvasTex(128, 128, (c, W) => { c.fillStyle = '#ECE5F2'; c.fillRect(0, 0, W, W); let sd = 9; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 4000; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(150,130,180,0.18)' : 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(rr() * W, rr() * W, 0.8 + rr() * 1.6, 0, 6.3); c.fill(); } }, [1, 1]));
@@ -1503,7 +1516,7 @@ function ambience(dt) {
 // people on a bed lie flat on their back, head to the pillow, under a duvet (feet to chest); back upright when they get up
 const LIE_V = new THREE.Vector3(), DUVET_C = ['#9C7BD4', '#E07FA6', '#6FA3D8', '#7FBF8E', '#E9A35B'];
 function napDuvet(col) { // a thick, soft duvet that hides the whole body up to the chest, with the white sheet folded back over its top edge
-  const dv = rbox(1.0, 0.3, 1, col, 0.12, { r: 0.95 }); const f = rbox(1.01, 0.1, 0.13, '#EDE6EF', 0.05, { r: 0.95 }); f.position.set(0, 0.12, -0.44); /* a soft rolled-over sheet edge, not a flat board */ const dr = rbox(1.0, 0.34, 0.05, col, 0.025, { r: 0.95 }); dr.position.set(0, -0.12, 0.49); dv.add(dr); /* and it hangs over the foot of the bed */ f.castShadow = false; dv.add(f); return dv;
+  const dv = rbox(1.0, 0.3, 1, col, 0.12, { r: 0.95 }); const f = rbox(1.01, 0.1, 0.13, '#D9CFF0', 0.05, { r: 0.95 }); f.position.set(0, 0.12, -0.44); /* a soft rolled-over sheet edge, not a flat board */ const dr = rbox(1.0, 0.34, 0.05, col, 0.025, { r: 0.95 }); dr.position.set(0, -0.12, 0.49); dv.add(dr); /* and it hangs over the foot of the bed */ f.castShadow = false; dv.add(f); return dv;
 }
 const LIE_DV = new Set(); // every duvet in the scene, so one never stays behind when its sleeper is removed mid-nap
 function lieUpdate() {
@@ -1817,7 +1830,7 @@ function movingKit(g, cx, cz, room) {
 function parentKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = w < 5 || D < 5, H = Math.PI / 2, L = [];
   const sx = -w / 2 + (S ? 1.15 : 1.5), sz = -D / 2 + 0.8, ax = sx + (S ? 1.55 : 2.0);
-  L.push({ p: 'k_rug', len: S ? 2.2 : 2.8, x: sx + 0.7, z: sz + 0.75, rot: 0, solid: false }, { p: 'k_sofa', len: S ? 1.5 : 1.8, x: sx, z: sz, rot: 0 }, { p: 'k_table', len: S ? 0.8 : 1.0, x: sx + 0.25, z: sz + 1.05, rot: 0 }, { p: 'k_armchair', h: 0.92, x: ax, z: sz + 0.35, rot: -H * 0.75 });
+  L.push({ p: 'k_rug', len: S ? 2.2 : 2.8, x: sx + 0.7, z: sz + 0.75, rot: 0, solid: false }, { p: 'k_sofa', len: S ? 1.5 : 1.8, x: sx, z: sz, rot: 0, recol: ['cream', '#7FA6D6'] }, { p: 'k_table', len: S ? 0.8 : 1.0, x: sx + 0.25, z: sz + 1.05, rot: 0 }, { p: 'k_armchair', h: 0.92, x: ax, z: sz + 0.35, rot: -H * 0.75, recol: ['green', '#2F4A7E'] });
   L.push({ p: 'k_schedule', len: S ? 1.2 : 1.5, wall: 'back', u: S ? 0.6 : 1.1, hang: true, y: 1.15, gap: 0.13 });
   const mx = w / 2 - (S ? 1.0 : 1.75), mz = S ? D / 2 - 0.95 : 0.75; // the kids' corner sits towards the middle, not pushed into the far corner
   L.push({ p: 'k_playmat', len: S ? 1.7 : 2.3, x: mx, z: mz, rot: 0, solid: false }, { p: 'k_kidtable', len: 0.75, x: mx + 0.2, z: mz - 0.2, rot: 0 }, { p: 'k_kidchair', h: 0.55, x: mx + 0.2, z: mz + 0.42, rot: Math.PI });
@@ -1989,7 +2002,7 @@ function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
     if (it.p === '@plant') { plant(0, 0, it.s || 1.5, '#F3EDE2', p, it.v ? { v: it.v, h: it.vh || 0.72 * (it.s || 1.5), tint: it.tint } : null); box.g = p; continue; } // the game's own potted plants
     if (DECO[it.p]) { DECO[it.p](p, it); box.g = p; continue; } // decor built in code (menu board, shelf, frames, rug)
     if (box.solid) put(rbox(pw * 0.9, Math.min(it.h || 1, 1), pd * 0.9, '#E8E2D6', 0.04), 0, Math.min(it.h || 1, 1) / 2 + 0.1, 0, p); // walk-grid footprint until the model swaps in
-    glbSwap(p, (it.kit || kit) + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}), ...(it.tint ? { tint: it.tint } : {}), ...(it.rugH ? { rugH: it.rugH } : {}), ...(it.onModel ? { onModel: it.onModel } : {}) }); box.g = p;
+    glbSwap(p, (it.kit || kit) + '/' + it.p, { ...(it.len ? { len: it.len * KS } : { h: it.h * KS }), y: (it.y || 0) + 0.11, ...(it.glow ? { glow: '#FFD866', gi: 0.9 } : {}), ...(it.fabric ? { fabric: it.fabric } : {}), ...(it.tint ? { tint: it.tint } : {}), ...(it.lift ? { lift: it.lift } : {}), ...(it.recol ? { recol: it.recol } : {}), ...(it.rugH ? { rugH: it.rugH } : {}), ...(it.onModel ? { onModel: it.onModel } : {}) }); box.g = p;
     if (!it.hang && !/rug|jute|k_mat/.test(it.p) && !(it.y > 0.3) && Object.values(ROOM_STYLE).some((st) => st && st.model === kit && st.ao)) aoBlob(g, P.x, P.z, pw * 1.3 + 0.15, pd * 1.3 + 0.15, R); }
   try { (window.__layout = window.__layout || []).push({ room: room.sz + (room.st != null ? '#' + room.st : ''), kit, rho: F.rho, rep }); if (rep.length) console.warn('[layout]', kit, room.sz, rep.join('; ')); } catch (e) {}
   return Object.fromEntries(out.map((b) => [b.p, b.at]));
@@ -2095,17 +2108,17 @@ const NAP_DIMS = {"k_bed": [0.5835, 0.5566, 0.9946], "k_armchair": [0.9434, 0.82
 function napKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, H = Math.PI / 2;
   const n = 3, bw = 0.6 * 1.9, sp = Math.min(1.62, (w - 0.3) / n), bed = 1.9; // beds 1.9 m long (0.6 wide per metre of length in the model)
-  const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp, fabric: '#6F6684' });
+  const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp, fabric: '#B9A8E0', lift: 0.45 });
   if (first) L.push({ p: 'k_moon', h: 0.9, wall: 'back', u: 0, hang: true, y: 1.15, glow: true });
   if (sp > 1.45) for (let i = 0; i < n - 1; i++) L.push({ p: 'k_lamp', h: 0.62, wall: 'back', u: (i + 0.5 - (n - 1) / 2) * sp, solid: false, glow: true }); // target image: a glowing mushroom lamp between the beds
 
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
-  if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H, fabric: '#6F6684' }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
+  if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H, fabric: '#B9A8E0', lift: 0.45 }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
   if (!S) L.push({ p: 'k_rug', len: 2.5, x: -0.35, z: 0.35, solid: false, onModel: (m) => furShells(m, '#EEEAF2', 12, 0.08) }); // reference: big white cloud rug in the middle of the room, long soft pile // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
-  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? null : '#A39CB2'; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
+  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? null : '#ECE8F2'; for (const it of L) if (it && it.p === 'k_dresser') it.lift = 0.4; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   if (!GFX.low && !MOBILE && sp > 1.45) for (let i = 0; i < n - 1; i++) { const pl = new THREE.PointLight('#FFB46A', 1.1, 1.5, 2); pl.position.set(cx + (i + 0.5 - (n - 1) / 2) * sp, 0.55, bz + 0.45); g.add(pl); } // a small pool of lamp light at each bedside, nothing on the sleepers' faces // the warm, dimmed glow of the lamps and the moon
-  for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null, duvetC: ['#8C7FB0', '#B48AA8', '#7F8CB4'][i % 3] }); // each bed its own duvet shade, as in the painting
+  for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null, duvetC: ['#FBF8F4', '#F6F2EC', '#FAF7F2'][i % 3] }); // each bed its own duvet shade, as in the painting
   room.staffSpot = { x: cx + (S ? 0.9 : 1.2), z: cz + D / 2 - 1.0, rot: Math.PI, sit: false, y: 0 };
 }
 const TRAIN_DIMS = {"k_board":[0.9538,0.998,0.4711],"k_chair":[0.6579,0.998,0.6337],"k_table":[0.998,0.6348,0.6582],"k_shelf":[0.6621,0.998,0.3457],"k_sink":[0.6348,0.998,0.5723]};
@@ -3137,6 +3150,7 @@ function seatVisitor(v) {
 }
 // a wait told in the game's own time (a day lasts DAY_LEN seconds), not in real minutes
 function gameDur(sec) { const h = sec / DAY_LEN * 24; if (h < 1.5) return t('dur.h1'); if (h < 23.5) return t('dur.h', { n: Math.round(h) }); const d = Math.round(h / 24); return d <= 1 ? t('dur.d1') : t('dur.d', { n: d }); }
+const hostHere = (sp) => { const r = sp && roomOfSpot(sp); return !!(r && r.staff.some((x) => x && x.mode === 'there')); }; // the shop's till and the café need their host in the room
 const needOf = (v) => (v.diag ? 'therapy' : isMystK(v.prob) ? null : PROBLEMS[v.prob].room);
 function roomQ(id) { return R.visitors.filter((v) => v.target === id && (v.state === 'wait' || v.state === 'toWait')); }
 function pickRoomFor(v) { const need = needOf(v); if (!need) return null; const rs = Object.values(R.rooms).filter((r) => r.type === need); if (!rs.length) return null; rs.sort((a, b) => (roomQ(a.id).length - a.spots.length) - (roomQ(b.id).length - b.spots.length)); return rs[0].id; }
@@ -3728,6 +3742,7 @@ function visitorUpdate(v, dt) {
     case 'toWait': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.spot); posePhone(p); v.state = 'wait'; } break;
     case 'toShop': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.sspot); poseStand(v.av.userData.p); v.state = 'shopping'; v.prog = 0; } break; // looks at the shelves, not at the phone
     case 'shopping': {
+      if ((v.paying || v.prog >= 0.99) && !hostHere(v.sspot)) { if ((v.noHostT = (v.noHostT || 0) + dt) > 8) { v.paying = false; v.noHostT = 0; v.prog = 0; v.tillWait = 0; v.sspot.busy = null; v.sspot = null; floatAt(v.av.position, '🤷'); if (v.cured) { setPath(v, exitPath(v)); v.state = 'exit'; } else seatVisitor(v); } break; } // nobody at the till: they wait a moment, then put it back and go
       v.prog += dt / (v.paying ? 1.2 : 2.5);
       if (v.prog >= 1 && !v.sspot.till) { // picked an item at a shelf or the table: now pay at the counter (wait a moment if someone is being served)
         const sr = roomOfSpot(v.sspot), till = sr && sr.spots.find((q) => q.till && q.st === v.sspot.st);
@@ -3738,6 +3753,7 @@ function visitorUpdate(v, dt) {
     case 'toLoo': if (stepWalker(v, dt, walkSpeed * (v.urgent ? 1.7 : 1))) { settle(v, v.lspot); v.state = 'loo'; v.prog = 0; } break;
     case 'toCafe': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.lspot); v.state = 'cafe'; v.prog = 0; if (p.anim) p.anim.set(v.lspot && v.lspot.sit ? 'drinksit' : 'drink'); holdCup(v.av, true); } break;
     case 'cafe': {
+      if (!hostHere(v.lspot)) { if ((v.noHostT = (v.noHostT || 0) + dt) > 8) { v.noHostT = 0; holdCup(v.av, false); v.lspot.busy = null; v.lspot = null; v.prog = 0; floatAt(v.av.position, '🤷'); if (v.cured) { setPath(v, exitPath(v)); v.state = 'exit'; } else seatVisitor(v); } break; } // no host behind the counter: no drink
       v.prog += dt / 3;
       if (v.prog >= 1) { const spend = Math.round((7 + RNG() * 6) * (S.price || 1) * (done('oat') ? 1.2 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.25); incCnt('matcha'); { const cr = roomOfSpot(v.lspot); if (cr) { roomEarn(cr.id, spend); addDirt(cr, 0.03); } } if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 1, null, 0.5);
         AU.sfx('cash'); floatAt(v.av.position, '🍵 +' + money(spend)); holdCup(v.av, false); v.lspot.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) || v.diag ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
