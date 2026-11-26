@@ -1533,6 +1533,15 @@ const LIE_V = new THREE.Vector3(), DUVET_C = ['#9C7BD4', '#E07FA6', '#6FA3D8', '
 function napDuvet(col) { // a thick, soft duvet that hides the whole body up to the chest, with the white sheet folded back over its top edge
   const dv = rbox(1.0, 0.3, 1, col, 0.12, { r: 0.95 }); const f = rbox(1.01, 0.1, 0.13, '#EDE6EF', 0.05, { r: 0.95 }); f.position.set(0, 0.12, -0.44); /* a soft rolled-over sheet edge, not a flat board */ const dr = rbox(1.0, 0.34, 0.05, col, 0.025, { r: 0.95 }); dr.position.set(0, -0.12, 0.49); dv.add(dr); /* and it hangs over the foot of the bed */ f.castShadow = false; dv.add(f); return dv;
 }
+function lieRest(av) { // rest (T) pose straightened by the mixer stop; bring both arms down along the body toward the feet
+  const B = {}; av.traverse((b) => { if (b.isBone) B[b.name] = b; }); const hd = B.Head, hp = B.Hips; if (!hd || !hp) return;
+  av.updateMatrixWorld(true); const V = THREE.Vector3, Q = THREE.Quaternion, down = hp.getWorldPosition(new V()).sub(hd.getWorldPosition(new V())).normalize();
+  for (const [a, f] of [['LeftArm', 'LeftForeArm'], ['RightArm', 'RightForeArm']]) { const ab = B[a], fb = B[f]; if (!ab || !fb || !ab.parent) continue;
+    av.updateMatrixWorld(true); const cur = fb.getWorldPosition(new V()).sub(ab.getWorldPosition(new V())).normalize(), out = cur.clone().sub(down.clone().multiplyScalar(cur.dot(down))).normalize(); // keep a little of the old sideways direction so the hand rests beside the hip
+    const want = down.clone().multiplyScalar(0.96).add(out.multiplyScalar(0.28)).normalize(), dq = new Q().setFromUnitVectors(cur, want), wq = ab.getWorldQuaternion(new Q()), pq = ab.parent.getWorldQuaternion(new Q());
+    ab.quaternion.copy(pq.invert().multiply(dq.multiply(wq))); }
+  av.updateMatrixWorld(true);
+}
 const LIE_DV = new Set(); // every duvet in the scene, so one never stays behind when its sleeper is removed mid-nap
 function lieUpdate() {
   const seenDv = new Set(), who = []; for (const v of R.visitors) who.push([v, v.state === 'treat' && v.rspot]); for (const rs of R.staff) who.push([rs, rs.mode === 'break' && rs.onBreak]);
@@ -1553,7 +1562,7 @@ function lieUpdate() {
             ud.rollN = (ud.rollN || 0) + 1; } } }
       if (hb) { av.updateMatrixWorld(true); hb.getWorldPosition(LIE_V); av.position.y += base + (sp.duvetC ? 0.2 : 0.14) - LIE_V.y; } /* nap beds: on the thick mattress, head on the pillow */ // the clip's pelvis offset: lay the hips on the mattress
       let dv = av.userData.duvet; if (dv && dv.userData.wide !== !!sp.duvetC) { if (dv.parent) dv.parent.remove(dv); dv = null; } if (!dv) { dv = av.userData.duvet = sp.duvetC ? napDuvet(sp.duvetC) : rbox(0.68, 0.2, 1, rnd(DUVET_C), 0.09); dv.castShadow = true; dv.userData.swap = true; dv.userData.wide = !!sp.duvetC; } // the nap beds: a wide, thick duvet in the bed's colour that covers the arms and comes up to the chest
-      av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); else if (p && p.anim && p.anim.mixer) { for (const ac of p.anim.mixer._actions || []) if (ac.isRunning()) { ac.time = 0; ac.paused = true; } } /* paused, not stopped: a stopped clip snaps back to the T-pose */ /* the modelled characters: hold the first frame of their idle, so no hand waves out of the duvet */ av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
+      av.userData.lieT = (av.userData.lieT || 0) + 1; if (av.userData.lieT > 20 && !av.userData.sleep) { if (p && p.anim && p.anim.freeze) p.anim.freeze('idle'); else if (p && p.anim && p.anim.mixer) { p.anim.mixer.stopAllAction(); lieRest(av); } /* the modelled characters: their idles bend, twist or sit up when laid flat, so lie them straight from the rest pose with the arms along the body */ /* the modelled characters: hold the first frame of their idle, so no hand waves out of the duvet */ av.userData.sleep = true; } // a moment to settle, then one still pose, arms by the sides
       if (!dv.parent) scene.add(dv); LIE_DV.add(dv); seenDv.add(dv); const len = L * 0.88 * (o.prob ? clamp((performance.now() - (av.userData.lieS || 0)) / 1100, 0.25, 1) : 1); dv.scale.z = len; /* a client pulls the duvet up over themselves */ dv.rotation.y = r; dv.rotation.z = 0; dv.scale.y = sp.duvetC ? 1 : 1.3; const dy = sp.duvetC ? 0.28 : 0.19; dv.position.set(sp.x + s * (L * 0.5 - len / 2 + 0.06), base + dy, sp.z + c * (L * 0.5 - len / 2 + 0.06));
       if (sp.duvetC) { // the nap beds: lay the duvet on where the body really is (the clip shifts it toward the pillow), from past the feet up to the chest
         let hd = ud.headB, ft = ud.footB; if (hd === undefined) { hd = ft = null; av.traverse((b) => { if (!b.isBone) return; if (!hd && /head/i.test(b.name) && !/end|top/i.test(b.name)) hd = b; if (!ft && /foot|ankle/i.test(b.name)) ft = b; }); ud.headB = hd; ud.footB = ft; }
