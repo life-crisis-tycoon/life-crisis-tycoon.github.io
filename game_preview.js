@@ -1455,7 +1455,7 @@ function buildRoom(r) {
     for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || (sg.userData.outer && !RS.winOuter) || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
       const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = RKIT && !RS.archWin ? kitWin(g, wx + (nz ? off : 0), wz + (nx ? off : 0), nx, nz) : archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, RKIT ? 0.3 : 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
-  const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(Z.st).fill(null), cx: r.x, cz: r.z, door, g };
+  const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(staffN(r.type, r.size)).fill(null), cx: r.x, cz: r.z, door, g };
   if (r.dirt) setTimeout(() => { room.dirtLv = -1; applyDirt(room); }, 1800); // after the modelled furniture has been swapped in
   const K = clamp(Math.min(Z.W / Z.st, Z.D) / 6.2, 0.6, 1);
   for (let i = 0; i < Z.st; i++) {
@@ -1466,7 +1466,7 @@ function buildRoom(r) {
     fitFurniture(sg, tmp, Z.W / Z.st, Z.D, RS ? 0.2 : 0.16);
     const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a, ...(p.rot2 != null ? { rot2: p.rot2 + r.a } : {}), ...(p.pts ? { pts: Object.fromEntries(Object.entries(p.pts).map(([k, q]) => [k, conv(q)])) } : {}) }; }; // pts: named points of a scene (kid's chair, board…)
     for (const sp of tmp.spots) room.spots.push({ ...conv(sp), st: i, busy: null });
-    room.staffSpots[i] = tmp.staffSpot ? conv(tmp.staffSpot) : null;
+    room.staffSpots[i] = tmp.staffSpot ? conv(tmp.staffSpot) : null; if (tmp.staffSpot2) room.staffSpots[Z.st + i] = conv(tmp.staffSpot2); // a 2nd post in the same station (the regular lab's second researcher)
     if (tmp.ringL) { const R0 = tmp.ringL, o = toW(r, lx + R0.o.x, R0.o.z), a = toW(r, lx + R0.o.x + R0.ax.x, R0.o.z + R0.ax.z), b = toW(r, lx + R0.o.x + R0.az.x, R0.o.z + R0.az.z); (room.rings = room.rings || []).push({ ox: o.x, oz: o.z, ax: [a.x - o.x, a.z - o.z], az: [b.x - o.x, b.z - o.z], k: R0.k }); } // a raised floor (the lucha ring)
     if (tmp.obsX) room.obsX = (room.obsX || []).concat(tmp.obsX.map(([x0, x1, z0, z1]) => { const p = toW(r, lx + x0, z0), q = toW(r, lx + x1, z1); return [Math.min(p.x, q.x), Math.max(p.x, q.x), Math.min(p.z, q.z), Math.max(p.z, q.z)]; }));
     VIA_SPOTS = VIA_SPOTS.filter((sp) => sp.room0 && R.rooms[sp.room0.id] === sp.room0); for (const sp of room.spots) if (sp.front && !sp.via) { sp.via = { x: sp.x + Math.sin(sp.rot) * 1.35, z: sp.z + Math.cos(sp.rot) * 1.35 }; sp.room0 = room; VIA_SPOTS.push(sp); }
@@ -1615,6 +1615,7 @@ function chair(g, x, z, rot, col) { const c = grp(x, z, rot, g); put(rbox(0.6, 0
 const seatsN = (room) => ({ s: 2, m: 4, l: 3 }[room.sz] || 2);
 function bedXs(room, bw) { const n = room.sz ? { s: 2, m: 4, l: 3 }[room.sz] : 2, W = (room.w || 6) - 0.5, sp = Math.min(1.5, W / n); return Array.from({ length: n }, (_, i) => (i - (n - 1) / 2) * sp); }
 const CAPC = {};
+const staffN = (type, size) => (type === 'lab' && size === 'm' ? 2 : SIZES[size].st); // the regular lab takes two researchers, the small one one
 function capOf(type, size) { const k = type + size; if (CAPC[k] != null) return CAPC[k]; const Z = SIZES[size], K = clamp(Math.min(Z.W / Z.st, Z.D) / 6.2, 0.6, 1); let n = 0; for (let i = 0; i < Z.st; i++) { const tmp = { spots: [], staffSpot: null, sz: size, w: Z.W / Z.st }; try { furniture[type](new THREE.Group(), 0, 0, tmp, K); } catch (e) {} n += tmp.spots.length; } return (CAPC[k] = n); }
 
 // career office decor from the reference painting: window seat, arc lamp, ladder shelf + gold star, sconces, framed sign, corkboard with notes
@@ -1832,6 +1833,7 @@ function labKit(g, cx, cz, room) {
   if (!S) L.push({ p: '@plant', s: 1.4, wall: 'left', u: 'F' });
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.lab.model, L, LAB_DIMS);
   const dk = at.k_desk; if (dk) { const cz2 = dk.z + dk.pd / 2 + 0.35; const ch = grp(dk.x, cz2, Math.PI, g); glbSwap(ch, 'lab_kit/k_chair', { h: 0.95, y: 0.11 }); room.staffSpot = { x: dk.x, z: cz2, rot: Math.PI, sit: true, y: 0.02 }; }
+  const bn = at.k_bench; if (bn && !S) room.staffSpot2 = { x: bn.x + 0.35, z: bn.z + bn.pd / 2 + 0.35, rot: Math.PI, sit: false, y: 0 }; // the regular lab's 2nd researcher works standing at the bench
 }
 // Moving (from the moving painting): city map on the back wall, the round wooden desk on a jute rug with the agent behind it and two client chairs in front, a stack of boxes with the hand truck in the corner, the sofa, the photo-and-keys board, a lavender box, a lamp over the desk
 function movingKit(g, cx, cz, room) {
@@ -4283,7 +4285,7 @@ function sizeCards(type, cur, onPick) {
   return Object.keys(SIZES).filter((s) => s !== 'l').map((s) => { // two sizes only: small and regular
     const Z = SIZES[s], cost = roomCost(type, s), diff = cur ? cost - roomCost(type, cur) : cost, price = cur ? (s === cur ? '—' : diff > 0 ? '−' + money(diff) : '+' + money(-diff / 2)) : money(cost);
     const afford = !cur ? S.cash >= cost : diff <= 0 || S.cash >= diff;
-    return `<div class="opt w" style="${s === cur ? 'border-color:var(--green)' : ''}"><div class="oi" style="background:#F1F2F5;font:700 15px Fredoka">${Z.W}×${Z.D}</div><div class="ot"><b>${t('sz.' + s)}</b><div>${t('sz.' + s + 'D')}</div><div>${price}${capOf(type, s) ? ' · ' + t('sz.cap', { n: capOf(type, s) }) : ''}</div></div>${s === cur ? '' : `<button class="btn g" data-size="${s}" ${afford ? '' : 'disabled'}>${t(cur ? 'room.pick' : 'build.btn')}</button>`}</div>`;
+    return `<div class="opt w" style="${s === cur ? 'border-color:var(--green)' : ''}"><div class="oi" style="background:#F1F2F5;font:700 15px Fredoka">${Z.W}×${Z.D}</div><div class="ot"><b>${t('sz.' + s)}</b><div>${t('sz.' + s + 'D')}</div><div>${price}${capOf(type, s) ? ' · ' + t('sz.cap', { n: capOf(type, s) }) : ''}${type === 'lab' ? ' · ' + t('sz.res', { n: staffN(type, s) }) : ''}</div></div>${s === cur ? '' : `<button class="btn g" data-size="${s}" ${afford ? '' : 'disabled'}>${t(cur ? 'room.pick' : 'build.btn')}</button>`}</div>`;
   }).join('');
 }
 function openSize(type) {
@@ -4293,7 +4295,7 @@ function openSize(type) {
 function openRoomMenu(id) {
   const room = R.rooms[id]; if (!room || placingR || moving) return;
   const r = room.def, Z = SIZES[r.size], role = ROOMS[r.type].role, refund = Math.round(roomCost(r.type, r.size) / 2);
-  let h = `<h2>${ROOMS[r.type].e} ${rn(r.type)}${roomNo(room)}</h2><p class="sub">${t('room.sizeL', { s: t('sz.' + r.size) })} · ${Z.W}×${Z.D}${role ? ' · ' + t('room.staffN', { a: room.staff.filter(Boolean).length, b: Z.st, role: roleN(role) }) : ''}</p>`;
+  let h = `<h2>${ROOMS[r.type].e} ${rn(r.type)}${roomNo(room)}</h2><p class="sub">${t('room.sizeL', { s: t('sz.' + r.size) })} · ${Z.W}×${Z.D}${role ? ' · ' + t('room.staffN', { a: room.staff.filter(Boolean).length, b: room.staff.length, role: roleN(role) }) : ''}</p>`;
   { const ix = incOf(id); if (ix) h += `<div class="opt w" style="border-color:#FF9F43"><div class="oi" style="background:#FFE9D2">${INC[ix.k].e}</div><div class="ot"><b>${t('inc.' + ix.k, { room: rn(r.type) })}</b><div>${t('inc.' + ix.k + 'D')} ${ix.techT != null ? '🧰 ' + t('inc.techComing') : t('inc.how', { left: incLeft(ix) })}</div></div>${ix.techT == null ? `<button class="btn y" id="rmExpress" ${S.cash < expressCost(ix) ? 'disabled' : ''}>🧰 ${money(expressCost(ix))}</button>` : ''}</div>`; }
   { const wk = roomWeek(id), wg = Math.round(room.staff.filter(Boolean).reduce((a, x) => a + ((x.data && x.data.wage) || 0), 0) * WAGE_K), dd = room.def.dirt || 0;
     if (ROOMS[r.type].role || r.type === 'cafe') h += `<div class="receipt" style="margin-bottom:8px"><div><span>☀️ ${t('room.today')}</span><b>+${money(((S.rEarn || {})[id] || {})[S.day] || 0)}</b></div><div><span>💵 ${t('room.week')}</span><b>+${money(wk)}</b></div>${wg ? `<div><span>👥 ${t('room.wages')}</span><span>-${money(wg)}</span></div><div style="font-weight:800"><span>${t('room.net')}</span><span style="color:${wk - wg >= 0 ? '#1E8A3A' : 'var(--red)'}">${wk - wg >= 0 ? '+' : '-'}${money(Math.abs(wk - wg))}</span></div>` : ''}${S.day < 7 ? `<div style="font-size:12px;color:var(--muted)">${t('room.weekNote', { d: S.day })}</div>` : ''}</div>`;
