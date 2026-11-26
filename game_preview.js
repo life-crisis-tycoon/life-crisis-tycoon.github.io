@@ -3911,7 +3911,7 @@ function leave(v, quiet) {
   if (!quiet) {
     logComplaint(complaintOf(v));
     if (S.daily && S.daily.k === 'calm' && !S.daily.won && ++S.daily.bad > 4) S.daily.fail = true;
-    S.left++; outcome(false); AU.sfx('bad'); vb('left', 0 - (v.known && !isMystK(v.prob) && !hasRoom(PROBLEMS[v.prob].room) ? 0.8 : PROBLEMS[v.prob].care ? 2.5 : 1.8) - (v.vip ? 10 : 0)); // balanced so ~65 % success holds vibes steady; above that they climb if (v.vip) { chat('🤳 ' + v.name, t('vip.roast'), '💀'); toast('👑 ' + t('vip.roast'), 3200); } floatAt(v.av.position, t('v.lost'), true);
+    S.left++; outcome(false); AU.sfx('bad'); vb('left', 0 - (v.known && !isMystK(v.prob) && !hasRoom(PROBLEMS[v.prob].room) ? 0.8 : PROBLEMS[v.prob].care ? 2.5 : 1.8) - (v.vip ? 10 : 0)); /* balanced so ~65 % success holds vibes steady; above that they climb */ if (v.vip) { chat('🤳 ' + v.name, t('vip.roast'), '💀'); toast('👑 ' + t('vip.roast'), 3200); } floatAt(v.av.position, t('v.lost'), true);
     if (v.known && !hasRoom(PROBLEMS[v.prob].room)) tip('noRoom');
     const need = v.known ? PROBLEMS[v.prob].room : null;
     if (v.noLoo || Math.random() < 0.3) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, v.noLoo ? t('rev.noLoo') : v.known && isMystK(v.prob) ? t('rev.myst') : need && !hasRoom(need) ? t('rev.noRoom', { room: rn(need) }) : crnd(tList('rev.bad')), '😤');
