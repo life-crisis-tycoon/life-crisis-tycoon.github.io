@@ -4388,6 +4388,9 @@ function openChat() {
     const x = A.opts(m.act).find((y) => y.id === b.dataset.co); if (!x || x.ok === false) return; const keep = x.run(); m.pick = x.label; m.ans = x.reply || ''; save(); if (keep !== 'leave') openChat(); });
 }
 // ---- decisions in the chat: options with real effects (validated when tapped: the situation may have changed)
+// only jobs that can really be done from a laptop ask to work from home: the researcher (analysis) and the coach/therapist (video sessions).
+// The front desk, maintenance, the wellness guide and the pharmacist need to be in the building.
+const WFH_ROLES = ['researcher', 'coach', 'therapist'];
 const staffById = (id) => R.staff.find((rs) => rs.data.id === id);
 const visById = (id) => R.visitors.find((v) => v.id === id && ['toWait', 'wait', 'queue', 'toQueue', 'checkin'].includes(v.state));
 const ACTS = {
@@ -4602,6 +4605,7 @@ function dayTick(dt) {
     if (S.day >= 2 && Math.random() < (cityOf().power ? 0.7 : 0.5)) S.evAt = 10 + Math.random() * 35;
     if (S.day >= 3 && S.staff.length >= 3 && Math.random() < 0.3) S.raiseAt = 20 + Math.random() * 25;
     else if (S.mode === 'career' && S.city !== 'london' && S.day >= 30 && S.staff.length >= 2 && Math.random() < 0.3) S.lifeAt = 15 + Math.random() * 35;
+    for (const st of S.staff) if (st.wfh && !WFH_ROLES.includes(st.role)) st.wfh = false;
     for (const st of S.staff) if (st.wfh && S.day % 5 === 0 && !(st.awayT > 0)) { st.awayT = DAY_LEN * 0.95; chat(st.name + ' · ' + roleN(st.role), t('life.wfhOn'), '🏠'); }
     poachCheck();
     if (S.day >= 3 && Math.random() < (['popular', 'adored'].includes(vibeTier()) ? 0.6 : 0.35)) S.vipAt = 15 + Math.random() * 30;
@@ -5029,7 +5033,7 @@ function raiseRequest() {
 }
 function lifeEvent() {
   const cand = S.staff.filter((s) => !(s.awayT > 0) && (s.lifeDay == null || s.lifeDay < S.day - 6)); if (!cand.length) return;
-  const st = crnd(cand), first = st.name.split(' ')[0], k = crnd(st.wfh ? ['break', 'baby'] : ['break', 'baby', 'wfh']); st.lifeDay = S.day;
+  const st = crnd(cand), first = st.name.split(' ')[0], k = crnd(st.wfh || !WFH_ROLES.includes(st.role) ? ['break', 'baby'] : ['break', 'baby', 'wfh']); st.lifeDay = S.day;
   const say = (ok) => chat(st.name + ' · ' + roleN(st.role), t(ok ? 'life.okChat' : 'life.noChat'), ok ? '🥹' : '😒');
   const btns = { break: [['life.breakOff', 'g', () => { st.awayT = DAY_LEN * 0.5; say(true); }], ['life.breakStay', 'y', () => { st.sadT = DAY_LEN; }]],
     baby: [['life.babyPaid', 'g', () => { st.awayT = DAY_LEN * 2; vb('misc', 0 + 2); chat(st.name + ' · ' + roleN(st.role), t('life.babyChat'), '👶'); }], ['life.babyUnpaid', 'y', () => { st.awayT = DAY_LEN * 2; S.cash += Math.round(st.wage * 0.5); if (Math.random() < 0.5) st.grumpy = S.day; say(false); }]],
