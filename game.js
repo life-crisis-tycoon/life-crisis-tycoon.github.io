@@ -6185,7 +6185,7 @@ function swapStaffAvatar(rs) {
   if (rs.mode === 'walk') poseWalk(p, 0); else if (rs.mode === 'there') { rs.busyPose = null; if (sp && sp.sit) poseSit(p); else poseStand(p); } else if (sp && sp.sit) poseSit(p); else poseStand(p);
 }
 CHAR.onModel = (role) => { if (role.startsWith('mgr_')) { refreshMgrModel(); return; } if (VIS[role]) { if (role === 'sp_trainer') for (const rs of R.staff) if (rs.data.role === 'trainer' && !rs.av.userData.p.glb) swapStaffAvatar(rs); for (const v of R.visitors) if (v.look.vm === role && !v.av.userData.p.glb) swapVisitorAvatar(v); return; } for (const rs of R.staff) if (rs.data.role === role && !rs.av.userData.p.glb) swapStaffAvatar(rs); };
-loadCharacters(MODELS_URL).then((ok) => { if (ok) { if (S) preloadVisitors(S.city); for (const k in portraits) delete portraits[k]; console.info('[chars] GLB avatars ready', CHAR.errors); } });
+loadCharacters(MODELS_URL).then((ok) => { if (ok) { if (S) preloadVisitors(S.city); for (const rs of R.staff) if (!(rs.av.userData.p && rs.av.userData.p.glb)) swapStaffAvatar(rs); for (const v of R.visitors) if (!(v.av.userData.p && v.av.userData.p.glb) && CHAR.A.full[v.look && v.look.vm]) swapVisitorAvatar(v); /* anyone who arrived before the models were all in: each model's own swap ran while loading wasn't finished, so it kept the stand-in */ for (const k in portraits) delete portraits[k]; console.info('[chars] GLB avatars ready', CHAR.errors); } });
 
 // ---------------- style showcase (GLB modelled in Blender) ----------------
 let scMixer = null;
