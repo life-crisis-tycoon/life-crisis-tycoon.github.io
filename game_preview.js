@@ -5802,14 +5802,18 @@ let mapCity = 'london';
 let mapRegion = 'all';
 // world map pan + pinch/wheel zoom (both axes); labels keep their on-screen size while the map scales
 const MZ = { s: 1, tx: 0, ty: 0, ptrs: new Map(), moved: 0, last: null, ready: false };
+// the world picture always covers the whole map area: on a wide screen (a laptop, an iPad sideways) it is scaled up to the screen's width
+// instead of leaving a band of empty sea on the right; on a phone it fills the height and pans sideways, as before
+function mzMin() { const sc = $('mapScroll'), inn = $('mapInner'); return sc && inn && inn.offsetWidth ? Math.max(1, sc.clientWidth / inn.offsetWidth, sc.clientHeight / inn.offsetHeight) : 1; }
 function mzApply() {
-  const sc = $('mapScroll'), inn = $('mapInner'); if (!sc || !inn) return;
+  const sc = $('mapScroll'), inn = $('mapInner'); if (!sc || !inn) return; MZ.s = Math.max(MZ.s, mzMin());
   const cw = sc.clientWidth, ch = sc.clientHeight, w = inn.offsetWidth * MZ.s, h = inn.offsetHeight * MZ.s;
   MZ.tx = Math.min(0, Math.max(cw - w, MZ.tx)); MZ.ty = Math.min(0, Math.max(ch - h, MZ.ty));
   inn.style.transform = `translate(${MZ.tx}px,${MZ.ty}px) scale(${MZ.s})`; inn.style.setProperty('--k', 1 / MZ.s);
 }
-function mzZoom(f, cx, cy) { const s2 = Math.min(3.2, Math.max(1, MZ.s * f)); MZ.tx = cx - (cx - MZ.tx) * s2 / MZ.s; MZ.ty = cy - (cy - MZ.ty) * s2 / MZ.s; MZ.s = s2; mzApply(); }
+function mzZoom(f, cx, cy) { const k0 = mzMin(), s2 = Math.min(3.2 * k0, Math.max(k0, MZ.s * f)); MZ.tx = cx - (cx - MZ.tx) * s2 / MZ.s; MZ.ty = cy - (cy - MZ.ty) * s2 / MZ.s; MZ.s = s2; mzApply(); }
 function mzCenter(px, py, smooth) { const sc = $('mapScroll'), inn = $('mapInner'); if (!sc || !inn) return;
+  MZ.s = Math.max(MZ.s, mzMin());
   MZ.tx = sc.clientWidth / 2 - inn.offsetWidth * MZ.s * px / 100; MZ.ty = sc.clientHeight / 2 - inn.offsetHeight * MZ.s * py / 100;
   inn.style.transition = smooth ? 'transform .45s ease' : ''; mzApply(); if (smooth) setTimeout(() => { inn.style.transition = ''; }, 480); }
 function mzInit() {
