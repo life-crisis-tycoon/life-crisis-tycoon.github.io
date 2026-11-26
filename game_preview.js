@@ -3969,6 +3969,9 @@ function emRoomsHtml(E) {
     return `<span style="display:inline-block;margin:3px;padding:4px 10px;border-radius:12px;background:${has ? (st ? '#EEE8FB' : '#FFF3CF') : '#FDE3E3'};font-weight:700;white-space:nowrap">${ROOMS[type].e} ${rn(type)}${has ? (st ? '' : ' · ' + t('em.noStaff')) : ' · ' + t('em.toBuild')}</span>`; };
   return `<p style="margin:8px 0 2px;font-weight:800">${t('em.rooms')}</p><div style="line-height:1.4">${need.map(chip).join('')}</div>${maybe ? `<p style="font-size:14px;opacity:.8;margin-top:4px">${t('em.maybe')}</p>` : ''}`;
 }
+// what a care room treats in this city, at this point of the career (so new and local ailments show up in the build menu)
+function treatList(k) { const c = S.city || 'london', ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && !PROBLEMS[p].epi && (!PROBLEMS[p].city || PROBLEMS[p].city === c) && lvlOk(p));
+  return ps.length ? t('build.soigne', { list: ps.map((p) => t('p.' + p)).join(', ') }) : ''; }
 function offerEmergency() {
   tip('em');
   const city = S.city || 'london';
@@ -4110,7 +4113,7 @@ function openBuild() {
   const treats = (k) => { const ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && !PROBLEMS[p].epi && (!PROBLEMS[p].city || PROBLEMS[p].city === (S.city || 'london')) && lvlOk(p)); return ps.length ? `<div style="font-size:12px;color:#2D3748;margin-top:2px"><b>${t('build.treats')}</b> ${ps.map((p) => PROBLEMS[p].e + ' ' + t('p.' + p)).join(' · ')}</div>` : ''; };
   const nOwn = (k) => S.rooms.filter((r) => r.type === k).length;
   const roomRow = (k, r) => { const ok = unlocked(k);
-    return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b>${ok && nOwn(k) ? ` <span class="own" style="background:#E7EEF7;color:#2D3748;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800;white-space:nowrap">${t('build.have', { n: nOwn(k) })}</span>` : ''}<div>${t('r.' + k + '.d')}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : t('lock.at', { n: UNLOCK[k] })}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
+    return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b>${ok && nOwn(k) ? ` <span class="own" style="background:#E7EEF7;color:#2D3748;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800;white-space:nowrap">${t('build.have', { n: nOwn(k) })}</span>` : ''}<div>${treatList(k) || t('r.' + k + '.d')}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : t('lock.at', { n: UNLOCK[k] })}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
   h += hdr('desk') + `<div class="opt w"><div class="oi" style="background:#FFF3C4">➕</div><div class="ot"><b>${t('desk2.title')}</b><div>${t('desk2.D', { n: (S.desks2 || []).length + 2 })}</div></div><button class="btn g" id="bDesk2">${money(DESK_COST)}</button></div>`;
   for (const c of ['care', 'comfort', 'staff']) {
     const ks = Object.entries(ROOMS).filter(([k, r]) => (!r.city || r.city === (S.city || 'london')) && !(r.train && !epiCity()) && cat(k) === c).sort(([a], [b]) => unlocked(b) - unlocked(a)); if (!ks.length) continue; // what you can build right now first, locked rooms after
