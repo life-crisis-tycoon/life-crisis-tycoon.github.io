@@ -3270,18 +3270,18 @@ const cafeF = () => Math.min(1, ...S.rooms.filter((r) => r.type === 'cafe').map(
 const UNLOCK = { pharmacy: 1, pharmacist: 1, glowup: 2, career: 1, social: 1, parent: 1, maint: 0, therapy: 2, therapist: 2, moving: 2, lab: 2, researcher: 2, annex: 0 };
 const localRoom = (k) => Object.values(PROBLEMS).some((p) => p.city && p.city === (S.city || 'london') && p.room === k);
 // London is the simple first city: no Innovation Lab / research (and so no mystery cases) — they start in Lagos. A London save that already built a lab keeps it.
-const noResearch = () => !!(S && S.mode === 'career' && (S.city || 'london') === 'london' && !(S.rooms || []).some((r) => r.type === 'lab'));
+const noResearch = () => !!(S && S.mode === 'career' && !Array.isArray(S.known) && (S.city || 'london') === 'london' && !(S.rooms || []).some((r) => r.type === 'lab'));
 const unlockedOld = (k) => (k === 'training' || k === 'trainer') ? epiCity() : !S || S.mode !== 'career' || ((k === 'lab' || k === 'researcher') && noResearch() ? false : localRoom(k) || (UNLOCK[k] || 0) <= S.stars);
 // Discovery (every city after the London tutorial): ailments are found one by one through the talk room, and the care rooms they need are developed in the lab.
 // Stars no longer open rooms there. S.known = ailments found, S.dev = rooms developed.
 const DEV_ROOMS = { social: [300, 1500], parent: [360, 2000], career: [400, 2500], moving: [400, 2500], glowup: [440, 3000] }; // research points, cash
 const FREE_ROLES = ['pharmacy', 'pharmacist', 'therapy', 'therapist', 'lab', 'researcher'];
-const NEWP = () => !!(S && S.mode === 'career' && (S.city || 'london') !== 'london' && Array.isArray(S.known));
+const NEWP = () => !!(S && S.mode === 'career' && Array.isArray(S.known)); // every city, London included (its tutorial teaches it)
 const isNewK = (k) => NEWP() && !S.known.includes(k);
 const STARTER_KNOWN = ['rent', 'burn', 'doom', 'tummy', 'headache']; // what every centre already knows how to treat on day one
 const discCand = () => Object.keys(PROBLEMS).filter((k) => isNewK(k) && !PROBLEMS[k].myst && !PROBLEMS[k].epi && !PROBLEMS[k].fam && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london')) && lvlOk(k));
 function knowInit() { // once per save, on load: a new career starts from the starter list; an older save keeps everything it could already treat
-  if (!S || S.mode !== 'career' || (S.city || 'london') === 'london' || Array.isArray(S.known)) return;
+  if (!S || S.mode !== 'career' || Array.isArray(S.known)) return;
   const fresh = (S.served || 0) === 0 && (S.day || 1) <= 1 && !(S.rooms || []).some((r) => DEV_ROOMS[r.type]), city = S.city;
   S.known = fresh ? STARTER_KNOWN.concat(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].city === city && ROOMS[PROBLEMS[k].room] && ROOMS[PROBLEMS[k].room].city === city))
     : Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && (!PROBLEMS[k].city || PROBLEMS[k].city === city) && lvlOk(k) && unlockedOld(PROBLEMS[k].room));
@@ -3294,10 +3294,11 @@ const devWanted = (k) => NEWP() && !(S.dev || []).includes(k) && devFor(k).lengt
 for (const k of Object.keys(DEV_ROOMS)) PROJECTS['d_' + k] = { get cost() { return devPts(k); }, e: '🧪', dev: k };
 // every 2 to 3 days a client comes in with something nobody here has seen yet: the talk room finds out what it is
 function discTick() {
-  if (!NEWP() || S.tut >= 0) return; if (S.discAt == null) S.discAt = nowAbs() + DAY_LEN * 2;
+  const tutDisc = S.tut >= 0 && TUT[S.tut] && TUT[S.tut].disc; // the tutorial's discovery step calls the first ❓ client straight away
+  if (!NEWP() || (S.tut >= 0 && !tutDisc)) return; if (S.discAt == null || (tutDisc && !R.visitors.some((v) => v.diag) && S.discAt > nowAbs() + 2)) S.discAt = nowAbs() + (tutDisc ? 2 : DAY_LEN * 2);
   if (nowAbs() < S.discAt || R.visitors.some((v) => v.diag)) return;
   const c = discCand(); if (!c.length) { S.discAt = nowAbs() + DAY_LEN * 3; return; }
-  const easy = c.filter((k) => hasRoom(PROBLEMS[k].room)), k = easy.length && RNG() < 0.6 ? rnd(easy) : rnd(c); // more often one your rooms can already treat
+  const easy = c.filter((k) => hasRoom(PROBLEMS[k].room)), k = easy.length && (tutDisc || RNG() < 0.6) ? rnd(easy) : rnd(c); // more often one your rooms can already treat
   const n = R.visitors.length; spawnVisitor(k); const v = R.visitors[n]; if (v && v.prob === k) v.diag = true;
   S.discAt = nowAbs() + DAY_LEN * (2 + RNG());
 }
@@ -3308,6 +3309,7 @@ function diagDone(v, room) {
   ixEnd(v); if (v.rspot) v.rspot.busy = null; v.rspot = null; v.room = null; v.target = null; v.prog = 0; v.icon.material = iconTex(PROBLEMS[k].e);
   const has = hasRoom(r), st = has ? t('disc.have', { room: rn(r) }) : unlocked(r) ? t('disc.build', { room: rn(r) }) : t('disc.dev', { room: rn(r) });
   toast('🔎 ' + t('disc.title') + ' : ' + PROBLEMS[k].e + ' ' + t('p.' + k), 4000); probSeen(k); if (S.pQ) { S.pQ = S.pQ.filter((q) => q !== k); S.pQ.unshift(k); } piCool = Math.min(piCool, 1); /* its card (what it is, where it's treated) comes up right away */ chat(t('disc.title'), PROBLEMS[k].e + ' <b>' + t('p.' + k) + '</b>. ' + st, '🔎'); save();
+  tip('disc'); if (!has && !unlocked(r)) tip('dev', 'nResearch', true);
   if (has) { v.target = pickRoomFor(v); seatVisitor(v); } else { v.icon.material = iconTex('😕'); setPath(v, exitPath(v)); v.state = 'exit'; } // nowhere to treat it yet: they go home, no review
 }
 function devDone(k) { S.dev = S.dev || []; if (!S.dev.includes(k)) S.dev.push(k); toast('🧪 ' + t('rp.devDone', { room: rn(k) }), 4000); chat(t('research.title'), t('rp.devDone', { room: rn(k) }), ROOMS[k].e); save(); }
@@ -4140,17 +4142,34 @@ function researchUpdate(dt) {
   if (S.research.pts >= PROJECTS[A].cost) { S.research.done.push(A); S.research.active = null; S.research.pts = 0; if (PROJECTS[A].dev) { devDone(PROJECTS[A].dev); return; } const nm = PROJECTS[A].myst ? t('p.' + PROJECTS[A].myst) : t('rp.' + A); toast(t('research.complete', { name: nm }), 3500); chat(t('research.title'), t('research.complete', { name: nm }), '🔬'); if (PROJECTS[A].myst) for (const v of R.visitors) if (v.known && v.prob === PROJECTS[A].myst) v.icon.material = iconTex(PROBLEMS[v.prob].e); }
 }
 function openResearch() {
+  if (S) S.tutRes = true;
   const hasLab = hasRoom('lab') && R.staff.some((rs) => rs.data.role === 'researcher');
-  let h = `<h2>${t('research.title')}</h2><p class="sub">${hasLab ? '' : t('research.needLab')}</p>`;
+  const res = R.staff.filter((rs) => rs.data.role === 'researcher'), rate = (rs) => (0.5 + rs.data.skill * 0.35 * traitVal(rs.data, 'speed')) * energyF(rs) * (R.rooms[rs.at] && R.rooms[rs.at].type === 'lab' && rs.mode === 'there' ? 1 : 0);
+  const fx = (n) => n.toFixed(1).replace('.', ['en', 'ja', 'ko'].includes(getLang()) ? '.' : ',');
+  let h = `<h2>${t('research.title')}</h2>${hasLab ? '' : `<p class="sub">${t('research.needLab')}</p>`}`;
+  // who is researching, and how fast (stars, points a second, energy)
+  for (const rs of res) { const d = rs.data, r = rate(rs), en = Math.round((d.energy ?? 1) * 100);
+    h += `<div class="w" style="border-radius:16px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:center"><img src="${portrait(d)}" alt="" style="width:44px;height:44px;border-radius:22px;flex:none;background:#E3ECF5"><div style="min-width:0"><b class="f" style="font-size:16px">${d.name} · ${'★'.repeat(d.skill)}</b><div style="font-size:13px;font-weight:700;color:var(--muted)">${t('rs.speed', { n: fx(r) })} · ${t('rs.energy', { n: en })}${r ? '' : ' · ' + t('rs.away')}</div></div></div>`; }
+  // what is running now, with its bar
+  const A = S.research.active, AP = A && PROJECTS[A];
+  if (AP) { const pct = Math.min(100, Math.round(S.research.pts / AP.cost * 100)), tot = res.reduce((a, rs) => a + rate(rs), 0), left = tot > 0 ? (AP.cost - S.research.pts) / tot / DAY_LEN : null;
+    const nm = AP.dev ? t('rp.dev', { room: rn(AP.dev) }) : AP.myst ? t('rp.myst') : t('rp.' + A);
+    h += `<div class="w" style="border-radius:16px;padding:12px;margin-bottom:12px;border-color:var(--blue)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b class="f" style="font-size:16px">${AP.dev ? ROOMS[AP.dev].e : AP.e} ${nm}</b><span style="font-size:13px;font-weight:800;color:var(--blue);white-space:nowrap">${left == null ? '—' : t('rs.left', { n: fx(Math.max(0.1, left)) })}</span></div>
+      <div style="height:12px;border-radius:6px;background:var(--line);margin:8px 0 4px;overflow:hidden"><div style="width:${pct}%;height:12px;background:var(--blue)"></div></div><div style="font-size:12px;font-weight:700;color:var(--muted)">${t('research.points', { p: Math.floor(S.research.pts), n: AP.cost })}</div></div>`; }
   h += bookHtml();
-  for (const [k, P] of Object.entries(PROJECTS).sort((a, b) => (b[1].dev && !done(b[0]) ? 2 : b[1].myst && !done(b[0]) ? 1 : 0) - (a[1].dev && !done(a[0]) ? 2 : a[1].myst && !done(a[0]) ? 1 : 0))) {
-    if (P.myst && !(S.mystSeen || []).includes(P.myst)) continue;
-    if (P.dev) { if (!NEWP() || !devWanted(P.dev)) continue; const act = S.research.active === k, paid = (S.devPaid || {})[k], cost = devCost(P.dev);
-      h += `<div class="opt w" style="border-color:#7F68C9"><div class="oi" style="background:#EEE8FB">${ROOMS[P.dev].e}</div><div class="ot"><b>${t('rp.dev', { room: rn(P.dev) })}</b><div>${t('rp.devD', { list: devFor(P.dev).map((q) => t('p.' + q)).join(', ') })}</div><div>${t('research.points', { p: act ? Math.floor(S.research.pts) : 0, n: P.cost })}${paid ? '' : ' · ' + money(cost)}</div></div><button class="btn ${act ? 'y' : 'g'}" data-res="${k}" ${!hasLab || act || (!paid && S.cash < cost) ? 'disabled' : ''}>${t('research.start')}</button></div>`; continue; }
-    const isDone = done(k), act = S.research.active === k;
-    const prog = act ? (k === 'rent' ? '0%' : t('research.points', { p: Math.floor(S.research.pts), n: P.cost })) : '';
-    h += `<div class="opt w"><div class="oi" style="background:#E3ECF5">${P.e}</div><div class="ot"><b>${P.myst ? (isDone ? t('rp.mystDone', { name: t('p.' + P.myst) }) : t('rp.myst')) : t('rp.' + k)}</b><div>${P.myst ? t('rp.mystD', { room: rn(PROBLEMS[P.myst].room) }) : t('rp.' + k + '.d')}</div>${act ? `<div style="color:var(--blue)">${t('research.active')} · ${prog}</div>` : ''}</div>${isDone ? `<span class="tr good">${t('research.done')}</span>` : `<button class="btn ${act ? 'y' : 'g'}" data-res="${k}" ${!hasLab || act ? 'disabled' : ''}>${t('research.start')}</button>`}</div>`;
+  const card = (k, P, e, title, sub, meta, btn) => `<div class="opt w"><div class="oi" style="background:#E3ECF5">${e}</div><div class="ot"><b>${title}</b><div>${sub}</div>${meta ? `<div style="font-size:12px;font-weight:800;color:var(--blue)">${meta}</div>` : ''}</div>${btn}</div>`;
+  const startBtn = (k, extra) => `<button class="btn g" data-res="${k}" ${!hasLab || S.research.active === k || extra ? 'disabled' : ''}>${S.research.active === k ? t('research.active') : t('research.start')}</button>`;
+  const sec = (title, body) => body ? `<div class="lbl" style="margin:12px 2px 6px;font-weight:800">${title}</div>` + body : '';
+  let dev = '', myst = '', up = '';
+  for (const [k, P] of Object.entries(PROJECTS)) {
+    if (P.dev) { if (!NEWP() || !devWanted(P.dev)) continue; const paid = (S.devPaid || {})[k], cost = devCost(P.dev);
+      dev += card(k, P, ROOMS[P.dev].e, t('rp.dev', { room: rn(P.dev) }), t('rp.devD', { list: devFor(P.dev).map((q) => t('p.' + q)).join(', ') }), P.cost + ' pts' + (paid ? '' : ' · ' + money(cost)), startBtn(k, !paid && S.cash < cost)); continue; }
+    if (P.myst) { if (!(S.mystSeen || []).includes(P.myst)) continue; const isDone = done(k);
+      myst += card(k, P, '❓', isDone ? t('rp.mystDone', { name: t('p.' + P.myst) }) : t('rp.myst'), t('rp.mystD', { room: rn(PROBLEMS[P.myst].room) }), isDone ? '' : P.cost + ' pts', isDone ? `<span class="tr good">${t('research.done')}</span>` : startBtn(k)); continue; }
+    const isDone = done(k);
+    up += card(k, P, P.e, t('rp.' + k), t('rp.' + k + '.d'), isDone || k === 'rent' ? '' : P.cost + ' pts', isDone ? `<span class="tr good">${t('research.done')}</span>` : startBtn(k));
   }
+  h += sec('🧪 ' + t('rs.secDev'), dev) + sec('❓ ' + t('rs.secMyst'), myst) + sec('⚙️ ' + t('rs.secUp'), up);
   openSheet(h);
   $('sheet').querySelectorAll('[data-res]').forEach((b) => b.onclick = () => { const k = b.dataset.res, P = PROJECTS[k];
     if (P.dev && !(S.devPaid || {})[k]) { const c = devCost(P.dev); if (S.cash < c) { toast(t('build.noCash')); return; } S.cash -= c; (S.devPaid = S.devPaid || {})[k] = 1; } // a room's development is paid once, even if research switches away and back
@@ -5109,6 +5128,12 @@ const TUT = [
   { k: 'tut.2', target: 'nStaff', inSheet: ['[data-hire]:not([disabled])', '[data-hr]', '[data-role]'], done: () => Object.values(R.rooms).every((r) => !ROOMS[r.type].role || r.staff.some(Boolean)) },
   { k: 'tut.3b', done: () => !!sel || S.served >= 1 }, // something to do, not just wait: tap a visitor
   { k: 'tut.3c', ok: true, done: () => S.served >= 1 },
+  { k: 'tut.d1', target: 'nBuild', inSheet: ['[data-size]:not([disabled])', '[data-room="therapy"]', '[data-room]'], place: true, done: () => hasRoom('therapy') },
+  { k: 'tut.d1b', target: 'nStaff', inSheet: ['[data-hire]:not([disabled])', '[data-hr]', '[data-role]'], done: () => R.staff.some((r) => r.data.role === 'therapist') },
+  { k: 'tut.d2', disc: true, done: () => (S.known || []).length > STARTER_KNOWN.length },
+  { k: 'tut.d3', target: 'nBuild', inSheet: ['[data-size]:not([disabled])', '[data-room="lab"]', '[data-room]'], place: true, done: () => hasRoom('lab') },
+  { k: 'tut.d3b', target: 'nStaff', inSheet: ['[data-hire]:not([disabled])', '[data-hr]', '[data-role]'], done: () => R.staff.some((r) => r.data.role === 'researcher') },
+  { k: 'tut.d4', target: 'nResearch', inSheet: [], done: () => !!S.tutRes },
   { k: 'tut.4b', target: 'pep', done: () => S.pepUsed },
   { k: 'tut.5', ok: true },
   { k: 'tut.6', target: 'nGoals', inSheet: [], done: () => S.tutGoals },
