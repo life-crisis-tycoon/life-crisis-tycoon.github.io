@@ -4636,12 +4636,27 @@ canvas.addEventListener('pointerup', (e) => {
 canvas.addEventListener('wheel', (e) => { view.half = clamp(view.half * (e.deltaY > 0 ? 1.08 : 0.93), 5, 22); placeCam(); }, { passive: true });
 function camRot(dir) { view.yawT = (view.yawT ?? view.yaw) + dir * Math.PI / 2; }
 // Diorama view: frames one room close up, ~32° above the ground, so you see furniture height, wall depth and details (the management view is unchanged)
-function dioramaView(id) { const r = S.rooms.find((o) => o.id === id); if (!r) return; const q = roomRect(r), W = q.x1 - q.x0, D = q.z1 - q.z0, a = innerWidth / innerHeight;
-  const yaw = view.yawT ?? view.yaw, cx = Math.sin(yaw), cz = Math.cos(yaw), hw = (Math.abs(cz) * W + Math.abs(cx) * D) / 2 + 0.6, depth = (Math.abs(cx) * W + Math.abs(cz) * D) / 2;
+function dioFrame(r, yaw = view.yawT ?? view.yaw) { const q = roomRect(r), W = q.x1 - q.x0, D = q.z1 - q.z0, a = innerWidth / innerHeight;
+  const cx = Math.sin(yaw), cz = Math.cos(yaw), hw = (Math.abs(cz) * W + Math.abs(cx) * D) / 2 + 0.6, depth = (Math.abs(cx) * W + Math.abs(cz) * D) / 2;
   const vh = depth * Math.sin(DIO_PITCH) + 1.3 * Math.cos(DIO_PITCH) + 0.4; // footprint seen at this tilt plus the back walls
-  view.tx = (q.x0 + q.x1) / 2; view.tz = (q.z0 + q.z1) / 2; view.half = clamp(Math.max(hw / a, vh) * 1.04, 3.2, CLOSE_HALF); placeCam(); }
+  return { tx: (q.x0 + q.x1) / 2, tz: (q.z0 + q.z1) / 2, half: clamp(Math.max(hw / a, vh) * 1.04, 3.2, CLOSE_HALF) }; }
+function dioramaView(id) { const r = S.rooms.find((o) => o.id === id); if (!r) return; Object.assign(view, dioFrame(r)); placeCam(); }
+// 🎥 tour: the camera glides slowly from room to room (the reception first), lingers on each while turning a little, then comes back to where it was.
+// Any touch on the game, or the button again, stops it where it is.
+let TOUR = null;
+function tourStop(back) { if (!TOUR) return; if (back) Object.assign(view, TOUR.home); TOUR = null; const b = $('camTour'); if (b) b.classList.remove('on'); placeCam(); }
+function tourStart() { if (!inGame || placingR || !S.rooms.length) return; const stops = [{ desk: true }].concat(S.rooms.slice().sort((a, b) => a.x - b.x || a.z - b.z));
+  TOUR = { stops, i: -1, t: 99, home: { tx: view.tx, tz: view.tz, half: view.half, yaw: view.yaw } }; const b = $('camTour'); if (b) b.classList.add('on'); }
+function tourTick(rdt) { const T = TOUR; T.t += rdt;
+  if (T.t > 6.5) { T.i++; T.t = 0; if (T.i >= T.stops.length) { tourStop(true); return; } const st = T.stops[T.i]; const D = desks()[0];
+    T.to = st.desk ? { tx: D ? D.x : 0, tz: D ? D.z : 0, half: 5.5 } : dioFrame(st, view.yaw); T.from = { tx: view.tx, tz: view.tz, half: view.half }; }
+  const k = Math.min(1, T.t / 2.2), e = k * k * (3 - 2 * k); // 2.2 s glide, then ~4 s on the room
+  view.tx = T.from.tx + (T.to.tx - T.from.tx) * e; view.tz = T.from.tz + (T.to.tz - T.from.tz) * e; view.half = T.from.half + (T.to.half - T.from.half) * e;
+  view.yaw += rdt * 0.06; // a slow turn, so the room is seen from a few angles
+  placeCam(); }
 function camTilt() { const L = [0.3, 0.53, 0.72, 0.9, 1.1]; const i = L.findIndex((v) => v > view.pitch + 0.02); view.pitchT = L[i < 0 ? 0 : i]; }
 function camAnim(rdt) {
+  if (TOUR) { tourTick(rdt); return; }
   let ch = false;
   if (view.yawT != null) { const d = view.yawT - view.yaw; if (Math.abs(d) < 0.01) { view.yaw = view.yawT; view.yawT = null; } else view.yaw += d * Math.min(1, rdt * 7); ch = true; }
   if (view.pitchT != null) { const d = view.pitchT - view.pitch; if (Math.abs(d) < 0.005) { view.pitch = view.pitchT; view.pitchT = null; } else view.pitch += d * Math.min(1, rdt * 7); ch = true; }
@@ -5714,6 +5729,8 @@ function startNew(city) {
   if (tutDone) $('tYes').className = 'btn w';
 }
 $('camMap').onclick = () => { if (!inGame || placingR || moving) return; toMap(); };
+{ const b = $('camTour'); if (b) b.onclick = () => { if (TOUR) tourStop(false); else tourStart(); }; }
+for (const ev of ['pointerdown', 'wheel']) canvas.addEventListener(ev, () => { if (TOUR) tourStop(false); }, { passive: true }); // touching the game ends the tour
 $('camSet').onclick = () => { if (!inGame || placingR || moving) return; openAudio(); };
 // Save code: all progress (every city, profile, manager) as one text code — works across browsers, devices and new versions of the game
 function exportSave() {
