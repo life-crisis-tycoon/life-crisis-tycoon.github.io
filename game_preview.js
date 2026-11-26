@@ -1189,7 +1189,7 @@ const LIFT_TEX = (map, amt) => { const k = map.uuid + '|' + amt; if (GC[k]) retu
   c.putImageData(D, 0, 0); const t = map.clone(); t.image = cv; t.needsUpdate = true; return (GC[k] = t); };
 const RECOL_TEX = (map, kind, col) => { const k = map.uuid + '|' + kind + col; if (GC[k]) return GC[k]; const im = map.image; if (!im || !im.width) return map; const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; const c = cv.getContext('2d'); c.drawImage(im, 0, 0); let D; try { D = c.getImageData(0, 0, cv.width, cv.height); } catch (e) { return map; } const a = D.data, T = new THREE.Color(col), hit = new Uint8Array(a.length / 4); let sum = 0, n = 0;
   for (let i = 0, j = 0; i < a.length; i += 4, j++) { const r = a[i] / 255, g = a[i + 1] / 255, b = a[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2, sat = d < 1e-4 ? 0 : d / (1 - Math.abs(2 * l - 1)); let h = d < 1e-4 ? 0 : mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360;
-    const ok = kind === 'cream' ? (l > 0.62 && sat < 0.55 && h > 20 && h < 70) : kind === 'green' ? (h > 75 && h < 175 && sat > 0.12 && d > 0.06) : false; /* cream: pale upholstery (dark wood and bright cushions kept); green: the green fabric */
+    const ok = kind === 'cream' ? (l > 0.74 && d < 0.32 && (d < 0.05 || h > 15 && h < 70)) : kind === 'green' ? (h > 75 && h < 175 && sat > 0.12 && d > 0.06) : false; /* cream: pale upholstery (dark wood and bright cushions kept); green: the green fabric */
     if (ok) { hit[j] = 1; sum += l; n++; } }
   if (!n) return map; const avg = sum / n;
   for (let i = 0, j = 0; i < a.length; i += 4, j++) if (hit[j]) { const l = (Math.max(a[i], a[i + 1], a[i + 2]) + Math.min(a[i], a[i + 1], a[i + 2])) / 510, f = Math.min(1.6, l / avg); a[i] = Math.min(255, T.r * f * 255); a[i + 1] = Math.min(255, T.g * f * 255); a[i + 2] = Math.min(255, T.b * f * 255); } /* new colour, same folds and shading */
@@ -1870,7 +1870,7 @@ function movingKit(g, cx, cz, room) {
 function parentKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = w < 5 || D < 5, H = Math.PI / 2, L = [];
   const sx = -w / 2 + (S ? 1.15 : 1.5), sz = -D / 2 + 0.8, ax = sx + (S ? 1.55 : 2.0);
-  L.push({ p: 'k_rug', len: S ? 2.2 : 2.8, x: sx + 0.7, z: sz + 0.75, rot: 0, solid: false }, { p: 'k_sofa', len: S ? 1.5 : 1.8, x: sx, z: sz, rot: 0, recol: ['cream', '#7FA6D6'] }, { p: 'k_table', len: S ? 0.8 : 1.0, x: sx + 0.25, z: sz + 1.05, rot: 0 }, { p: 'k_armchair', h: 0.92, x: ax, z: sz + 0.35, rot: -H * 0.75, recol: ['green', '#26365E'] });
+  L.push({ p: 'k_rug', len: S ? 2.2 : 2.8, x: sx + 0.7, z: sz + 0.75, rot: 0, solid: false }, { p: 'k_sofa', len: S ? 1.5 : 1.8, x: sx, z: sz, rot: 0, recol: ['cream', '#7FA6D6'] }, { p: 'k_table', len: S ? 0.8 : 1.0, x: sx + 0.25, z: sz + 1.05, rot: 0 }, { p: 'k_armchair', h: 0.92, x: ax, z: sz + 0.35, rot: -H * 0.75, recol: ['green', '#2F4A7E'] });
   L.push({ p: 'k_schedule', len: S ? 1.2 : 1.5, wall: 'back', u: S ? 0.6 : 1.1, hang: true, y: 1.15, gap: 0.13 });
   const mx = w / 2 - (S ? 1.0 : 1.75), mz = S ? D / 2 - 0.95 : 0.75; // the kids' corner sits towards the middle, not pushed into the far corner
   L.push({ p: 'k_playmat', len: S ? 1.7 : 2.3, x: mx, z: mz, rot: 0, solid: false }, { p: 'k_kidtable', len: 0.75, x: mx + 0.2, z: mz - 0.2, rot: 0 }, { p: 'k_kidchair', h: 0.55, x: mx + 0.2, z: mz + 0.42, rot: Math.PI });
