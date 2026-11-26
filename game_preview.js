@@ -3055,7 +3055,13 @@ function nearRoomSpot(v) {
   for (const p of room.waitPts) { if (p.busy && !R.visitors.includes(p.busy)) p.busy = null; if (!p.busy && okPt(p)) return p; }
   return null;
 }
-const waitSpotFor = (v) => nearRoomSpot(v) || WAIT_SPOTS.find((s) => !s.busy && !s.blocked);
+// a free bench seat near the door of the room they wait for comes first: sitting beats standing
+function benchFor(v) {
+  const room = v.target != null && R.rooms[v.target]; if (!room || room.closed) return null; const d0 = doorPt(room.def, 0.5); let best = null, bd = 5.5;
+  for (const w of WAIT_SPOTS) { if (!w.bench) continue; if (w.busy && !R.visitors.includes(w.busy)) w.busy = null; if (w.busy) continue; const d = Math.hypot(w.x - d0.x, w.z - d0.z); if (d < bd) { bd = d; best = w; } }
+  return best;
+}
+const waitSpotFor = (v) => benchFor(v) || nearRoomSpot(v) || WAIT_SPOTS.find((s) => !s.busy && !s.blocked);
 function seatVisitor(v) {
   const spot = waitSpotFor(v) || OVERFLOW.find((s) => !s.busy || !R.visitors.includes(s.busy)); v.prog = 0;
   if (!spot) { floatAt(v.av.position, '🚪 ' + t('cmp.crowd')); v.crowdOut = true; leave(v, false); return; }
