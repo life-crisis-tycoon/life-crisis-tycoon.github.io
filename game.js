@@ -518,6 +518,7 @@ const PLOTS = {
   cairo: { main: [[-15.5, 6.5, -9.5, 6.5]], holes: [[-15.5, -9.5, -9.5, -5.5]], lots: [[6.5, 14.5, -9.5, 2.5], [-15.5, -5.5, -15.5, -9.5]], cost: 13000 },
   saopaulo: { main: [[-17.5, 6.5, -11.5, 6.5]], holes: [[-11.5, -3.5, -7.5, -1.5]], lots: [[6.5, 14.5, -11.5, 0.5], [-21.5, -17.5, -11.5, 4.5]], cost: 14000 },
 };
+for (const P of Object.values(PLOTS)) { const zb = Math.min(...P.main.concat(P.lots).map((r) => r[2])); for (const r of P.main.concat(P.lots)) if (r[2] === zb) r[2] -= 2; } // every plot 2 m deeper at the back (bigger HQ); the back lots move back with it, so a room already built keeps its ground
 for (const P of Object.values(PLOTS)) { const rs = P.main.concat(P.lots), x0 = Math.min(...rs.map((r) => r[0])), x1 = Math.max(...rs.map((r) => r[1])), z0 = Math.min(...rs.map((r) => r[2])), z1 = Math.max(...rs.map((r) => r[3]));
   P.lots.push([x0, x1, z0 - 8, z0], [x0, x1, z0 - 16, z0 - 8], [x1, x1 + 8, z0 - 16, z1]); }
 const plotOf = (c) => PLOTS[c || (S && S.city) || 'london'] || PLOTS.london;
@@ -583,7 +584,7 @@ function markObstacles(blk) {
   if (!S) return;
   if (S.desk) for (const D of desks()) box(D.x, D.z, 2.5, 0.9, D.r);
   for (const [x, z] of LOBBY_PLANTS) box(x, z, 0.5, 0.5, 0);
-  for (const d of S.decor || []) if (!(DECOR[d.k] && DECOR[d.k].flat)) box(d.x, d.z, d.k === 'sofa' ? 2.2 : 0.7, d.k === 'sofa' ? 0.9 : 0.7, d.r || 0); // a doormat is walked on
+  for (const d of S.decor || []) if (!(DECOR[d.k] && DECOR[d.k].flat)) box(d.x, d.z, d.k === 'sofa' ? 2.2 : DECOR[d.k] && DECOR[d.k].len ? DECOR[d.k].len : 0.7, d.k === 'sofa' ? 0.9 : DECOR[d.k] && DECOR[d.k].len ? 0.55 : 0.7, d.r || 0); // a doormat is walked on
 }
 function makeGrid(rooms) {
   const blk = new Uint8Array(GW * GH);
@@ -3014,7 +3015,13 @@ function nearRoomSpot(v) {
   for (const p of room.waitPts) { if (p.busy && !R.visitors.includes(p.busy)) p.busy = null; if (!p.busy && okPt(p)) return p; }
   return null;
 }
-const waitSpotFor = (v) => nearRoomSpot(v) || WAIT_SPOTS.find((s) => !s.busy && !s.blocked);
+// a free bench seat near the door of the room they wait for comes first: sitting beats standing
+function benchFor(v) {
+  const room = v.target != null && R.rooms[v.target]; if (!room || room.closed) return null; const d0 = doorPt(room.def, 0.5); let best = null, bd = 5.5;
+  for (const w of WAIT_SPOTS) { if (!w.bench) continue; if (w.busy && !R.visitors.includes(w.busy)) w.busy = null; if (w.busy) continue; const d = Math.hypot(w.x - d0.x, w.z - d0.z); if (d < bd) { bd = d; best = w; } }
+  return best;
+}
+const waitSpotFor = (v) => benchFor(v) || nearRoomSpot(v) || WAIT_SPOTS.find((s) => !s.busy && !s.blocked);
 function seatVisitor(v) {
   const spot = waitSpotFor(v) || OVERFLOW.find((s) => !s.busy || !R.visitors.includes(s.busy)); v.prog = 0;
   if (!spot) { floatAt(v.av.position, '🚪 ' + t('cmp.crowd')); v.crowdOut = true; leave(v, false); return; }
@@ -3580,7 +3587,7 @@ function visitorUpdate(v, dt) {
     case 'line': lineTick(v, dt); break;
     case 'toAmen': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.lspot); v.state = 'amen'; v.prog = 0; } break;
     case 'amen': {
-      const A = v.lspot; v.prog += dt / (A.k === 'massage' ? 5 : 2.5);
+      const A = v.lspot; v.prog += dt / 2.5;
       if (v.prog >= 1) {
         if (A.k === 'vending') { const spend = Math.round((4 + RNG() * 5) * (S.price || 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.15); incCnt('snack'); if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 2, null, 0.55); AU.sfx('cash'); floatAt(v.av.position, '🥤 +' + money(spend)); }
         else { v.pat = Math.min(1, v.pat + 0.4); vb('decor', 0 + 0.3); floatAt(v.av.position, '💆'); }
@@ -4059,7 +4066,7 @@ function openBuild() {
   bindExtras();
 }
 function sizeCards(type, cur, onPick) {
-  return Object.keys(SIZES).map((s) => {
+  return Object.keys(SIZES).filter((s) => s !== 'l').map((s) => { // two sizes only: small and regular
     const Z = SIZES[s], cost = roomCost(type, s), diff = cur ? cost - roomCost(type, cur) : cost, price = cur ? (s === cur ? '—' : diff > 0 ? '−' + money(diff) : '+' + money(-diff / 2)) : money(cost);
     const afford = !cur ? S.cash >= cost : diff <= 0 || S.cash >= diff;
     return `<div class="opt w" style="${s === cur ? 'border-color:var(--green)' : ''}"><div class="oi" style="background:#F1F2F5;font:700 15px Fredoka">${Z.W}×${Z.D}</div><div class="ot"><b>${t('sz.' + s)}</b><div>${t('sz.' + s + 'D')}</div><div>${price}${capOf(type, s) ? ' · ' + t('sz.cap', { n: capOf(type, s) }) : ''}</div></div>${s === cur ? '' : `<button class="btn g" data-size="${s}" ${afford ? '' : 'disabled'}>${t(cur ? 'room.pick' : 'build.btn')}</button>`}</div>`;
@@ -4111,14 +4118,26 @@ const ghostFloor = new THREE.Mesh(new THREE.BoxGeometry(1, 0.05, 1), new THREE.M
 const ghostEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: '#0E6E2C' })); ghostEdge.position.y = 0.6; ghost.add(ghostEdge);
 const ghostDoor = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.7, 4), new THREE.MeshBasicMaterial({ color: '#FFD25E' })); ghostDoor.rotation.x = Math.PI / 2; ghost.add(ghostDoor);
 function placeValid(p) {
-  const q = roomRect(p);
+  p.lotBlock = false; const q = roomRect(p);
   for (let x = q.x0 + 0.25; x < q.x1; x += 0.5) for (let z = q.z0 + 0.25; z < q.z1; z += 0.5) if (!buildable(x, z)) return false;
   const others = S.rooms.filter((r) => !p.edit || r.id !== p.edit.id);
   for (const o of others) { const b = roomRect(o); if (q.x0 < b.x1 - 0.01 && q.x1 > b.x0 + 0.01 && q.z0 < b.z1 - 0.01 && q.z1 > b.z0 + 0.01) return false; }
   const all = others.concat([p]), blk = makeGrid(all), hub = { x: 3, z: 3 };
   for (const r of all) if (!reach(blk, hub, doorPt(r, 0.35))) return false;
   if (!reach(blk, hub, { x: 3, z: 9 })) return false;
+  { const before = lotAccess(makeGrid(others)), after = lotAccess(blk); if (before.some((ok, i) => ok && !after[i])) { p.lotBlock = true; return false; } p.lotBlock = false; } // never wall off a plot you can still buy or build on
   return true;
+}
+// for every lot the player doesn't own yet: can a builder still walk from the hall to its edge? (sampled every 0.5 m just outside it)
+function lotAccess(blk) {
+  const hub = { x: 3, z: 3 }, [si, sj] = ci(hub.x, hub.z), own = ownedLots(); if (!free(blk, si, sj)) return own.map(() => true);
+  const seen = new Uint8Array(GW * GH), q = [si + sj * GW]; seen[q[0]] = 1;
+  while (q.length) { const c = q.pop(), i = c % GW, j = (c - i) / GW; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di, nj = j + dj; if (free(blk, ni, nj) && !seen[nj * GW + ni]) { seen[nj * GW + ni] = 1; q.push(nj * GW + ni); } } }
+  const hit = (x, z) => { if (!inFloor(x, z)) return false; const [i, j] = ci(x, z); return i >= 0 && j >= 0 && i < GW && j < GH && !!seen[j * GW + i]; };
+  return plotOf().lots.map((L, k) => { if (own[k]) return true; const o = 0.6;
+    for (let x = L[0] + 0.25; x < L[1]; x += 0.5) if (hit(x, L[2] - o) || hit(x, L[3] + o)) return true;
+    for (let z = L[2] + 0.25; z < L[3]; z += 0.5) if (hit(L[0] - o, z) || hit(L[1] + o, z)) return true;
+    return false; });
 }
 function startPlace(spec, edit) { resumeForBuild();
   if (!inGame) return; selectVisitor(null);
@@ -4145,7 +4164,7 @@ function placeShow() {
   ghost.position.set(p.x, 0, p.z); ghostFloor.scale.set(q.w, 1, q.d); ghostEdge.scale.set(q.w, 1, q.d);
   ghostFloor.material.color.set(ok ? '#7ACB4E' : '#E5484D'); ghostEdge.material.color.set(ok ? '#0E6E2C' : '#A82328');
   const dp = doorPt(p, 0.45); ghostDoor.position.set(dp.x - p.x, 0.5, dp.z - p.z); ghostDoor.rotation.set(Math.PI / 2, 0, 0); ghostDoor.rotation.order = 'YXZ'; ghostDoor.rotation.y = p.a + Math.PI;
-  $('mvOk').disabled = !ok; $('moveHint').textContent = ROOMS[p.type].e + ' ' + (ok ? t('place.hint') : t('place.bad'));
+  $('mvOk').disabled = !ok; $('moveHint').textContent = ROOMS[p.type].e + ' ' + (ok ? t('place.hint') : p.lotBlock ? t('place.lot') : t('place.bad'));
 }
 const snapC = (v) => Math.round(v - 0.5) + 0.5; // even-sized rooms: centre on n+0.5 → walls on n+0.5, same lattice as the plot
 function placeDrag(e) {
@@ -4967,7 +4986,7 @@ function poachCheck() {
 }
 
 // ---------------- equipment, decor, kudos ----------------
-const DECOR = { sofa: { cost: 500, e: '🛋️', calm: 0.95, vibe: 0.001, seats: 2 }, radiator: { cost: 400, e: '🔥', calm: 1, vibe: 0, temp: 1 }, aircon: { cost: 600, e: '❄️', calm: 1, vibe: 0, temp: -1 }, plant: { cost: 150, e: '🪴', calm: 0.94, vibe: 0.0015 }, neon: { cost: 300, e: '💡', calm: 0.96, vibe: 0.002 }, vending: { cost: 600, e: '🥤', calm: 0.9, vibe: 0 }, massage: { kd: 15, e: '💆', calm: 0.8, vibe: 0.001 }, gold: { kd: 10, e: '🌟', calm: 0.92, vibe: 0.005 }, doormat: { cost: 300, e: '🟫', calm: 1, vibe: 0, flat: true } };
+const DECOR = { sofa: { cost: 500, e: '🛋️', calm: 0.95, vibe: 0.001, seats: 2 }, radiator: { cost: 400, e: '🔥', calm: 1, vibe: 0, temp: 1 }, aircon: { cost: 600, e: '❄️', calm: 1, vibe: 0, temp: -1 }, plant: { cost: 150, e: '🪴', calm: 0.94, vibe: 0.0015 }, neon: { cost: 300, e: '💡', calm: 0.96, vibe: 0.002 }, vending: { cost: 600, e: '🥤', calm: 0.9, vibe: 0 }, bench2: { cost: 250, e: '🪑', calm: 0.97, vibe: 0, seats: 2, len: 1.2 }, bench3: { cost: 350, e: '🪑', calm: 0.96, vibe: 0, seats: 3, len: 1.75 }, gold: { kd: 10, e: '🌟', calm: 0.92, vibe: 0.005 }, doormat: { cost: 300, e: '🟫', calm: 1, vibe: 0, flat: true } };
 function profile() { try { return JSON.parse(localStorage.getItem('ahq_profile')) || { kudos: 0 }; } catch (e) { return { kudos: 0 }; } }
 function kudos() { return profile().kudos || 0; }
 function addKudos(n) { if (S.mode !== 'career') return; const p = profile(); p.kudos = (p.kudos || 0) + n; try { localStorage.setItem('ahq_profile', JSON.stringify(p)); } catch (e) {} toast(t('kd.got', { n }), 1800); }
@@ -4980,18 +4999,20 @@ function decorMesh(k) {
   if (k === 'neon') { put(rbox(1.3, 0.5, 0.08, '#2F3A52', 0.04), 0, 1.7, 0, g); put(rbox(1.1, 0.12, 0.05, '#FF8FAB', 0.02, { e: '#FF8FAB', ei: 1.5 }), 0, 1.75, 0.05, g); put(cyl(0.03, 0.03, 1.5, '#2F3A52'), 0, 0.8, 0, g); }
   if (k === 'vending') { put(rbox(0.9, 1.8, 0.7, '#E9785F', 0.06), 0, 0.95, 0, g); put(rbox(0.6, 1.0, 0.04, '#BFE6F6', 0.02, { e: '#BFE6F6', ei: 0.4 }), -0.08, 1.15, 0.36, g); for (let i = 0; i < 6; i++) put(cyl(0.05, 0.05, 0.16, ['#FFD25E', '#7ACB4E', '#5AB8F0'][i % 3]), -0.25 + (i % 3) * 0.17, 0.85 + Math.floor(i / 3) * 0.35, 0.3, g); }
   if (k === 'sofa') { put(rbox(2.0, 0.42, 0.85, '#FF8FAB', 0.15), 0, 0.3, 0, g); put(rbox(2.0, 0.62, 0.26, '#FF8FAB', 0.12), 0, 0.62, -0.32, g); for (const sx of [-1.0, 1.0]) put(rbox(0.24, 0.55, 0.85, '#F07C9A', 0.1), sx, 0.42, 0, g); glbSwap(g, 'sofa', { len: 2.2, h: 0.8 }); }
-  if (k === 'massage') { put(rbox(0.8, 0.5, 0.9, '#3B4A6B', 0.15), 0, 0.35, 0, g); put(rbox(0.8, 0.9, 0.25, '#3B4A6B', 0.12), 0, 0.85, -0.35, g); put(rbox(0.3, 0.15, 0.6, '#B57BE8', 0.06), 0.45, 0.65, 0, g); }
+  if (k === 'bench2' || k === 'bench3') benchMesh(g, DECOR[k].len);
+  if (false) { put(rbox(0.8, 0.5, 0.9, '#3B4A6B', 0.15), 0, 0.35, 0, g); put(rbox(0.8, 0.9, 0.25, '#3B4A6B', 0.12), 0, 0.85, -0.35, g); put(rbox(0.3, 0.15, 0.6, '#B57BE8', 0.06), 0.45, 0.65, 0, g); }
   g.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
   return g;
 }
 // a built sofa is real waiting seating: two seats join the waiting spots (seat height is found by settle)
-const SOFA_SEATS = (d) => [-0.5, 0.5].map((lx) => ({ x: d.x + lx * Math.cos(d.r || 0) + 0.12 * Math.sin(d.r || 0), z: d.z - lx * Math.sin(d.r || 0) + 0.12 * Math.cos(d.r || 0), rot: d.r || 0, sit: true, y: 0.02, busy: null, dec: d.id }));
+const SEAT_X = { 2: [-0.3, 0.3], 3: [-0.56, 0, 0.56] };
+const SOFA_SEATS = (d) => (d.k === 'sofa' ? [-0.5, 0.5] : SEAT_X[DECOR[d.k].seats]).map((lx) => ({ x: d.x + lx * Math.cos(d.r || 0) + 0.12 * Math.sin(d.r || 0), z: d.z - lx * Math.sin(d.r || 0) + 0.12 * Math.cos(d.r || 0), rot: d.r || 0, sit: true, y: d.k === 'sofa' ? 0.02 : 0.0, busy: null, dec: d.id, bench: d.k !== 'sofa' }));
 function syncDecorSeats() {
   const want = new Map((S.decor || []).filter((d) => DECOR[d.k] && DECOR[d.k].seats).map((d) => [d.id, d]));
   for (let i = WAIT_SPOTS.length - 1; i >= 0; i--) { const w = WAIT_SPOTS[i]; if (w.dec == null) continue; const d = want.get(w.dec); if (!d || Math.hypot(w.x - d.x, w.z - d.z) > 0.8) { if (w.busy && w.busy.spot === w) w.busy.spot = null; WAIT_SPOTS.splice(i, 1); } }
   for (const d of want.values()) if (!WAIT_SPOTS.some((w) => w.dec === d.id)) WAIT_SPOTS.splice(0, 0, ...SOFA_SEATS(d)); // seats are taken before standing places
 }
-const BREAKS = new Set(['vending', 'massage', 'aircon', 'radiator']);
+const BREAKS = new Set(['vending', 'aircon', 'radiator']);
 function decState(d) { const m = world.decor[d.id]; if (!m) return;
   if (m.userData.brk) { m.remove(m.userData.brk); m.userData.brk = null; }
   if (d.broken) { const sp = new THREE.Sprite(iconTex('⚠️')); sp.scale.set(0.5, 0.5, 1); sp.position.set(0, 2.1, 0); m.add(sp); m.userData.brk = sp; }
@@ -5012,25 +5033,42 @@ function decorUpdate(dt) {
 // one use spot per vending machine (stand in front of it) and per massage chair (sit in it)
 const AMEN = new Map();
 function amenSpot(v) {
-  const list = (S.decor || []).filter((d) => (d.k === 'vending' || d.k === 'massage') && !d.broken);
+  const list = (S.decor || []).filter((d) => d.k === 'vending' && !d.broken);
   for (const id of [...AMEN.keys()]) if (!list.some((d) => d.id === id)) AMEN.delete(id);
   const free = []; for (const d of list) { let a = AMEN.get(d.id); const r = d.r || 0;
     const want = d.k === 'vending' ? { x: d.x + Math.sin(r) * 0.85, z: d.z + Math.cos(r) * 0.85, rot: r + Math.PI, sit: false, y: 0 } : { x: d.x, z: d.z, rot: r, sit: true, y: 0.05 };
     if (!a) { a = { ...want, k: d.k, busy: null }; AMEN.set(d.id, a); } else if (!a.busy) Object.assign(a, want);
     if (!a.busy) free.push(a); }
-  if (!free.length) return null; const m = free.filter((a) => a.k === 'massage'); return v.pat < 0.6 && m.length ? m[0] : rnd(free);
+  if (!free.length) return null; return rnd(free);
 }
-const DECOR_HALF = (k) => (k === 'sofa' ? [1.15, 0.5] : k === 'doormat' ? [0.7, 0.45] : [0.3, 0.3]);
+// an item may not cut the hall in two: every room door and the reception queue must still be reachable from the entrance
+function decorKeepsPaths(x, z, id, k, r) {
+  const keep = S.decor; S.decor = (S.decor || []).filter((d) => d.id !== id).concat([{ id: -1, k, x, z, r }]);
+  let blk; try { blk = makeGrid(S.rooms.slice()); } finally { S.decor = keep; }
+  const st = QUEUE(0, 0), [si, sj] = ci(st.x, st.z); if (!free(blk, si, sj)) return true; // can't tell from here: don't block the player
+  const seen = new Uint8Array(GW * GH), q = [si + sj * GW]; seen[q[0]] = 1;
+  while (q.length) { const c = q.pop(), i = c % GW, j = (c - i) / GW; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di, nj = j + dj; if (free(blk, ni, nj) && !seen[nj * GW + ni]) { seen[nj * GW + ni] = 1; q.push(nj * GW + ni); } } }
+  const ok = (pt) => { const [i, j] = ci(pt.x, pt.z); for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const ni = i + di, nj = j + dj; if (ni >= 0 && nj >= 0 && ni < GW && nj < GH && seen[nj * GW + ni]) return true; } return false; };
+  return S.rooms.every((rm) => ok(doorPt(rm, 0.5)));
+}
+function benchMesh(g, len) { // a simple slatted wooden bench on two dark metal frames, seats about 0.45 m high
+  for (let i = 0; i < 3; i++) put(rbox(len, 0.05, 0.12, '#B98552', 0.02), 0, 0.45, -0.15 + i * 0.15, g);
+  for (let i = 0; i < 2; i++) put(rbox(len, 0.1, 0.04, '#B98552', 0.02), 0, 0.68 + i * 0.16, -0.27, g).rotation.x = -0.12;
+  for (const sx of [-1, 1]) { const x = sx * (len / 2 - 0.1); put(rbox(0.05, 0.45, 0.42, '#3A3F47', 0.015), x, 0.22, 0, g); put(rbox(0.05, 0.5, 0.05, '#3A3F47', 0.015), x, 0.7, -0.27, g); put(rbox(0.06, 0.05, 0.44, '#3A3F47', 0.015), x, 0.62, -0.02, g); }
+}
+const DECOR_HALF = (k) => (k === 'sofa' ? [1.15, 0.5] : k === 'doormat' ? [0.7, 0.45] : DECOR[k] && DECOR[k].len ? [DECOR[k].len / 2, 0.3] : [0.3, 0.3]);
 function decorValid(x, z, id, k = placingD ? placingD.k : 'plant', r = placingD ? placingD.mesh.rotation.y : 0) { // the whole footprint, rotated, must be clear
   const [hx, hz] = DECOR_HALF(k), c = Math.cos(r), sn = Math.sin(r), pts = [[0, 0]];
   for (const u of [-hx, 0, hx]) for (const w of [-hz, hz]) pts.push([u, w]);
   for (const [u, w] of pts) { const px = x + u * c + w * sn, pz = z - u * sn + w * c;
     if (!inFloor(px, pz)) return false;
-    if (S.rooms.some((rm) => { const q = roomRect(rm); return px > q.x0 - 0.3 && px < q.x1 + 0.3 && pz > q.z0 - 0.3 && pz < q.z1 + 0.3; })) return false;
+    if (S.rooms.some((rm) => { const q = roomRect(rm); return px > q.x0 - 0.02 && px < q.x1 + 0.02 && pz > q.z0 - 0.02 && pz < q.z1 + 0.02; })) return false; // flush against a room's outside wall is fine
+    if (S.rooms.some((rm) => { const dp = doorPt(rm, 0); return Math.hypot(px - dp.x, pz - dp.z) < 1.3; })) return false; // never in front of a door
     if (px > SOFA_BOX[0] && px < SOFA_BOX[1] && pz > SOFA_BOX[2] && pz < SOFA_BOX[3]) return false;
     if (desks().some((D, di) => Array.from({ length: QMAX }, (_, i) => QUEUE(i, di)).some((q) => Math.hypot(px - q.x, pz - q.z) < 0.55))) return false; // keep the queue line free
     if (desks().some((D) => Math.hypot(px - D.x, pz - D.z) < 1.4) || LOBBY_PLANTS.some(([a, b]) => Math.hypot(px - a, pz - b) < 0.5)) return false;
-    if ((S.decor || []).some((d) => d.id !== id && Math.hypot(d.x - px, d.z - pz) < (d.k === 'sofa' ? 1.2 : 0.6))) return false; }
+    if ((S.decor || []).some((d) => d.id !== id && Math.hypot(d.x - px, d.z - pz) < (d.k === 'sofa' ? 1.2 : DECOR[d.k] && DECOR[d.k].len ? DECOR[d.k].len / 2 + 0.3 : 0.6))) return false; }
+  if (!decorKeepsPaths(x, z, id, k, r)) return false;
   return true;
 }
 let placingD = null;
@@ -5044,8 +5082,20 @@ function startDecor(k, edit) { resumeForBuild();
   $('mvOk').onclick = () => endDecor(true); $('mvCancel').onclick = () => endDecor(false); $('mvRot').onclick = () => { placingD.mesh.rotation.y += Math.PI / 2; decorShow(); };
   decorShow();
 }
+// dragged close to a room's outside wall, an item backs flush onto it and turns to face the hall (a doormat stays where it's put)
+function wallSnap(p) {
+  if (DECOR[p.k] && DECOR[p.k].flat) return; const [hx, hz] = DECOR_HALF(p.k); let best = null, bd = 0.45;
+  for (const rm of S.rooms) { const q = roomRect(rm);
+    for (const [nx, nz, edge] of [[-1, 0, q.x0], [1, 0, q.x1], [0, -1, q.z0], [0, 1, q.z1]]) {
+      const d = nx ? (p.x - edge) * nx : (p.z - edge) * nz; if (d < -0.1 || d - hz > bd) continue; // in front of this wall, not inside the room
+      const along = nx ? p.z : p.x, a0 = nx ? q.z0 : q.x0, a1 = nx ? q.z1 : q.x1; if (along - hx < a0 - 0.05 || along + hx > a1 + 0.05) continue; // fully along the wall
+      bd = d - hz; best = { nx, nz, edge }; } }
+  if (!best) return; const g = 0.04 + hz;
+  if (best.nx) p.x = best.edge + best.nx * g; else p.z = best.edge + best.nz * g;
+  p.mesh.rotation.y = Math.atan2(best.nx, best.nz);
+}
 function decorShow() { const p = placingD; p.mesh.position.set(p.x, 0.16, p.z); const ok = decorValid(p.x, p.z, p.edit && p.edit.id); $('mvOk').disabled = !ok; $('moveHint').textContent = DECOR[p.k].e + ' ' + (ok ? t('dc.hint') : t('dc.bad')); }
-function decorDrag(e) { ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, cam); if (!ray.ray.intersectPlane(gPlane, gHit)) return; placingD.x = Math.round(gHit.x * 4) / 4; placingD.z = Math.round(gHit.z * 4) / 4; decorShow(); }
+function decorDrag(e) { ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, cam); if (!ray.ray.intersectPlane(gPlane, gHit)) return; placingD.x = Math.round(gHit.x * 4) / 4; placingD.z = Math.round(gHit.z * 4) / 4; wallSnap(placingD); decorShow(); }
 function endDecor(ok) {
   const p = placingD; if (!p) return; placingD = null; scene.remove(p.mesh);
   $('movebar').classList.remove('on'); $('nav').style.visibility = $('pep').style.visibility = '';
@@ -5443,6 +5493,10 @@ function startGame() {
   if (!S.mod2) { S.mod2 = 1; for (const r of S.rooms) { if (Math.abs(((r.x - 0.5) % 1)) < 1e-6 && Math.abs(((r.z - 0.5) % 1)) < 1e-6) continue; // old saves: move rooms onto the 2 m lattice
     let done = false; for (const dx of [0.5, -0.5, 0]) { for (const dz of [0.5, -0.5, 0]) { const tr = { ...r, x: snapC(r.x + dx), z: snapC(r.z + dz), edit: r }; if (placeValid(tr)) { r.x = tr.x; r.z = tr.z; done = true; break; } } if (done) break; } } }
   { const bad = S.rooms.filter((r) => { const q = roomRect(r); for (let x = q.x0 + 0.25; x < q.x1; x += 0.5) for (let z = q.z0 + 0.25; z < q.z1; z += 0.5) if (!buildable(x, z)) return true; return false; }); if (bad.length) { for (const r of bad) S.cash += roomCost(r.type, r.size); S.rooms = S.rooms.filter((r) => !bad.includes(r)); rebuildGrid(); setTimeout(() => toast(t('plot.refund', { n: bad.length })), 800); } }
+  { const big = S.rooms.filter((r) => r.size === 'l'); if (big.length) { let m = 0; for (const r of big) { m += Math.max(0, roomCost(r.type, 'l') - roomCost(r.type, 'm')); r.size = 'm'; } S.cash += m; // large rooms are out of the game: each becomes a regular room in the same place, the price difference refunded
+    setTimeout(() => toast('📐 ' + t('sz.lGone', { n: big.length, m: money(m) }), 4500), 1800); } }
+  { const n = (S.decor || []).filter((d) => d.k === 'massage').length; if (n) { S.decor = S.decor.filter((d) => d.k !== 'massage'); const pr = profile(); pr.kudos = (pr.kudos || 0) + 15 * n; try { localStorage.setItem('ahq_profile', JSON.stringify(pr)); } catch (e) {} // massage chairs are out of the game: their kudos come back
+    setTimeout(() => toast('💆 ' + t('dc.massageGone', { n: 15 * n }), 4500), 2600); } }
   for (const r of S.rooms) buildRoom(r);
   for (const m of INC_MESH.values()) scene.remove(m); INC_MESH.clear();
   { const n = (S.decor || []).filter((d) => d.k === 'sofa').length; if (n) { S.decor = S.decor.filter((d) => d.k !== 'sofa'); S.cash += 500 * n; setTimeout(() => toast('🛋️ ' + t('dc.sofaGone', { m: money(500 * n) }), 4000), 1500); } } // sofas are out of the game for now: refunded
@@ -5903,6 +5957,6 @@ async function startShowcase() {
 }
 if (new URLSearchParams(location.search).get('showcase')) setTimeout(() => startShowcase().catch((e) => console.warn(e)), 600);
 
-window.__dbg = { epi: { epiDay: () => epiDay(), openEpi: () => openEpi(), startCourse: (st) => startCourse(st), sendPharm: (st) => sendPharm(st), sendHome: (st) => sendHome(st), infect: (d) => infect(d), staff: () => openStaffList("all"), verdict: () => epiVerdict(), sickAtWork: () => sickAtWork() }, settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, pickMess, prioMess, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; decorShow(); }, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
+window.__dbg = { epi: { epiDay: () => epiDay(), openEpi: () => openEpi(), startCourse: (st) => startCourse(st), sendPharm: (st) => sendPharm(st), sendHome: (st) => sendHome(st), infect: (d) => infect(d), staff: () => openStaffList("all"), verdict: () => epiVerdict(), sickAtWork: () => sickAtWork() }, settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, pickMess, prioMess, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; wallSnap(placingD); decorShow(); }, decorValid, decorKeepsPaths, lotAccess, gridDims: () => [GW, GH], makeGrid, get placingD() { return placingD; }, doorPt, roomRect, inFloor, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
 requestAnimationFrame(loop);
 try { window.__dbg.dioramaView = dioramaView; } catch (e) {}
