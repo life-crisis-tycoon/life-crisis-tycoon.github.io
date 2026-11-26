@@ -624,7 +624,7 @@ function roomObs(room) { const g = room.g; g.updateMatrixWorld(true); const skip
   const walk = (o, inSw) => { for (const c of o.children) { if (skip.has(c) || c.userData.noObs || /rug|carpet|playmat/i.test(c.userData.glb || '')) continue; const s2 = inSw || !!c.userData.swap;
     if (c.isMesh && (s2 || first)) { bx.setFromObject(c); const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (bx.max.y > 0.3 && bx.min.y < 1.0 && sx < 3.6 && sz < 3.6 && sx * sz > 0.01) (s2 ? sw : st).push([bx.min.x, bx.max.x, bx.min.z, bx.max.z]); }
     if (s2 || first) walk(c, s2); else if (c.children.length) walk(c, false); } };
-  walk(g, false); if (first) room.obs0 = st; room.obs = room.obs0.concat(sw); }
+  walk(g, false); if (first) room.obs0 = st; room.obs = room.obs0.concat(sw).concat(room.obsX || []); } // obsX: shapes the measuring can't see (the ring's ropes, with its stairs left open)
 // the Tripo/Meshy pieces load after the room is built: once they are in, measure the room again so people walk around the real furniture
 let obsT = null; const obsDirty = new Set();
 function roomObsLater(rid) { obsDirty.add(rid); clearTimeout(obsT); obsT = setTimeout(() => { let any = false; for (const id of obsDirty) { const rm = R.rooms && R.rooms[id]; if (rm && rm.g && rm.g.parent) { roomObs(rm); any = true; } } obsDirty.clear(); if (any && S && S.rooms) rebuildGrid(); }, 120); }
@@ -1467,6 +1467,8 @@ function buildRoom(r) {
     const conv = (p) => { const w = toW(r, lx + p.x, p.z); return { ...p, x: w.x, z: w.z, rot: (p.rot || 0) + r.a, ...(p.rot2 != null ? { rot2: p.rot2 + r.a } : {}), ...(p.pts ? { pts: Object.fromEntries(Object.entries(p.pts).map(([k, q]) => [k, conv(q)])) } : {}) }; }; // pts: named points of a scene (kid's chair, board…)
     for (const sp of tmp.spots) room.spots.push({ ...conv(sp), st: i, busy: null });
     room.staffSpots[i] = tmp.staffSpot ? conv(tmp.staffSpot) : null;
+    if (tmp.ringL) { const R0 = tmp.ringL, o = toW(r, lx + R0.o.x, R0.o.z), a = toW(r, lx + R0.o.x + R0.ax.x, R0.o.z + R0.ax.z), b = toW(r, lx + R0.o.x + R0.az.x, R0.o.z + R0.az.z); (room.rings = room.rings || []).push({ ox: o.x, oz: o.z, ax: [a.x - o.x, a.z - o.z], az: [b.x - o.x, b.z - o.z], k: R0.k }); } // a raised floor (the lucha ring)
+    if (tmp.obsX) room.obsX = (room.obsX || []).concat(tmp.obsX.map(([x0, x1, z0, z1]) => { const p = toW(r, lx + x0, z0), q = toW(r, lx + x1, z1); return [Math.min(p.x, q.x), Math.max(p.x, q.x), Math.min(p.z, q.z), Math.max(p.z, q.z)]; }));
     VIA_SPOTS = VIA_SPOTS.filter((sp) => sp.room0 && R.rooms[sp.room0.id] === sp.room0); for (const sp of room.spots) if (sp.front && !sp.via) { sp.via = { x: sp.x + Math.sin(sp.rot) * 1.35, z: sp.z + Math.cos(sp.rot) * 1.35 }; sp.room0 = room; VIA_SPOTS.push(sp); }
     if (tmp.wash) { room.wash = (room.wash || []).concat(tmp.wash.map((sp) => ({ ...conv(sp), st: i, busy: null }))); (room.bins = room.bins || []).push(conv({ ...tmp.bin, rot: 0 })); }
   }
@@ -1916,7 +1918,11 @@ function luchaKit(g, cx, cz, room) {
   const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
   const rl = S ? 1.85 : w >= 6 ? 2.5 : 2.2, rd = rl * 0.998 / 0.998, rz = bz + rd / 2 + 0.3; // ring (len = its longer side)
   L.push({ p: 'k_ring', len: rl, x: 0, z: rz, rot: 0 });
-  room.staffSpot = (() => { const q = W(-rl * 0.3, rz + rd / 2 + 0.22); return { x: q.x, z: q.z, rot: F.rho, sit: false, y: 0 }; })(); // the coach at the ring's apron, facing the poufs (the ring itself is solid: nobody can walk into it)
+  const k = rl / 0.998; // the coach lives on the canvas: in and out by the little stairs (front right), the ropes are walls everywhere else
+  room.staffSpot = (() => { const q = W(-0.1 * k, rz - 0.08 * k); return { x: q.x, z: q.z, rot: F.rho, sit: false, y: 0.25 * k }; })();
+  { const o = W(0, rz), a1 = W(1, rz), b1 = W(0, rz + 1); room.ringL = { o, ax: { x: a1.x - o.x, z: a1.z - o.z }, az: { x: b1.x - o.x, z: b1.z - o.z }, k }; // station coords; turned into the room's world frame when the room is built
+    const box = (u0, u1, w0, w1) => { const a = W(u0 * k, rz + w0 * k), b = W(u1 * k, rz + w1 * k); return [Math.min(a.x, b.x), Math.max(a.x, b.x), Math.min(a.z, b.z), Math.max(a.z, b.z)]; };
+    room.obsX = [box(-0.465, 0.465, -0.5, -0.39), box(-0.465, -0.36, -0.5, 0.3), box(0.36, 0.465, -0.5, 0.3), box(-0.465, 0.15, 0.19, 0.3), box(0.44, 0.465, 0.19, 0.3)]; }
   const n = seatsN(room), sp = Math.min(0.95, (w - 1.0) / n), pz = rz + rd / 2 + (S ? 0.6 : 0.75);
   for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * sp; L.push({ p: 'k_pouf', h: 0.44, x, z: pz, rot: 0, tint: '#E2457A' }); const q = W(x, pz); room.spots.push({ x: q.x, z: q.z, rot: Math.PI + F.rho, sit: true, y: 0.06, busy: null }); }
   const side = (w - rl) / 2; // room left beside the ring
@@ -1927,6 +1933,7 @@ function luchaKit(g, cx, cz, room) {
     if (w >= 6) L.push({ p: 'k_trophy', len: 1.0, wall: 'right', u: 0.6 }); }
   else L.push({ p: 'k_agave', h: 0.6, x: rx - 0.35, z: fz - 0.4, rot: 0 });
   kitRoom(g, cx, cz, room, 'lucha_kit', L, LUCHA_DIMS, F);
+  g.traverse((o) => { if (o.userData.kit === 'k_ring') o.userData.noObs = true; }); // measured as rope walls (obsX), not as one solid block
 }
 // Ahwa, the Cairo café (from the ahwa painting): the carved counter at the back with the copper samovar, the coffee pots and the paperwork stamp on it
 // (the host works behind it), the files shelf on the wall, a red cushioned bench along the wall, round copper tables with carved chairs and a backgammon board, ferns
@@ -3036,7 +3043,7 @@ function ixStaffWalk(rs, dt) { // from staffAttend: true while the carer is away
   if (G.path.length) { stepWalker(G, dt, 2.2); return true; }
   if (G.back) { rs.ixGo = null; settle(rs, rs.target); rs.busyPose = null; return false; }
   if (!G.arrived) { G.arrived = true; const p = rs.av.userData.p; if (p.anim) p.anim.set(G.pose ? (IXV[G.pose] ? IXV[G.pose][1] : G.pose) : 'idle'); }
-  if (G.face != null) turnTo(rs.av, G.face, dt, 6); rs.av.position.y = 0.1; return true;
+  if (G.face != null) turnTo(rs.av, G.face, dt, 6); rs.av.position.y = 0.1 + liftAt(rs.av.position.x, rs.av.position.z); return true;
 }
 function ixFloat(o, txt) { if (!o || !txt) return; o.getWorldPosition(_ixw); floatAt(_ixw, txt); }
 function ixTick(v, st, room, dt) {
@@ -3159,6 +3166,12 @@ function joinQueue(v) { // shortest staffed line wins
   v.desk = di; DQ(di).push(v); const q = QUEUE(DQ(di).length - 1, di); setPath(v, findPath(v.av.position, q)); v.state = 'toQueue'; }
 function setPath(v, pts) { v.path = pts.slice(); poseStand(v.av.userData.p); }
 let doomers = [];
+// raised floors people can walk onto (the lucha ring): height of the floor under a point, 0 on the plain floor. The ring is a 25%-of-its-size platform
+// reached by its little stairs (front right of the model); the stairs ramp down from the canvas to the floor
+function liftAt(x, z) { if (!R.rooms) return 0;
+  for (const rm of Object.values(R.rooms)) for (const L of rm.rings || []) { const X = x - L.ox, Z = z - L.oz, u = (X * L.ax[0] + Z * L.ax[1]) / L.k, w = (X * L.az[0] + Z * L.az[1]) / L.k;
+    if (Math.abs(u) < 0.43 && w > -0.46 && w < 0.29) return 0.25 * L.k; if (u > 0.15 && u < 0.44 && w >= 0.29 && w < 0.52) return 0.25 * L.k * (1 - (w - 0.29) / 0.23 * 0.85); }
+  return 0; }
 function stepWalker(o, dt, speed) {
   if (!o.path.length) return true;
   // match ground speed to the character's own stride so feet don't skate: a slow tired shuffle moves slowly, a hurry only speeds the legs up so far
@@ -3171,7 +3184,7 @@ function stepWalker(o, dt, speed) {
   const tw = d > 0.001 ? Math.abs((((Math.atan2(dx, dz) - o.av.rotation.y) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) : 0, step = speed * dt * (tw > 0.5 ? Math.max(0.12, Math.cos(Math.min(tw, 1.45))) : 1);
   if (d <= step) { pos.x = p.x; pos.z = p.z; o.path.shift(); } else { pos.x += dx / d * step; pos.z += dz / d * step; }
   if (d > 0.001) { const a = Math.atan2(dx, dz); let r = o.av.rotation.y; r += ((((a - r) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 14); o.av.rotation.y = ((r + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }
-  o.ph += dt * speed * 4.2; poseWalk(o.av.userData.p, o.ph, 0.55, speed); pos.y = 0.1;
+  o.ph += dt * speed * 4.2; poseWalk(o.av.userData.p, o.ph, 0.55, speed); pos.y = 0.1 + liftAt(pos.x, pos.z);
   return !o.path.length;
 }
 // Seats come in many heights (sofas, benches, booth chairs, the host's chair, models swapped in later), so a sitter is placed
