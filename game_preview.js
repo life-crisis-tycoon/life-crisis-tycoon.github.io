@@ -902,14 +902,14 @@ function roomPO(r) {
 }
 /* polish (preview): walls in two tones like a real interior: a darker dado up to 40 % of the wall, a white moulding, the light paint above.
    Drawn in the wall's own shader from its local height (kit walls run 0..1), so it follows the cutaway and costs nothing. */
-const TT_CUT = 0.95, FAC_HI = '#F4EEE3', FAC_LO = '#A9B5C3', TT_MOLD = new THREE.Color('#FBF8F2'); /* dado top in metres above the ground: a wall cut down to hip height still reads as a panelled wall */
+const FAC_HI = '#F4EEE3', FAC_LO = '#A9B5C3', TT_MOLD = new THREE.Color('#FBF8F2'); /* dado: 55 % of the wall as it stands (at most 85 cm), so a wall cut to hip height still shows both tones */
 const darkHex = (hex, f) => { const c = new THREE.Color(hex); c.offsetHSL(0, 0, -f); return '#' + c.getHexString(); };
 const lowOf = (wall, base) => { const a = {}, b = {}; new THREE.Color(wall).getHSL(a); if (base) new THREE.Color(base).getHSL(b); return base && a.l - b.l >= 0.1 ? base : darkHex(wall, 0.15); }; /* the dado always clearly darker than the paint */
-function ttMat(c, low, r = 0.95) { const k = 'tt|' + c + '|' + low + '|' + r; if (MC[k]) return MC[k]; const m = mat(c, { r }).clone(), lowC = new THREE.Color(low);
-  m.onBeforeCompile = (sh) => { sh.uniforms.uLow = { value: lowC }; sh.uniforms.uMold = { value: TT_MOLD }; sh.uniforms.uCut = { value: TT_CUT };
-    sh.vertexShader = 'varying float vLY;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vLY = (modelMatrix * vec4(transformed, 1.0)).y;');
-    sh.fragmentShader = 'varying float vLY;\nuniform vec3 uLow;\nuniform vec3 uMold;\nuniform float uCut;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = vLY < uCut ? uLow : (vLY < uCut + 0.07 ? uMold : diffuseColor.rgb);'); };
-  m.customProgramCacheKey = () => 'tt3'; return (MC[k] = m); }
+function ttMat(c, low, r = 0.95, b0 = 0, b1 = 1) { const k = 'tt|' + c + '|' + low + '|' + r + '|' + b0; if (MC[k]) return MC[k]; const m = mat(c, { r }).clone(), lowC = new THREE.Color(low);
+  m.onBeforeCompile = (sh) => { sh.uniforms.uLow = { value: lowC }; sh.uniforms.uMold = { value: TT_MOLD }; sh.uniforms.uB0 = { value: b0 }; sh.uniforms.uB1 = { value: b1 };
+    sh.vertexShader = 'varying float vLY;\nvarying float vCut;\nuniform float uB0;\nuniform float uB1;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vLY = (modelMatrix * vec4(transformed, 1.0)).y; float wb = (modelMatrix * vec4(0.0, uB0, 0.0, 1.0)).y, wt = (modelMatrix * vec4(0.0, uB1, 0.0, 1.0)).y; vCut = wb + min(0.85, 0.55 * (wt - wb));');
+    sh.fragmentShader = 'varying float vLY;\nvarying float vCut;\nuniform vec3 uLow;\nuniform vec3 uMold;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = vLY < vCut ? uLow : (vLY < vCut + 0.06 ? uMold : diffuseColor.rgb);'); };
+  m.customProgramCacheKey = () => 'tt4'; return (MC[k] = m); }
 const KM = (name, c, r = 0.9) => { const m = new THREE.Mesh(RKIT[name], mat(c, { r })); m.castShadow = m.receiveShadow = true; m.userData.kitW = true; return m; };
 const INST = {}, INST_NAMES = new Set(['pt_oak', 'pt_lime', 'pt_cherry', 'pt_fir', 'pt_palm', 'pt_flame', 'lon_oak', 'lon_leafy', 'lon_cherry', 'lon_cypress', ...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
@@ -1021,7 +1021,7 @@ function buildShell(c) {
     const wg = new THREE.Group(); g.add(wg); const nx = s.hz ? 0 : s.n, nz = s.hz ? s.n : 0; wg.userData.n = [nx, nz]; world.cutWalls.push(wg);
     const col = FAC_HI;
     if (s.hz) { wallSeg(s.a, s.line, s.b, s.line, W_H, col, wg); wallSeg(s.a, s.line, s.b, s.line, 0.35, FAC_LO, g); } else { wallSeg(s.line, s.a, s.line, s.b, W_H, col, wg); wallSeg(s.line, s.a, s.line, s.b, 0.35, FAC_LO, g); }
-    wg.traverse((o) => { if (o.isMesh && o.material && o.material.color && o.material.color.getHexString() === new THREE.Color(FAC_HI).getHexString()) { o.material = ttMat(FAC_HI, FAC_LO); o.userData.kitW = true; } }); /* the same dado and moulding as the rooms */
+    wg.traverse((o) => { if (o.isMesh && o.material && o.material.color && o.material.color.getHexString() === new THREE.Color(FAC_HI).getHexString()) { o.material = ttMat(FAC_HI, FAC_LO, 0.95, -W_H / 2, W_H / 2); o.userData.kitW = true; } }); /* the same dado and moulding as the rooms */
     const L = s.b - s.a, inn = -(T / 2 + 0.03);
     for (let u = s.a + 3.2; u < s.b - 1.5; u += 6.5) { const wx = s.hz ? u : s.line + nx * inn, wz = s.hz ? s.line + nz * inn : u; kitWindow(wg, wx - nx * 0.03, wz - nz * 0.03, s.hz ? 0 : Math.PI / 2); }
     if (s.hz && s.n === -1 && (!best || L > best.L)) best = { s, wg, L };
