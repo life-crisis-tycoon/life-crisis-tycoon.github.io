@@ -2520,34 +2520,34 @@ const furniture = {
       if (!PROPS_ON) put(rbox(0.06, 1.5, 1.1, '#FFFFFF', 0.02), x + 0.6, 0.85, cz - 0.9 * K - 0.25, g); // the modelled cubicle brings its own walls
       const wc = grp(x, wz, 0, g); put(rbox(0.42, 0.42, 0.5, '#FFFFFF', 0.12, { r: 0.25 }), 0, 0.3, 0.05, wc); put(rbox(0.45, 0.45, 0.16, '#F4F7FA', 0.05), 0, 0.6, -0.2, wc);
       // the cubicle is made deeper at the front (side panels carried forward, door further out) so a seated person's knees stay inside the closed door
-      const ext = [-0.6, 0.6].map((sx) => put(rbox(0.045, 1.42, 0.5, '#D8C6E4', 0.01, { r: 0.6 }), sx, 0.83, 0.5, wc));
-      glbSwap(wc, 'toilet', { y: 0.1, onModel: (m) => m.traverse((o) => { if (/^(basin|bowlIn|pipe|spout|tap)/.test(o.name)) o.visible = false; if (/^post/.test(o.name)) o.userData.noObs = true; if (o.isMesh && o.name === 'left' && o.material) for (const e of ext) e.material = o.material; }) }); // no hand basin inside the cubicle: hands are washed at the vanity
+      const ext = [-0.6, 0.6].map((sx) => put(rbox(0.11, 1.42, 0.5, '#D8C6E4', 0.03, { r: 0.6 }), sx, 0.83, 0.5, wc));
+      glbSwap(wc, 'toilet', { y: 0.1, onModel: (m) => m.traverse((o) => { if (/^(basin|bowlIn|pipe|spout|tap)/.test(o.name)) o.visible = false; if (/^post/.test(o.name)) o.userData.noObs = true; const TH = { back: [1, 1, 2], left: [1.8, 1, 1], right: [1.8, 1, 1], post: [1.5, 1, 1.5], leg: [1.6, 1, 1.6], seat: [1, 2, 1], lid: [1, 2, 1], tankLid: [1, 1.8, 1], hinge: [1.6, 1, 1.6] }[o.name.split('.')[0]]; if (TH) o.scale.multiply(new THREE.Vector3(...TH)); /* chunkier: the cubicle panels, posts, seat and lid were paper-thin */ if (o.isMesh && o.name === 'left' && o.material) for (const e of ext) e.material = o.material; }) }); // no hand basin inside the cubicle: hands are washed at the vanity
       // cubicle door on the front-left hinge: swings open when the cubicle is free, closes while someone is inside; a small red/green lock shows which
       const dv = grp(x - 0.57, wz + 0.76, 0, g); dv.rotation.y = -1.35; dv.userData.looDoor = true;
-      put(rbox(1.1, 1.3, 0.04, '#E4ECF1', 0.015, { r: 0.6 }), 0.56, 0.86, 0, dv); put(rbox(0.04, 0.12, 0.03, '#B9C2CA', 0.01, { m: 0.6, r: 0.3 }), 1.0, 0.9, 0.035, dv);
-      const lk = put(rbox(0.07, 0.04, 0.02, '#4CB363', 0.008, { e: '#4CB363', ei: 0.5 }), 1.0, 1.02, 0.035, dv);
+      put(rbox(1.1, 1.3, 0.09, '#E4ECF1', 0.035, { r: 0.6 }), 0.56, 0.86, 0, dv); put(rbox(0.06, 0.16, 0.05, '#B9C2CA', 0.02, { m: 0.6, r: 0.3 }), 1.0, 0.9, 0.06, dv);
+      const lk = put(rbox(0.09, 0.06, 0.03, '#4CB363', 0.012, { e: '#4CB363', ei: 0.5 }), 1.0, 1.04, 0.055, dv);
       dv.traverse((o) => { if (o.isMesh) o.userData.kitW = true; }); // moving parts stay out of the static batches
       room.spots.push({ x, z: wz - 0.04, rot: 0, sit: true, y: 0.1, busy: null, door: dv, lock: lk, front: true });
     }
     // double vanity against a side wall (light oak top on two panels with a shelf, two round vessel basins, tall chrome taps, an oval mirror), a towel dispenser and a pedal bin
     const side = room.nst === 2 ? (room.st ? 1 : -1) : -1, Lv = K < 0.8 ? 1.5 : 1.9, vz = Math.min(D / 2 - 0.3 - Lv / 2, cz - 0.9 * K - 0.28 + 1.2 + Lv / 2), bs = vz + Lv / 2 + 0.55 < D / 2 ? 1 : -1; // starts past the swing of the cubicle doors; bin and towels at whichever end has room
     const vg = grp(side * (W / 2 - 0.33), vz, -side * Math.PI / 2, g), OAK = '#D9B27C';
-    put(rbox(Lv, 0.07, 0.52, OAK, 0.02, { r: 0.7 }), 0, 0.86, 0, vg); put(rbox(Lv - 0.1, 0.05, 0.46, OAK, 0.02, { r: 0.7 }), 0, 0.3, 0, vg);
-    for (const sx of [-1, 1]) put(rbox(0.06, 0.84, 0.5, OAK, 0.02, { r: 0.7 }), sx * (Lv / 2 - 0.05), 0.43, 0, vg);
+    put(rbox(Lv, 0.13, 0.56, OAK, 0.05, { r: 0.7 }), 0, 0.84, 0, vg); put(rbox(Lv - 0.16, 0.09, 0.48, OAK, 0.03, { r: 0.7 }), 0, 0.3, 0, vg);
+    for (const sx of [-1, 1]) put(rbox(0.12, 0.8, 0.52, OAK, 0.04, { r: 0.7 }), sx * (Lv / 2 - 0.08), 0.42, 0, vg);
     const wash = [];
     for (const bx of [-Lv / 4, Lv / 4]) {
-      put(cyl(0.2, 0.15, 0.15, '#FFFFFF', { r: 0.2 }), bx, 0.97, 0.03, vg); put(cyl(0.16, 0.16, 0.012, '#D9E2E8', { r: 0.25 }), bx, 1.04, 0.03, vg);
-      put(cyl(0.022, 0.026, 0.34, '#C7CDD3', { m: 0.8, r: 0.25 }), bx, 1.06, -0.2, vg); put(rbox(0.04, 0.035, 0.16, '#C7CDD3', 0.012, { m: 0.8, r: 0.25 }), bx, 1.22, -0.13, vg);
+      put(cyl(0.2, 0.15, 0.15, '#FFFFFF', { r: 0.2 }), bx, 0.97, 0.03, vg); put(cyl(0.16, 0.16, 0.02, '#D9E2E8', { r: 0.25 }), bx, 1.04, 0.03, vg);
+      put(cyl(0.04, 0.045, 0.34, '#C7CDD3', { m: 0.8, r: 0.25 }), bx, 1.06, -0.2, vg); put(rbox(0.07, 0.06, 0.18, '#C7CDD3', 0.025, { m: 0.8, r: 0.25 }), bx, 1.22, -0.12, vg);
       const wt = put(cyl(0.012, 0.012, 0.15, '#BFE3F5', { e: '#BFE3F5', ei: 0.3 }), bx, 1.13, -0.06, vg); wt.visible = false; wt.castShadow = false;
       // spot in front of the basin, facing the wall (vanity frame: x along the top, +z its front)
       const lx = bx, lz = 0.62, c = Math.cos(vg.rotation.y), s2 = Math.sin(vg.rotation.y);
       wash.push({ x: vg.position.x + lx * c + lz * s2, z: vg.position.z - lx * s2 + lz * c, rot: vg.rotation.y + Math.PI, sit: false, y: 0, busy: null, water: wt });
     }
-    const mr = grp(0, -0.25, 0, vg); mr.position.y = 1.62; { const fr = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 10, 40), mat(OAK, { r: 0.6 })); fr.scale.set(Lv > 1.6 ? 1.5 : 1.25, 1, 1); fr.castShadow = true; mr.add(fr);
+    const mr = grp(0, -0.25, 0, vg); mr.position.y = 1.62; { const fr = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.065, 12, 40), mat(OAK, { r: 0.6 })); fr.scale.set(Lv > 1.6 ? 1.5 : 1.25, 1, 1); fr.castShadow = true; mr.add(fr);
       const gl = new THREE.Mesh(new THREE.CircleGeometry(0.355, 40), mat('#CFE3EC', { r: 0.08, m: 0.3 })); gl.scale.set(Lv > 1.6 ? 1.5 : 1.25, 1, 1); gl.position.z = -0.005; mr.add(gl); }
     put(cyl(0.035, 0.035, 0.13, '#F2F4F5', { r: 0.4 }), 0, 0.96, -0.17, vg); put(cyl(0.012, 0.012, 0.05, '#C7CDD3', { m: 0.8 }), 0, 1.05, -0.17, vg); // soap
-    const td = put(rbox(0.3, 0.38, 0.12, '#F4F6F7', 0.03, { r: 0.4 }), bs * (Lv / 2 + 0.3), 1.32, -0.2, vg); put(rbox(0.2, 0.02, 0.02, '#FFFFFF', 0.005), 0, -0.17, 0.065, td); // paper towels
-    const bin = grp(bs * (Lv / 2 + 0.3), 0, 0, vg); put(cyl(0.16, 0.14, 0.44, '#C9CFD4', { m: 0.6, r: 0.3 }), 0, 0.22, 0, bin); put(cyl(0.165, 0.165, 0.04, '#B4BBC2', { m: 0.6, r: 0.3 }), 0, 0.46, 0, bin); put(rbox(0.1, 0.02, 0.06, '#59606A', 0.01), 0, 0.03, 0.17, bin);
+    const td = put(rbox(0.32, 0.4, 0.17, '#F4F6F7', 0.05, { r: 0.4 }), bs * (Lv / 2 + 0.3), 1.32, -0.18, vg); put(rbox(0.2, 0.02, 0.02, '#FFFFFF', 0.005), 0, -0.17, 0.065, td); // paper towels
+    const bin = grp(bs * (Lv / 2 + 0.3), 0, 0, vg); put(cyl(0.16, 0.14, 0.44, '#C9CFD4', { m: 0.6, r: 0.3 }), 0, 0.22, 0, bin); put(cyl(0.175, 0.175, 0.07, '#B4BBC2', { m: 0.6, r: 0.3 }), 0, 0.47, 0, bin); put(rbox(0.1, 0.02, 0.06, '#59606A', 0.01), 0, 0.03, 0.17, bin);
     { const c = Math.cos(vg.rotation.y), s2 = Math.sin(vg.rotation.y), bx = bs * (Lv / 2 + 0.3); room.bin = { x: vg.position.x + bx * c, z: vg.position.z - bx * s2 }; }
     room.wash = wash;
   },
