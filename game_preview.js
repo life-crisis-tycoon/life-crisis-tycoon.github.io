@@ -5122,14 +5122,22 @@ function amenSpot(v) {
   if (!free.length) return null; return rnd(free);
 }
 // an item may not cut the hall in two: every room door and the reception queue must still be reachable from the entrance
-function decorKeepsPaths(x, z, id, k, r) {
-  const keep = S.decor; S.decor = (S.decor || []).filter((d) => d.id !== id).concat([{ id: -1, k, x, z, r }]);
+// an item may not cut a room's door off from the reception. Compared with the HQ *without* the item: a door that is already unreachable
+// (a room facing the plot edge, an older item, a lobby plant) no longer forbids every placement everywhere, it just isn't counted
+function doorReach(extra, id) {
+  const keep = S.decor; S.decor = (S.decor || []).filter((d) => d.id !== id).concat(extra ? [extra] : []);
   let blk; try { blk = makeGrid(S.rooms.slice()); } finally { S.decor = keep; }
-  const st = QUEUE(0, 0), [si, sj] = ci(st.x, st.z); if (!free(blk, si, sj)) return true; // can't tell from here: don't block the player
+  const st = QUEUE(0, 0), [si, sj] = ci(st.x, st.z); if (!free(blk, si, sj)) return null; // can't tell from here
   const seen = new Uint8Array(GW * GH), q = [si + sj * GW]; seen[q[0]] = 1;
   while (q.length) { const c = q.pop(), i = c % GW, j = (c - i) / GW; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di, nj = j + dj; if (free(blk, ni, nj) && !seen[nj * GW + ni]) { seen[nj * GW + ni] = 1; q.push(nj * GW + ni); } } }
   const ok = (pt) => { const [i, j] = ci(pt.x, pt.z); for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const ni = i + di, nj = j + dj; if (ni >= 0 && nj >= 0 && ni < GW && nj < GH && seen[nj * GW + ni]) return true; } return false; };
-  return S.rooms.every((rm) => ok(doorPt(rm, 0.5)));
+  return S.rooms.map((rm) => ok(doorPt(rm, 0.5)));
+}
+let doorBase = null;
+function decorKeepsPaths(x, z, id, k, r) {
+  const key = S.rooms.length + '|' + (S.decor || []).length + '|' + id; if (!doorBase || doorBase.key !== key) doorBase = { key, v: doorReach(null, id) };
+  const now = doorReach({ id: -1, k, x, z, r }, id); if (!now || !doorBase.v) return true;
+  return now.every((ok, i) => ok || !doorBase.v[i]);
 }
 function benchMesh(g, len) { // a simple slatted wooden bench on two dark metal frames, seats about 0.45 m high
   for (let i = 0; i < 3; i++) put(rbox(len, 0.05, 0.12, '#B98552', 0.02), 0, 0.45, -0.15 + i * 0.15, g);
@@ -5137,19 +5145,20 @@ function benchMesh(g, len) { // a simple slatted wooden bench on two dark metal 
   for (const sx of [-1, 1]) { const x = sx * (len / 2 - 0.1); put(rbox(0.05, 0.45, 0.42, '#3A3F47', 0.015), x, 0.22, 0, g); put(rbox(0.05, 0.5, 0.05, '#3A3F47', 0.015), x, 0.7, -0.27, g); put(rbox(0.06, 0.05, 0.44, '#3A3F47', 0.015), x, 0.62, -0.02, g); }
 }
 const DECOR_HALF = (k) => (k === 'sofa' ? [1.15, 0.5] : k === 'doormat' ? [0.7, 0.45] : DECOR[k] && DECOR[k].len ? [DECOR[k].len / 2, 0.3] : [0.3, 0.3]);
+let decorWhy = null; const why = (k) => { decorWhy = k; return false; }; // why a spot is refused, shown under the item while it is dragged
 function decorValid(x, z, id, k = placingD ? placingD.k : 'plant', r = placingD ? placingD.mesh.rotation.y : 0) { // the whole footprint, rotated, must be clear
   const [hx, hz] = DECOR_HALF(k), c = Math.cos(r), sn = Math.sin(r), pts = [[0, 0]];
   for (const u of [-hx, 0, hx]) for (const w of [-hz, hz]) pts.push([u, w]);
   for (const [u, w] of pts) { const px = x + u * c + w * sn, pz = z - u * sn + w * c;
-    if (!inFloor(px, pz)) return false;
-    if (S.rooms.some((rm) => { const q = roomRect(rm); return px > q.x0 - 0.02 && px < q.x1 + 0.02 && pz > q.z0 - 0.02 && pz < q.z1 + 0.02; })) return false; // flush against a room's outside wall is fine
-    if (S.rooms.some((rm) => { const dp = doorPt(rm, 0); return Math.hypot(px - dp.x, pz - dp.z) < 1.3; })) return false; // never in front of a door
-    if (px > SOFA_BOX[0] && px < SOFA_BOX[1] && pz > SOFA_BOX[2] && pz < SOFA_BOX[3]) return false;
-    if (desks().some((D, di) => Array.from({ length: QMAX }, (_, i) => QUEUE(i, di)).some((q) => Math.hypot(px - q.x, pz - q.z) < 0.55))) return false; // keep the queue line free
-    if (desks().some((D) => Math.hypot(px - D.x, pz - D.z) < 1.4) || LOBBY_PLANTS.some(([a, b]) => Math.hypot(px - a, pz - b) < 0.5)) return false;
-    if ((S.decor || []).some((d) => d.id !== id && Math.hypot(d.x - px, d.z - pz) < (d.k === 'sofa' ? 1.2 : DECOR[d.k] && DECOR[d.k].len ? DECOR[d.k].len / 2 + 0.3 : 0.6))) return false; }
-  if (!decorKeepsPaths(x, z, id, k, r)) return false;
-  return true;
+    if (!inFloor(px, pz)) return why('out');
+    if (S.rooms.some((rm) => { const q = roomRect(rm); return px > q.x0 - 0.02 && px < q.x1 + 0.02 && pz > q.z0 - 0.02 && pz < q.z1 + 0.02; })) return why('room'); // flush against a room's outside wall is fine
+    if (S.rooms.some((rm) => { const dp = doorPt(rm, 0); return Math.hypot(px - dp.x, pz - dp.z) < 1.3; })) return why('door'); // never in front of a door
+    if (px > SOFA_BOX[0] && px < SOFA_BOX[1] && pz > SOFA_BOX[2] && pz < SOFA_BOX[3]) return why('desk');
+    if (desks().some((D, di) => Array.from({ length: QMAX }, (_, i) => QUEUE(i, di)).some((q) => Math.hypot(px - q.x, pz - q.z) < 0.55))) return why('queue'); // keep the queue line free
+    if (desks().some((D) => Math.hypot(px - D.x, pz - D.z) < 1.4) || LOBBY_PLANTS.some(([a, b]) => Math.hypot(px - a, pz - b) < 0.5)) return why('desk');
+    if ((S.decor || []).some((d) => d.id !== id && Math.hypot(d.x - px, d.z - pz) < (d.k === 'sofa' ? 1.2 : DECOR[d.k] && DECOR[d.k].len ? DECOR[d.k].len / 2 + 0.3 : 0.6))) return why('item'); }
+  if (!decorKeepsPaths(x, z, id, k, r)) return why('path');
+  decorWhy = null; return true;
 }
 let placingD = null;
 function startDecor(k, edit) { resumeForBuild();
@@ -5174,7 +5183,7 @@ function wallSnap(p) {
   if (best.nx) p.x = best.edge + best.nx * g; else p.z = best.edge + best.nz * g;
   p.mesh.rotation.y = Math.atan2(best.nx, best.nz);
 }
-function decorShow() { const p = placingD; p.mesh.position.set(p.x, 0.16, p.z); const ok = decorValid(p.x, p.z, p.edit && p.edit.id); $('mvOk').disabled = !ok; $('moveHint').textContent = DECOR[p.k].e + ' ' + (ok ? t('dc.hint') : t('dc.bad')); }
+function decorShow() { const p = placingD; p.mesh.position.set(p.x, 0.16, p.z); const ok = decorValid(p.x, p.z, p.edit && p.edit.id); $('mvOk').disabled = !ok; $('moveHint').textContent = DECOR[p.k].e + ' ' + (ok ? t('dc.hint') : decorWhy ? t('dc.why.' + decorWhy) : t('dc.bad')); }
 function decorDrag(e) { ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, cam); if (!ray.ray.intersectPlane(gPlane, gHit)) return; placingD.x = Math.round(gHit.x * 4) / 4; placingD.z = Math.round(gHit.z * 4) / 4; wallSnap(placingD); decorShow(); }
 function endDecor(ok) {
   const p = placingD; if (!p) return; placingD = null; scene.remove(p.mesh);
