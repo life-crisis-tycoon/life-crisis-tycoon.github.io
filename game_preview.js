@@ -1960,9 +1960,9 @@ function jjimKit(g, cx, cz, room) {
   L.push({ p: 'k_pouf', h: 0.38, x: tx - tl / 2 - 0.35, z: tz + 0.45, rot: 0, solid: false });
   room.staffSpot = (() => { const q = W(tx - tl / 2 - 0.35, tz + 0.45); return { x: q.x, z: q.z, rot: F.rho, sit: true, y: 0.04 }; })(); // the attendant on the pouf, watching the mats
   const n = seatsN(room), ml = S ? 1.45 : 1.6, sp = Math.min(1.15, (w - 0.6) / n), mz = S ? 0.55 : 0.45;
-  for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * sp; L.push({ p: 'k_mat', len: ml, x, z: mz, rot: 0, solid: false }, { p: 'k_sheep', len: 0.42, x, z: mz - ml / 2 + 0.25, rot: 0, solid: false });
+  for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * sp; L.push({ p: 'k_mat', len: ml, x, z: mz, rot: 0, solid: false }, { p: 'k_sheep', len: 0.5, x, z: mz - ml / 2 + 0.22, rot: 0, solid: false, y: 0.04 });
     const q = W(x, mz + 0.05); room.spots.push({ x: q.x, z: q.z, rot: F.rho, sit: true, lie: true, y: 0.05, busy: null }); }
-  if (!S) { L.push({ p: 'k_lockers', h: 1.4, wall: 'right', u: 0.9 }, { p: 'k_towels', len: 0.9, wall: 'back', u: (lx + kw + 0.2 + tx - tl / 2) / 2 }, { p: 'k_bamboo', h: 1.2, x: lx + 0.4, z: fz - 0.45, rot: 0 }); }
+  if (!S) { L.push({ p: 'k_lockers', h: 1.4, wall: 'right', u: 'F' }, { p: 'k_towels', len: 0.9, wall: 'back', u: (lx + kw + 0.2 + tx - tl / 2) / 2 }, { p: 'k_bamboo', h: 1.2, x: lx + 0.4, z: fz - 0.45, rot: 0 }); }
   else L.push({ p: 'k_bamboo', h: 0.95, x: lx + 0.35, z: fz - 0.4, rot: 0 });
   kitRoom(g, cx, cz, room, 'jjim_kit', L, JJIM_DIMS, F);
 }
