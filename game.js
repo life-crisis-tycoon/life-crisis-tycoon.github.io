@@ -1454,7 +1454,11 @@ function buildRoom(r) {
   // colours. Each room gets its own small depth priority (and the kit wins over the plot walls it is pushed against).
   { const off = roomPO(r), po = (o) => { if (o.isMesh && o.material && !Array.isArray(o.material) && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
       o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off })); } };
-    g.traverse((o) => { if (o.userData.kitW) po(o); }); for (const w of wallG) w.traverse(po); } // every piece of the walls, not only the kit parts: the painted inner layers and caps met the centre's walls in the same plane too
+    g.traverse((o) => { if (o.userData.kitW) po(o); }); for (const w of wallG) w.traverse(po); }
+  // two rooms side by side: each one's wall skin reaches a few cm into the neighbour's wall, so their wall tops (and, cut down, their hip-height tops)
+  // met in exactly the same plane and blinked between the two colours on phones. Each room's walls now sit a hair higher or lower (0.6-12 mm, from the
+  // same per-room number as the depth bias): never the same height as a neighbour's, invisible to the eye
+  { const jit = -roomPO(r) * 0.0004; for (const w of wallG) w.position.y += jit; } // every piece of the walls, not only the kit parts: the painted inner layers and caps met the centre's walls in the same plane too
   if (GFX.batch) { for (const w of wallG) { const keep = w.children.filter((c) => c.userData.keepY || c.userData.kitW); batchNode(w, new Set(keep), { userData: { roomId: r.id } }); for (const k of keep) batchNode(k, new Set(), { userData: { roomId: r.id } }); } batchNode(door.g, new Set([...door.leaves, door.top, door.head].filter(Boolean)), { userData: { roomId: r.id } }); const st = new Set([...wallG, door.g]); g.traverse((o) => { if (o.userData.swap) st.add(o); }); batchNode(g, st, { userData: { roomId: r.id } }); }
   { const ca = Math.cos(r.a), sa = Math.sin(r.a), hs = []; g.traverse((o) => { if (o.userData.whang) hs.push({ o, n: o.userData.whang }); else if (o.userData.hang) { const [lx, lz] = o.userData.hang; hs.push({ o, n: [Math.round(lx * ca + lz * sa), Math.round(-lx * sa + lz * ca)] }); } });
     world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
@@ -3665,7 +3669,7 @@ function dailyWin() { const D = S.daily; if (!D || D.won) return; D.won = true; 
 function dailyHit(v) { const D = S && S.daily; if (D && D.k === 'cure' && !D.won && v.prob === D.p) { D.c++; if (D.c >= D.n) dailyWin(); } }
 function dailyEnd() { const D = S.daily; if (!D || D.won || S.day + 1 < (D.end || 0)) return; if (D.k === 'calm' && !D.fail) dailyWin(); if (D.k === 'vibes' && S.vibes >= D.n) dailyWin(); if (!D.won) D.lost = true; }
 // ---- behaviours: from the 2nd city on, problems start to *play* differently. Each city adds two, and they stay on in later cities. London stays the simple tutorial city.
-const BEH = { nolines: 7, onestar: 7, ahorita: 6, antojo: 6, slowdoom: 1, waves: 1, sleepy: 2, famleave: 2, ghost: 3, nunchi: 3, toxic: 4, saudade: 4, iou: 5, stamps2: 5 };
+const BEH = { nolines: 7, onestar: 7, ahorita: 6, antojo: 6, slowdoom: 1, waves: 1, sleepy: 2, famleave: 2, ghost: 3, nunchi: 3, toxic: 4, saudade: 4, stamps2: 5 }; // ('broke visitors pay tomorrow' removed: it only delayed money)
 const BEH_E = { nolines: '🙅', onestar: '⭐', ahorita: '⏳', antojo: '🌮', temp: '🌡️', slowdoom: '📱', waves: '🚦', sleepy: '💤', famleave: '👨‍👩‍👧', ghost: '👻', nunchi: '👀', toxic: '😤', saudade: '🥹', iou: '🧾', stamps2: '📑' };
 const TRAFFIC = new Set(['goslow', 'train', 'commute', 'honk']), BROKE = new Set(['rent', 'flat', 'subs', 'fuel']), DOOM = new Set(['doom', 'group']);
 const beh = (k) => !window.__noBeh && !!S && S.mode === 'career' && (cityOf().lvl || 0) >= BEH[k];
