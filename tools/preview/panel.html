@@ -26,7 +26,7 @@ async function demo(){const city=q.get('demo')==='1'?'lagos':q.get('demo');$('pv
   if(pr){outer:for(const a of [0,1])for(let z=4;z>=-26;z--)for(let x=-20;x<=20;x++){pr.x=x;pr.z=z;pr.a=a*Math.PI/2;if(d.placeValid(pr)){ok=true;break outer}}}
   if(ok){d.placeShow();d.endPlace(true)}else d.endPlace(false);try{d.closeSheet()}catch(e){}}
  for(const role of ['coach','coach','guide','guide','guide','pharmacist','therapist','researcher','host','maint'])try{d.openHire(role);d.hire(0,role);d.closeSheet()}catch(e){}
- const P=d.PROBLEMS,all=Object.keys(P).filter(k=>!P[k].myst&&!P[k].epi&&(!P[k].city||P[k].city===city));S.known=all.filter(k=>!['lonely','gloom','subs'].includes(k));
+ const P=d.PROBLEMS,all=Object.keys(P).filter(k=>!P[k].myst&&!P[k].epi&&(!P[k].city||P[k].city===city));const built=new Set(d.S.rooms.map(r=>r.type));S.known=all.filter(k=>built.has(P[k].room)&&!['lonely','gloom','subs'].includes(k));S.discAt=null;
  S.cash=42000;S.discAt=null;S.vibes=78;
  const ok=await d.modelsReady(city);d.setSpeed(1);for(let i=0;i<3;i++)d.spawnVisitor();
  const r=d.S.rooms.find(x=>x.type==='budget')||d.S.rooms[0];const v=d.view;v.tx=r.x+3;v.tz=r.z+2;v.half=9;d.placeCam();document.title='Life Crisis Tycoon · démo';window.__demoReady=ok;}
