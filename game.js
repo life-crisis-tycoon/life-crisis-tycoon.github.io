@@ -165,7 +165,7 @@ const DAY_LEN = 90, RENT_EVERY = 7, BILL_K = 2.5, WAGE_K = 2.0, ELEC_K = 1.5, //
 let RENT = 2400;
 const lvlOk = (k) => !PROBLEMS[k].lvl || ((CITIES[(S && S.city) || 'london'] || {}).lvl || 0) >= PROBLEMS[k].lvl;
 const isMystK = (k) => PROBLEMS[k] && PROBLEMS[k].myst && !S.research.done.includes('m_' + k);
-const pn = (k) => (isMystK(k) ? '???' : t('p.' + k)), rn = (k) => t('r.' + k), roleN = (k) => t('role.' + k), trN = (n) => t('t.' + n), dayN = (d) => t('day.n', { d });
+const pn = (k) => (isMystK(k) || isNewK(k) ? '???' : t('p.' + k)), rn = (k) => t('r.' + k), roleN = (k) => t('role.' + k), trN = (n) => t('t.' + n), dayN = (d) => t('day.n', { d });
 
 // ---------------- state ----------------
 let S;
@@ -391,7 +391,7 @@ sty('heatgrump honk', { walk: 'WalkTired', idle: 'IdleHead' }); sty('paperwork',
 sty('boss hustle rent fuel subs flat', { walk: 'WalkQuick', sit: 'SitCross' });
 sty('haircut botoxfomo beauty', { idle: 'IdleMirror', phone: 'IdleMirror' }); sty('lonely ghosted', { walk: 'WalkTired', idle: 'IdleBreath' });
 sty('schoolrun toddler tablet homework sugar', { walk: 'WalkQuick' });
-const styleFor = (prob) => Object.assign({ angry: 'IdleAngry' }, PSTYLE[prob] || {});
+const styleFor = (prob) => { const st = Object.assign({ angry: 'IdleAngry' }, PSTYLE[prob] || {}); delete st.walk; return st; }; // everyone walks normally: the symptom shows only when they stop (waiting, sitting), plus the emoji bubble
 const EXTRA_VIS = ['v16', 'v08', 'v15', 'v22', 'sp_health', 'sp_safety', 'sp_mystery', 'sp_influencer', 'sp_trainer']; // inspector + the "crew"
 function visPerson(key, fb) { if (CHAR.A.full[key]) { const a = person({ vm: key, tall: VIS[key].h / 1.75 }, 'visitor'); if (a.userData.p.glb) return a; } loadFull(key); return person(fb); }
 function preloadVisitors(c) { if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return; for (const k of Object.keys(visPool(c))) loadFull(k); for (const k of EXTRA_VIS.concat(['v25', 'v26', 'v27', 'v28'])) loadFull(k); }
@@ -2752,10 +2752,10 @@ const barBg = new THREE.SpriteMaterial({ color: '#14213D', depthTest: false }), 
 function barMat(c) { return barFg[c] || (barFg[c] = new THREE.SpriteMaterial({ color: c, depthTest: false })); }
 let spawnKid = false, famNext = false; // kids never come alone: they follow a parent (famNext)
 function spawnVisitor(prob, em, vip, look0) {
-  if (!prob && S.ad && S.ad.room && RNG() < 0.5) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].room === S.ad.room && lvlOk(k) && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london'))));
+  if (!prob && S.ad && S.ad.room && RNG() < 0.5) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].room === S.ad.room && lvlOk(k) && !isNewK(k) && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london'))));
   if (!prob && unlocked('lab') && S.mode === 'career' && RNG() < 0.12) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].myst && unlocked(PROBLEMS[k].room)));
   const cityOk = (k) => (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london')) && lvlOk(k);
-  if (!prob) { const pool = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].fam && !PROBLEMS[k].epi && cityOk(k) && unlocked(PROBLEMS[k].room)); const w = pool.map((k) => (hasRoom(PROBLEMS[k].room) ? 3 : 1) * (PROBLEMS[k].city ? (cityOf().sig === k ? 4 : 2) : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); prob = pool[pool.length - 1]; for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) { prob = pool[i]; break; } } }
+  if (!prob) { const pool = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].fam && !PROBLEMS[k].epi && cityOk(k) && unlocked(PROBLEMS[k].room) && !isNewK(k)); const w = pool.map((k) => (hasRoom(PROBLEMS[k].room) ? 3 : 1) * (PROBLEMS[k].city ? (cityOf().sig === k ? 4 : 2) : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); prob = pool[pool.length - 1]; for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) { prob = pool[i]; break; } } }
   const vm = look0 ? null : vip && VIS.sp_influencer ? 'sp_influencer' : pickVis(spawnKid, PROBLEMS[prob] && PROBLEMS[prob].room === 'nap'); // the influencer has her own model
   const look = look0 || { vm, kid: famNext || ['toddler', 'schoolrun', 'tablet', 'homework', 'sugar'].includes(prob) ? pickVis(true) || 'v25' : null, skin: rnd(SKIN), hair: rnd(HAIR), style: rnd(STYLES), shirt: rnd(SHIRTS), pants: rnd(['#3B4A6B', '#2F3A52', '#5E6B3A', '#7A5A3A', '#2A2A2E', '#8A9AB0']), tall: 0.85 + RNG() * 0.35, wide: 0.85 + RNG() * 0.4, glasses: RNG() < 0.25, nose: RNG() < 0.5, shoes: rnd(['#2A2A2E', '#F4EFE6', '#E9785F']) };
   if (look0 && !look0.vm) look0.vm = pickVis(false, PROBLEMS[prob] && PROBLEMS[prob].room === 'nap'); // visitors from older saves
@@ -3045,7 +3045,7 @@ function ixEnd(v) { // session over (cured, or the carer left): everything back 
   const kid = v.gag && v.gag.userData.kid; if (kid) { ixHold(kid, X.kp, null); const k = kid.userData; k.ix = null; k.goal = null; k.wp = null; kid.quaternion.identity(); if (k.home) kid.position.copy(k.home); if (k.blocks) k.blocks.visible = false; if (k.cush) k.cush.visible = false; ixKidAnim(kid, 'idle'); }
 }
 function finishCheckin(v, quiet) {
-  v.known = true; probSeen(v.prob); v.icon.material = iconTex(isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e); for (const q of R.deskQs) { const qi = q.indexOf(v); if (qi >= 0) q.splice(qi, 1); }
+  v.known = true; if (!v.diag) probSeen(v.prob); v.icon.material = iconTex(isMystK(v.prob) || v.diag ? '❓' : PROBLEMS[v.prob].e); for (const q of R.deskQs) { const qi = q.indexOf(v); if (qi >= 0) q.splice(qi, 1); }
   if (!quiet && isMystK(v.prob)) { S.mystSeen = S.mystSeen || []; if (!S.mystSeen.includes(v.prob)) { S.mystSeen.push(v.prob); chat(t('research.title'), t('myst.chat'), '❓'); } }
   if (!quiet && cafeOpen()) { const tip = done('oat') ? 12 : 8; S.cash += tip; S.earned += tip; v.spent = (v.spent || 0) + tip; }
   v.target = pickRoomFor(v); seatVisitor(v);
@@ -3109,7 +3109,7 @@ function seatVisitor(v) {
 }
 // a wait told in the game's own time (a day lasts DAY_LEN seconds), not in real minutes
 function gameDur(sec) { const h = sec / DAY_LEN * 24; if (h < 1.5) return t('dur.h1'); if (h < 23.5) return t('dur.h', { n: Math.round(h) }); const d = Math.round(h / 24); return d <= 1 ? t('dur.d1') : t('dur.d', { n: d }); }
-const needOf = (v) => (isMystK(v.prob) ? null : PROBLEMS[v.prob].room);
+const needOf = (v) => (v.diag ? 'therapy' : isMystK(v.prob) ? null : PROBLEMS[v.prob].room);
 function roomQ(id) { return R.visitors.filter((v) => v.target === id && (v.state === 'wait' || v.state === 'toWait')); }
 function pickRoomFor(v) { const need = needOf(v); if (!need) return null; const rs = Object.values(R.rooms).filter((r) => r.type === need); if (!rs.length) return null; rs.sort((a, b) => (roomQ(a.id).length - a.spots.length) - (roomQ(b.id).length - b.spots.length)); return rs[0].id; }
 function roomNo(room) { const same = S.rooms.filter((r) => r.type === room.type); return same.length > 1 ? ' #' + (same.findIndex((r) => r.id === room.id) + 1) : ''; }
@@ -3231,7 +3231,54 @@ const UNLOCK = { pharmacy: 1, pharmacist: 1, glowup: 2, career: 1, social: 1, pa
 const localRoom = (k) => Object.values(PROBLEMS).some((p) => p.city && p.city === (S.city || 'london') && p.room === k);
 // London is the simple first city: no Innovation Lab / research (and so no mystery cases) — they start in Lagos. A London save that already built a lab keeps it.
 const noResearch = () => !!(S && S.mode === 'career' && (S.city || 'london') === 'london' && !(S.rooms || []).some((r) => r.type === 'lab'));
-const unlocked = (k) => (k === 'training' || k === 'trainer') ? epiCity() : !S || S.mode !== 'career' || ((k === 'lab' || k === 'researcher') && noResearch() ? false : localRoom(k) || (UNLOCK[k] || 0) <= S.stars);
+const unlockedOld = (k) => (k === 'training' || k === 'trainer') ? epiCity() : !S || S.mode !== 'career' || ((k === 'lab' || k === 'researcher') && noResearch() ? false : localRoom(k) || (UNLOCK[k] || 0) <= S.stars);
+// Discovery (every city after the London tutorial): ailments are found one by one through the talk room, and the care rooms they need are developed in the lab.
+// Stars no longer open rooms there. S.known = ailments found, S.dev = rooms developed.
+const DEV_ROOMS = { social: [300, 1500], parent: [360, 2000], career: [400, 2500], moving: [400, 2500], glowup: [440, 3000] }; // research points, cash
+const FREE_ROLES = ['pharmacy', 'pharmacist', 'therapy', 'therapist', 'lab', 'researcher'];
+const NEWP = () => !!(S && S.mode === 'career' && (S.city || 'london') !== 'london' && Array.isArray(S.known));
+const isNewK = (k) => NEWP() && !S.known.includes(k);
+const STARTER_KNOWN = ['rent', 'burn', 'doom', 'tummy', 'headache']; // what every centre already knows how to treat on day one
+const discCand = () => Object.keys(PROBLEMS).filter((k) => isNewK(k) && !PROBLEMS[k].myst && !PROBLEMS[k].epi && !PROBLEMS[k].fam && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london')) && lvlOk(k));
+function knowInit() { // once per save, on load: a new career starts from the starter list; an older save keeps everything it could already treat
+  if (!S || S.mode !== 'career' || (S.city || 'london') === 'london' || Array.isArray(S.known)) return;
+  const fresh = (S.served || 0) === 0 && (S.day || 1) <= 1 && !(S.rooms || []).some((r) => DEV_ROOMS[r.type]), city = S.city;
+  S.known = fresh ? STARTER_KNOWN.concat(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].city === city && ROOMS[PROBLEMS[k].room] && ROOMS[PROBLEMS[k].room].city === city))
+    : Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && (!PROBLEMS[k].city || PROBLEMS[k].city === city) && lvlOk(k) && unlockedOld(PROBLEMS[k].room));
+  S.dev = fresh ? [] : Object.keys(DEV_ROOMS).filter((k) => unlockedOld(k) || (S.rooms || []).some((r) => r.type === k));
+  S.discAt = nowAbs() + DAY_LEN * (fresh ? 1.2 : 2);
+}
+const devPts = (k) => Math.round(DEV_ROOMS[k][0] * (1 + 0.1 * (cityOf().lvl || 0))), devCost = (k) => Math.round(DEV_ROOMS[k][1] * (1 + 0.1 * (cityOf().lvl || 0)) / 50) * 50;
+const devFor = (k) => (S.known || []).filter((q) => PROBLEMS[q] && PROBLEMS[q].room === k);
+const devWanted = (k) => NEWP() && !(S.dev || []).includes(k) && devFor(k).length > 0;
+for (const k of Object.keys(DEV_ROOMS)) PROJECTS['d_' + k] = { get cost() { return devPts(k); }, e: '🧪', dev: k };
+// every 2 to 3 days a client comes in with something nobody here has seen yet: the talk room finds out what it is
+function discTick() {
+  if (!NEWP() || S.tut >= 0) return; if (S.discAt == null) S.discAt = nowAbs() + DAY_LEN * 2;
+  if (nowAbs() < S.discAt || R.visitors.some((v) => v.diag)) return;
+  const c = discCand(); if (!c.length) { S.discAt = nowAbs() + DAY_LEN * 3; return; }
+  const easy = c.filter((k) => hasRoom(PROBLEMS[k].room)), k = easy.length && RNG() < 0.6 ? rnd(easy) : rnd(c); // more often one your rooms can already treat
+  const n = R.visitors.length; spawnVisitor(k); const v = R.visitors[n]; if (v && v.prob === k) v.diag = true;
+  S.discAt = nowAbs() + DAY_LEN * (2 + RNG());
+}
+function diagDone(v, room) {
+  const k = v.prob, r = PROBLEMS[k].room; v.diag = false;
+  if (!S.known.includes(k)) { S.known.push(k); if (r === 'parent') for (const q of Object.keys(PROBLEMS)) if (PROBLEMS[q].fam && !S.known.includes(q)) S.known.push(q); }
+  const fee = Math.round(PROBLEMS[k].fee * 0.5 * (S.price || 1)); S.cash += fee; S.earned += fee; roomEarn(room.id, fee); floatAt(v.av.position, '🔎 +' + money(fee)); AU.sfx('cash');
+  ixEnd(v); if (v.rspot) v.rspot.busy = null; v.rspot = null; v.room = null; v.target = null; v.prog = 0; v.icon.material = iconTex(PROBLEMS[k].e);
+  const has = hasRoom(r), st = has ? t('disc.have', { room: rn(r) }) : unlocked(r) ? t('disc.build', { room: rn(r) }) : t('disc.dev', { room: rn(r) });
+  toast('🔎 ' + t('disc.title') + ' : ' + PROBLEMS[k].e + ' ' + t('p.' + k), 4000); probSeen(k); if (S.pQ) { S.pQ = S.pQ.filter((q) => q !== k); S.pQ.unshift(k); } piCool = Math.min(piCool, 1); /* its card (what it is, where it's treated) comes up right away */ chat(t('disc.title'), PROBLEMS[k].e + ' <b>' + t('p.' + k) + '</b>. ' + st, '🔎'); save();
+  if (has) { v.target = pickRoomFor(v); seatVisitor(v); } else { v.icon.material = iconTex('😕'); setPath(v, exitPath(v)); v.state = 'exit'; } // nowhere to treat it yet: they go home, no review
+}
+function devDone(k) { S.dev = S.dev || []; if (!S.dev.includes(k)) S.dev.push(k); toast('🧪 ' + t('rp.devDone', { room: rn(k) }), 4000); chat(t('research.title'), t('rp.devDone', { room: rn(k) }), ROOMS[k].e); save(); }
+function bookHtml() { // the casebook: what has been found here, and how much is still unknown
+  if (!NEWP()) return ''; const city = S.city || 'london', all = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && (!PROBLEMS[k].city || PROBLEMS[k].city === city) && lvlOk(k)), kn = all.filter((k) => S.known.includes(k));
+  const byRoom = {}; for (const k of kn) (byRoom[PROBLEMS[k].room] = byRoom[PROBLEMS[k].room] || []).push(k);
+  return `<details class="w" style="border-radius:14px;padding:10px 12px;margin-bottom:10px"><summary style="font-weight:800;cursor:pointer">📖 ${t('book.title')} · ${t('book.n', { a: kn.length, b: all.length })}</summary>` +
+    Object.entries(byRoom).map(([r, ks]) => `<div style="margin-top:6px;font-size:13px"><b>${ROOMS[r].e} ${rn(r)}</b>${hasRoom(r) ? '' : unlocked(r) ? ' · ' + t('disc.toBuild') : ' · ' + t('disc.toDev')}<div>${ks.map((q) => PROBLEMS[q].e + ' ' + t('p.' + q)).join(' · ')}</div></div>`).join('') +
+    `<div style="margin-top:6px;font-size:13px;color:#6B6480">${'❓ '.repeat(Math.min(12, all.length - kn.length))}${all.length - kn.length > 0 ? t('book.left', { n: all.length - kn.length }) : ''}</div></details>`;
+}
+const unlocked = (k) => { if (NEWP()) { if (DEV_ROOMS[k]) return (S.dev || []).includes(k); if (FREE_ROLES.includes(k)) return true; } return unlockedOld(k); };
 const done = (k) => S.research.done.includes(k);
 // ================= Training room + epidemics (career mode, from Mumbai) =================
 // The 🎓 sanitary course (2 full days, paid): after day 1 the risk is halved, after day 2 the person is immune for good (in this city's save).
@@ -3663,7 +3710,7 @@ function visitorUpdate(v, dt) {
     case 'cafe': {
       v.prog += dt / 3;
       if (v.prog >= 1) { const spend = Math.round((7 + RNG() * 6) * (S.price || 1) * (done('oat') ? 1.2 : 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.25); incCnt('matcha'); { const cr = roomOfSpot(v.lspot); if (cr) { roomEarn(cr.id, spend); addDirt(cr, 0.03); } } if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 1, null, 0.5);
-        AU.sfx('cash'); floatAt(v.av.position, '🍵 +' + money(spend)); holdCup(v.av, false); v.lspot.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
+        AU.sfx('cash'); floatAt(v.av.position, '🍵 +' + money(spend)); holdCup(v.av, false); v.lspot.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) || v.diag ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
         const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
@@ -3676,14 +3723,14 @@ function visitorUpdate(v, dt) {
       if (v.prog >= 1) {
         if (A.k === 'vending') { const spend = Math.round((4 + RNG() * 5) * (S.price || 1)); S.cash += spend; S.earned += spend; v.spent = (v.spent || 0) + spend; v.pat = Math.min(1, v.pat + 0.15); incCnt('snack'); if (notLondon() && RNG() < ((S.temp || 21) > 27 || (S.ev && S.ev.k === 'heat') ? 0.14 : 0.07)) dropMark(v.av.position.x + 0.3, v.av.position.z + 0.2, 2, null, 0.55); AU.sfx('cash'); floatAt(v.av.position, '🥤 +' + money(spend)); }
         else { v.pat = Math.min(1, v.pat + 0.4); vb('decor', 0 + 0.3); floatAt(v.av.position, '💆'); }
-        A.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
+        A.busy = null; v.lspot = null; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) || v.diag ? '❓' : PROBLEMS[v.prob].e) : '🛎️');
         const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
         spot.busy = v; v.spot = spot; setPath(v, findPath(v.av.position, spot)); v.state = 'toWait'; }
       break; }
     case 'loo': {
       v.prog += dt / 3.5;
       if (v.prog >= 1) { { const lr = roomOfSpot(v.lspot); if (lr) { if ((lr.def.dirt || 0) >= 0.7) { v.pat = Math.max(0.05, v.pat - 0.12); logComplaint('dirty'); floatAt(v.av.position, '🤢'); } addDirt(lr, 0.1); } }
-        const lroom = roomOfSpot(v.lspot); v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) ? '❓' : PROBLEMS[v.prob].e) : '🛎️'); AU.sfx('flush', hearVol(v.av.position));
+        const lroom = roomOfSpot(v.lspot); v.lspot.busy = null; v.lspot = null; v.need = 0; v.urgent = false; v.prog = 0; v.icon.material = iconTex(v.known ? (isMystK(v.prob) || v.diag ? '❓' : PROBLEMS[v.prob].e) : '🛎️'); AU.sfx('flush', hearVol(v.av.position));
         const ws = lroom && lroom.wash && lroom.wash.filter((w) => !w.busy).sort((a, b) => Math.hypot(a.x - v.av.position.x, a.z - v.av.position.z) - Math.hypot(b.x - v.av.position.x, b.z - v.av.position.z))[0];
         if (ws) { ws.busy = v; v.wspot = ws; v.wroom = lroom; setPath(v, findPath(v.av.position, ws)); v.state = 'toWash'; break; } // hands are washed before leaving
         const spot = waitSpotFor(v) || { x: 2 + Math.random() * 3, z: 7.2 + Math.random(), rot: Math.PI, sit: false, y: 0 };
@@ -3749,6 +3796,7 @@ function visitorUpdate(v, dt) {
       if (room.closed || (S.ev && S.ev.k === 'power' && (!S.ev.gen || S.ev.off.includes(room.id))) || S.quake) break;
       v.prog += dirtF(room) * dt / (ROOMS[room.type].time / (0.7 + st.data.skill * 0.12) / traitVal(st.data, 'speed') / roomSpeed(room.type) / sizeSpd(room) / incSpd(room) / boost() / energyF(st) / evSlow(room.type) * mgrRoomF(room.id) * (inAura(st.av.position) ? 1.15 : 1));
       ixTick(v, st, room, dt);
+      if (v.prog >= 1 && v.diag) { diagDone(v, room); break; }
       if (v.prog >= 1) {
         const pr = (S.price || 1) * (cityOf().hustle ? 1.1 : 1) * (isNight() ? 1.15 : 1), fee = Math.round(PROBLEMS[v.prob].fee * 1.3 * (0.7 + S.vibes / 200) * pr);
         const twoVisit = beh('stamps2') && v.prob === 'paperwork', gain = Math.round(fee * (v.vip ? 2 : 1) * (twoVisit ? 0.5 : 1)), iou = beh('iou') && BROKE.has(v.prob);
@@ -3823,7 +3871,7 @@ function leave(v, quiet) {
   if (!quiet) {
     logComplaint(complaintOf(v));
     if (S.daily && S.daily.k === 'calm' && !S.daily.won && ++S.daily.bad > 4) S.daily.fail = true;
-    S.left++; outcome(false); AU.sfx('bad'); vb('left', 0 - (v.known && !isMystK(v.prob) && !hasRoom(PROBLEMS[v.prob].room) ? 0.8 : PROBLEMS[v.prob].care ? 2.5 : 1.8) - (v.vip ? 10 : 0)); // balanced so ~65 % success holds vibes steady; above that they climb if (v.vip) { chat('🤳 ' + v.name, t('vip.roast'), '💀'); toast('👑 ' + t('vip.roast'), 3200); } floatAt(v.av.position, t('v.lost'), true);
+    S.left++; outcome(false); AU.sfx('bad'); vb('left', 0 - (v.known && !isMystK(v.prob) && !hasRoom(PROBLEMS[v.prob].room) ? 0.8 : PROBLEMS[v.prob].care ? 2.5 : 1.8) - (v.vip ? 10 : 0)); /* balanced so ~65 % success holds vibes steady; above that they climb */ if (v.vip) { chat('🤳 ' + v.name, t('vip.roast'), '💀'); toast('👑 ' + t('vip.roast'), 3200); } floatAt(v.av.position, t('v.lost'), true);
     if (v.known && !hasRoom(PROBLEMS[v.prob].room)) tip('noRoom');
     const need = v.known ? PROBLEMS[v.prob].room : null;
     if (v.noLoo || Math.random() < 0.3) chat(t('from.review') + ' · ' + v.name + ', ' + v.age, v.noLoo ? t('rev.noLoo') : v.known && isMystK(v.prob) ? t('rev.myst') : need && !hasRoom(need) ? t('rev.noRoom', { room: rn(need) }) : crnd(tList('rev.bad')), '😤');
@@ -4011,8 +4059,9 @@ function emRoomsHtml(E) {
   return `<p style="margin:8px 0 2px;font-weight:800">${t('em.rooms')}</p><div style="line-height:1.4">${need.map(chip).join('')}</div>${maybe ? `<p style="font-size:14px;opacity:.8;margin-top:4px">${t('em.maybe')}</p>` : ''}`;
 }
 // what a care room treats in this city, at this point of the career (so new and local ailments show up in the build menu)
-function treatList(k) { const c = S.city || 'london', ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && !PROBLEMS[p].epi && (!PROBLEMS[p].city || PROBLEMS[p].city === c) && lvlOk(p));
-  return ps.length ? t('build.soigne', { list: ps.map((p) => t('p.' + p)).join(', ') }) : ''; }
+function treatList(k) { const c = S.city || 'london', ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && !PROBLEMS[p].epi && (!PROBLEMS[p].city || PROBLEMS[p].city === c) && lvlOk(p) && !isNewK(p));
+  const diag = k === 'therapy' && NEWP() ? t('disc.diagRoom') + (ps.length ? ' · ' : '') : '';
+  return ps.length || diag ? diag + (ps.length ? t('build.soigne', { list: ps.map((p) => t('p.' + p)).join(', ') }) : '') : ''; }
 function offerEmergency() {
   tip('em');
   const city = S.city || 'london';
@@ -4034,7 +4083,7 @@ function emergencyUpdate(dt) {
   const E = S.em; if (!E) return;
   E.t -= dt; E.spawnT -= dt;
   if (E.left > 0 && E.spawnT <= 0) { E.spawnT = E.gap || 3; E.left--; const D = EMERGENCIES[E.k];
-    const ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && (!PROBLEMS[pk].city || PROBLEMS[pk].city === (S.city || 'london')) && lvlOk(pk);
+    const ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && !isNewK(pk) && (!PROBLEMS[pk].city || PROBLEMS[pk].city === (S.city || 'london')) && lvlOk(pk);
     let pool = D.probs; if (D.mix) { const b = (D.bias || []).filter(ok); pool = b.length && RNG() < 0.6 ? b : Object.keys(PROBLEMS).filter(ok);
       if (D.stars && RNG() < 0.2) { const city = S.city || 'london', miss = Object.keys(PROBLEMS).filter((pk) => PROBLEMS[pk].room && ROOMS[PROBLEMS[pk].room] && !hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && !PROBLEMS[pk].myst && (!PROBLEMS[pk].city || PROBLEMS[pk].city === city) && lvlOk(pk) && unlocked(PROBLEMS[pk].room)); if (miss.length) pool = miss; } } // ~20 % come with a problem you have no room for
     spawnVisitor(rnd(pool.length ? pool : ['hustle']), true); }
@@ -4046,21 +4095,26 @@ function emergencyUpdate(dt) {
 function researchUpdate(dt) {
   const A = S.research.active; if (!A) return;
   let rate = 0;
-  for (const rs of R.staff) if (rs.data.role === 'researcher' && R.rooms[rs.at] && R.rooms[rs.at].type === 'lab' && rs.mode === 'there') rate += energyF(rs) * 0.5 + rs.data.skill * 0.35 * traitVal(rs.data, 'speed');
+  for (const rs of R.staff) if (rs.data.role === 'researcher' && R.rooms[rs.at] && R.rooms[rs.at].type === 'lab' && rs.mode === 'there') rate += (0.5 + rs.data.skill * 0.35 * traitVal(rs.data, 'speed')) * energyF(rs); // a tired researcher is slower all round (and the staff room's breaks keep them fresh)
   S.research.pts += rate * boost() * dt;
-  if (S.research.pts >= PROJECTS[A].cost) { S.research.done.push(A); S.research.active = null; S.research.pts = 0; const nm = PROJECTS[A].myst ? t('p.' + PROJECTS[A].myst) : t('rp.' + A); toast(t('research.complete', { name: nm }), 3500); chat(t('research.title'), t('research.complete', { name: nm }), '🔬'); if (PROJECTS[A].myst) for (const v of R.visitors) if (v.known && v.prob === PROJECTS[A].myst) v.icon.material = iconTex(PROBLEMS[v.prob].e); }
+  if (S.research.pts >= PROJECTS[A].cost) { S.research.done.push(A); S.research.active = null; S.research.pts = 0; if (PROJECTS[A].dev) { devDone(PROJECTS[A].dev); return; } const nm = PROJECTS[A].myst ? t('p.' + PROJECTS[A].myst) : t('rp.' + A); toast(t('research.complete', { name: nm }), 3500); chat(t('research.title'), t('research.complete', { name: nm }), '🔬'); if (PROJECTS[A].myst) for (const v of R.visitors) if (v.known && v.prob === PROJECTS[A].myst) v.icon.material = iconTex(PROBLEMS[v.prob].e); }
 }
 function openResearch() {
   const hasLab = hasRoom('lab') && R.staff.some((rs) => rs.data.role === 'researcher');
   let h = `<h2>${t('research.title')}</h2><p class="sub">${hasLab ? '' : t('research.needLab')}</p>`;
-  for (const [k, P] of Object.entries(PROJECTS).sort((a, b) => (b[1].myst && !done(b[0]) ? 1 : 0) - (a[1].myst && !done(a[0]) ? 1 : 0))) {
+  h += bookHtml();
+  for (const [k, P] of Object.entries(PROJECTS).sort((a, b) => (b[1].dev && !done(b[0]) ? 2 : b[1].myst && !done(b[0]) ? 1 : 0) - (a[1].dev && !done(a[0]) ? 2 : a[1].myst && !done(a[0]) ? 1 : 0))) {
     if (P.myst && !(S.mystSeen || []).includes(P.myst)) continue;
+    if (P.dev) { if (!NEWP() || !devWanted(P.dev)) continue; const act = S.research.active === k, paid = (S.devPaid || {})[k], cost = devCost(P.dev);
+      h += `<div class="opt w" style="border-color:#7F68C9"><div class="oi" style="background:#EEE8FB">${ROOMS[P.dev].e}</div><div class="ot"><b>${t('rp.dev', { room: rn(P.dev) })}</b><div>${t('rp.devD', { list: devFor(P.dev).map((q) => t('p.' + q)).join(', ') })}</div><div>${t('research.points', { p: act ? Math.floor(S.research.pts) : 0, n: P.cost })}${paid ? '' : ' · ' + money(cost)}</div></div><button class="btn ${act ? 'y' : 'g'}" data-res="${k}" ${!hasLab || act || (!paid && S.cash < cost) ? 'disabled' : ''}>${t('research.start')}</button></div>`; continue; }
     const isDone = done(k), act = S.research.active === k;
     const prog = act ? (k === 'rent' ? '0%' : t('research.points', { p: Math.floor(S.research.pts), n: P.cost })) : '';
     h += `<div class="opt w"><div class="oi" style="background:#E3ECF5">${P.e}</div><div class="ot"><b>${P.myst ? (isDone ? t('rp.mystDone', { name: t('p.' + P.myst) }) : t('rp.myst')) : t('rp.' + k)}</b><div>${P.myst ? t('rp.mystD', { room: rn(PROBLEMS[P.myst].room) }) : t('rp.' + k + '.d')}</div>${act ? `<div style="color:var(--blue)">${t('research.active')} · ${prog}</div>` : ''}</div>${isDone ? `<span class="tr good">${t('research.done')}</span>` : `<button class="btn ${act ? 'y' : 'g'}" data-res="${k}" ${!hasLab || act ? 'disabled' : ''}>${t('research.start')}</button>`}</div>`;
   }
   openSheet(h);
-  $('sheet').querySelectorAll('[data-res]').forEach((b) => b.onclick = () => { S.research.active = b.dataset.res; S.research.pts = 0; openResearch(); });
+  $('sheet').querySelectorAll('[data-res]').forEach((b) => b.onclick = () => { const k = b.dataset.res, P = PROJECTS[k];
+    if (P.dev && !(S.devPaid || {})[k]) { const c = devCost(P.dev); if (S.cash < c) { toast(t('build.noCash')); return; } S.cash -= c; (S.devPaid = S.devPaid || {})[k] = 1; } // a room's development is paid once, even if research switches away and back
+    S.research.active = k; S.research.pts = 0; openResearch(); });
 }
 
 // ---------------- UI helpers ----------------
@@ -4154,7 +4208,7 @@ function openBuild() {
   const treats = (k) => { const ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && !PROBLEMS[p].epi && (!PROBLEMS[p].city || PROBLEMS[p].city === (S.city || 'london')) && lvlOk(p)); return ps.length ? `<div style="font-size:12px;color:#2D3748;margin-top:2px"><b>${t('build.treats')}</b> ${ps.map((p) => PROBLEMS[p].e + ' ' + t('p.' + p)).join(' · ')}</div>` : ''; };
   const nOwn = (k) => S.rooms.filter((r) => r.type === k).length;
   const roomRow = (k, r) => { const ok = unlocked(k);
-    return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b>${ok && nOwn(k) ? ` <span class="own" style="background:#E7EEF7;color:#2D3748;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800;white-space:nowrap">${t('build.have', { n: nOwn(k) })}</span>` : ''}<div>${treatList(k) || t('r.' + k + '.d')}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : t('lock.at', { n: UNLOCK[k] })}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
+    return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b>${ok && nOwn(k) ? ` <span class="own" style="background:#E7EEF7;color:#2D3748;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800;white-space:nowrap">${t('build.have', { n: nOwn(k) })}</span>` : ''}<div>${treatList(k) || (NEWP() ? t('build.soigne', { list: '???' }) : t('r.' + k + '.d'))}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : (NEWP() && DEV_ROOMS[k] ? '🧪 ' + t('disc.toDev') : t('lock.at', { n: UNLOCK[k] }))}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
   h += hdr('desk') + `<div class="opt w"><div class="oi" style="background:#FFF3C4">➕</div><div class="ot"><b>${t('desk2.title')}</b><div>${t('desk2.D', { n: (S.desks2 || []).length + 2 })}</div></div><button class="btn g" id="bDesk2">${money(DESK_COST)}</button></div>`;
   for (const c of ['care', 'comfort', 'staff']) {
     const ks = Object.entries(ROOMS).filter(([k, r]) => (!r.city || r.city === (S.city || 'london')) && !(r.train && !epiCity()) && cat(k) === c).sort(([a], [b]) => unlocked(b) - unlocked(a)); if (!ks.length) continue; // what you can build right now first, locked rooms after
@@ -4646,7 +4700,7 @@ function dayTick(dt) {
       if (hot.length) { hot.sort((a, b) => (b.em ? 2 : 0) + (b.vip ? 1 : 0) - (a.em ? 2 : 0) - (a.vip ? 1 : 0) || a.pat - b.pat); const v = hot[0]; for (const u of hot) u.asked = true; S.askWaitT = now;
         chat(t('from.review') + ' · ' + v.name + ', ' + v.age, hot.length > 1 ? t('ct.w.many', { n: hot.length, who: v.name }) : t('ct.w.one'), '⏳', { act: { k: 'wait', id: v.id } }); } } } // every few seconds: an idle carer moves to a busier room of their speciality
   if (S.inspectAt > 0 && S.t >= S.inspectAt && !R.inspector) { S.inspectAt = -1; spawnInspector(); }
-  if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && hasRoom(PROBLEMS[k].room) && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london')) && lvlOk(k)); /* a VIP only brings a problem of this city */ if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
+  if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && hasRoom(PROBLEMS[k].room) && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london')) && lvlOk(k) && !isNewK(k)); /* a VIP only brings a problem of this city */ if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
   if (S.crewAt > 0 && S.t >= S.crewAt && !modalPaused) { S.crewAt = -1; crewVisit(); }
   if (S.evAt > 0 && S.t >= S.evAt && !S.ev && !modalPaused) { S.evAt = -1; startEvent(); }
   if (S.raiseAt > 0 && S.t >= S.raiseAt && !modalPaused) { S.raiseAt = -1; raiseRequest(); }
@@ -4726,7 +4780,7 @@ function checkGoals() {
 }
 const UNL_TIPS = { pharmacy: ['unlBuild', 'nBuild'], glowup: ['unlBuild', 'nBuild'], social: ['unlBuild', 'nBuild'], parent: ['unlBuild', 'nBuild'], therapy: ['unlBuild', 'nBuild'], moving: ['unlBuild', 'nBuild'], career: ['unlBuild', 'nBuild'], maint: ['unlStaff', 'nStaff'], lab: ['unlBuild', 'nBuild'], annex: ['unlAnnex', null] };
 function showUnlocks(from, to) {
-  const items = Object.keys(UNLOCK).filter((k) => UNLOCK[k] > from && UNLOCK[k] <= to && t('unl.' + k) !== 'unl.' + k);
+  const items = Object.keys(UNLOCK).filter((k) => UNLOCK[k] > from && UNLOCK[k] <= to && t('unl.' + k) !== 'unl.' + k && !(NEWP() && (DEV_ROOMS[k] || FREE_ROLES.includes(k)))); // with discovery, stars open no rooms
   if (!items.length) return;
   modal(`<div style="font-size:46px">🎉</div><h2>${t('unl.title')}</h2><p>${t('unl.p')}</p>${items.map((k) => `<div class="msg" style="text-align:left">${t('unl.' + k)}</div>`).join('')}<button class="btn g" id="mOk" style="width:100%">${t('unl.ok')}</button>`);
   $('mOk').onclick = () => { closeModal(); const seen = new Set(); for (const k of items) { const [tk, tg] = UNL_TIPS[k]; if (!seen.has(tk)) { seen.add(tk); tip(tk, tg, true); } } };
@@ -4805,7 +4859,7 @@ function step(dt, now = performance.now(), rdt = dt) {
     if (rs.data.role === 'maint' && !rs.onBreak && rs.at !== 'train' && rs.at !== 'heal') maintUpdate(rs, dt);
   }
   doorsUpdate(dt); staffCover(dt); mgrUpdate(dt); if (S.pepT > 0) S.pepT -= dt; if (S.pepCd > 0) S.pepCd -= dt;
-  pestUpdate(dt); vibeTick(dt); marksTick(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); decorUpdate(dt); checkGoals(); epiTick(dt);
+  pestUpdate(dt); vibeTick(dt); marksTick(dt); inspectorUpdate(dt); emergencyUpdate(dt); researchUpdate(dt); eventUpdate(dt); incTick(dt); discTick(); decorUpdate(dt); checkGoals(); epiTick(dt);
   saveT += rdt; if (saveT > 3) { saveT = 0; save(); }
 }
 const fpsW = { t: 0, n: 0, sum: 0, done: false };
@@ -5623,6 +5677,7 @@ function startGame() {
   if (!S.mod2) { S.mod2 = 1; for (const r of S.rooms) { if (Math.abs(((r.x - 0.5) % 1)) < 1e-6 && Math.abs(((r.z - 0.5) % 1)) < 1e-6) continue; // old saves: move rooms onto the 2 m lattice
     let done = false; for (const dx of [0.5, -0.5, 0]) { for (const dz of [0.5, -0.5, 0]) { const tr = { ...r, x: snapC(r.x + dx), z: snapC(r.z + dz), edit: r }; if (placeValid(tr)) { r.x = tr.x; r.z = tr.z; done = true; break; } } if (done) break; } } }
   { const bad = S.rooms.filter((r) => { const q = roomRect(r); for (let x = q.x0 + 0.25; x < q.x1; x += 0.5) for (let z = q.z0 + 0.25; z < q.z1; z += 0.5) if (!buildable(x, z)) return true; return false; }); if (bad.length) { for (const r of bad) S.cash += roomCost(r.type, r.size); S.rooms = S.rooms.filter((r) => !bad.includes(r)); rebuildGrid(); setTimeout(() => toast(t('plot.refund', { n: bad.length })), 800); } }
+  knowInit();
   { const big = S.rooms.filter((r) => r.size === 'l'); if (big.length) { let m = 0; for (const r of big) { m += Math.max(0, roomCost(r.type, 'l') - roomCost(r.type, 'm')); r.size = 'm'; } S.cash += m; // large rooms are out of the game: each becomes a regular room in the same place, the price difference refunded
     setTimeout(() => toast('📐 ' + t('sz.lGone', { n: big.length, m: money(m) }), 4500), 1800); } }
   { const n = (S.decor || []).filter((d) => d.k === 'massage').length; if (n) { S.decor = S.decor.filter((d) => d.k !== 'massage'); const pr = profile(); pr.kudos = (pr.kudos || 0) + 15 * n; try { localStorage.setItem('ahq_profile', JSON.stringify(pr)); } catch (e) {} // massage chairs are out of the game: their kudos come back
