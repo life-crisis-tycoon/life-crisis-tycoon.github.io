@@ -885,7 +885,7 @@ function propModel(name) {
 }
 // room architecture kit, modelled once in Blender (tools/blender/room_kit.py): wall layers, crown, skirting, plinth, rounded corners,
 // arched door frame, window. Loaded before the first room is built; every chunky room is assembled from it (falls back to code walls)
-const KIT_C = { rim: '#E3AD89', trim: '#FBF5EA', plinth: '#F2E7D5', glass: '#A8CFEF' };
+const KIT_C = { rim: '#E3AD89', trim: '#FBF5EA', plinth: '#8E9AA9', glass: '#A8CFEF' }; /* plinth: the façade's dark skirting under its grey-blue dado */
 let RKIT = null;
 try { const gl = await propModel('room_kit'); RKIT = {}; const sc = gl.scene || gl; sc.updateMatrixWorld(true); sc.traverse((o) => { if (o.isMesh) { const g2 = o.geometry.clone(); g2.applyMatrix4(o.matrixWorld); RKIT[o.name] = g2; } }); if (!RKIT.k_wall_in) RKIT = null; } catch (e) { console.warn('[room kit]', e); RKIT = null; }
 const KIT_PO = {};
@@ -902,13 +902,14 @@ function roomPO(r) {
 }
 /* polish (preview): walls in two tones like a real interior: a darker dado up to 40 % of the wall, a white moulding, the light paint above.
    Drawn in the wall's own shader from its local height (kit walls run 0..1), so it follows the cutaway and costs nothing. */
-const TT_CUT = 0.4, FAC_HI = '#F4EEE3', FAC_LO = '#AEB8C4', TT_MOLD = new THREE.Color('#FBF8F2');
+const TT_CUT = 0.95, FAC_HI = '#F4EEE3', FAC_LO = '#A9B5C3', TT_MOLD = new THREE.Color('#FBF8F2'); /* dado top in metres above the ground: a wall cut down to hip height still reads as a panelled wall */
 const darkHex = (hex, f) => { const c = new THREE.Color(hex); c.offsetHSL(0, 0, -f); return '#' + c.getHexString(); };
+const lowOf = (wall, base) => { const a = {}, b = {}; new THREE.Color(wall).getHSL(a); if (base) new THREE.Color(base).getHSL(b); return base && a.l - b.l >= 0.1 ? base : darkHex(wall, 0.15); }; /* the dado always clearly darker than the paint */
 function ttMat(c, low, r = 0.95) { const k = 'tt|' + c + '|' + low + '|' + r; if (MC[k]) return MC[k]; const m = mat(c, { r }).clone(), lowC = new THREE.Color(low);
   m.onBeforeCompile = (sh) => { sh.uniforms.uLow = { value: lowC }; sh.uniforms.uMold = { value: TT_MOLD }; sh.uniforms.uCut = { value: TT_CUT };
-    sh.vertexShader = 'varying float vLY;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vLY = position.y;');
-    sh.fragmentShader = 'varying float vLY;\nuniform vec3 uLow;\nuniform vec3 uMold;\nuniform float uCut;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = vLY < uCut ? uLow : (vLY < uCut + 0.03 ? uMold : diffuseColor.rgb);'); };
-  m.customProgramCacheKey = () => 'tt2'; return (MC[k] = m); }
+    sh.vertexShader = 'varying float vLY;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vLY = (modelMatrix * vec4(transformed, 1.0)).y;');
+    sh.fragmentShader = 'varying float vLY;\nuniform vec3 uLow;\nuniform vec3 uMold;\nuniform float uCut;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = vLY < uCut ? uLow : (vLY < uCut + 0.07 ? uMold : diffuseColor.rgb);'); };
+  m.customProgramCacheKey = () => 'tt3'; return (MC[k] = m); }
 const KM = (name, c, r = 0.9) => { const m = new THREE.Mesh(RKIT[name], mat(c, { r })); m.castShadow = m.receiveShadow = true; m.userData.kitW = true; return m; };
 const INST = {}, INST_NAMES = new Set(['pt_oak', 'pt_lime', 'pt_cherry', 'pt_fir', 'pt_palm', 'pt_flame', 'lon_oak', 'lon_leafy', 'lon_cherry', 'lon_cypress', ...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
@@ -1020,8 +1021,7 @@ function buildShell(c) {
     const wg = new THREE.Group(); g.add(wg); const nx = s.hz ? 0 : s.n, nz = s.hz ? s.n : 0; wg.userData.n = [nx, nz]; world.cutWalls.push(wg);
     const col = FAC_HI;
     if (s.hz) { wallSeg(s.a, s.line, s.b, s.line, W_H, col, wg); wallSeg(s.a, s.line, s.b, s.line, 0.35, FAC_LO, g); } else { wallSeg(s.line, s.a, s.line, s.b, W_H, col, wg); wallSeg(s.line, s.a, s.line, s.b, 0.35, FAC_LO, g); }
-    { const Ln = s.b - s.a, mx = s.hz ? (s.a + s.b) / 2 : s.line, mz = s.hz ? s.line : (s.a + s.b) / 2, dH = TT_CUT * W_H; /* the same dado and moulding as the rooms, scaled with the cutaway */
-      put(rbox(s.hz ? Ln : T + 0.03, dH, s.hz ? T + 0.03 : Ln, FAC_LO, 0.015), mx, 0.1 + dH / 2, mz, wg); put(rbox(s.hz ? Ln : T + 0.05, 0.07, s.hz ? T + 0.05 : Ln, '#FBF8F2', 0.02), mx, 0.1 + dH + 0.035, mz, wg); }
+    wg.traverse((o) => { if (o.isMesh && o.material && o.material.color && o.material.color.getHexString() === new THREE.Color(FAC_HI).getHexString()) { o.material = ttMat(FAC_HI, FAC_LO); o.userData.kitW = true; } }); /* the same dado and moulding as the rooms */
     const L = s.b - s.a, inn = -(T / 2 + 0.03);
     for (let u = s.a + 3.2; u < s.b - 1.5; u += 6.5) { const wx = s.hz ? u : s.line + nx * inn, wz = s.hz ? s.line + nz * inn : u; kitWindow(wg, wx - nx * 0.03, wz - nz * 0.03, s.hz ? 0 : Math.PI / 2); }
     if (s.hz && s.n === -1 && (!best || L > best.L)) best = { s, wg, L };
@@ -1378,7 +1378,7 @@ function dioCorner(g, RS, q, sx, sz, owA, owB) {
   const cg = new THREE.Group(); g.add(cg); cg.userData.n = [sx * Math.SQRT1_2, sz * Math.SQRT1_2]; cg.userData.p = [px, pz]; cg.userData.corner = true;
   if (RKIT) { const kx = cx - (owA ? sx * 0.02 : 0), kz = cz - (owB ? sz * 0.02 : 0); // follows its walls 2 cm proud of the building's outer wall (see wallSegV2)
     const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(kx, y, kz); m.scale.set(sx, sy, sz); par.add(m); return m; };
-    pc('k_c_wall_in', RS.wall, cg, 0.1, h, 0.95).material = ttMat(RS.wall, RS.inBase || darkHex(RS.wall, 0.12)); if (!ow) pc('k_c_wall_out', RS.wall, cg, 0.1, h, 0.95).material = ttMat(FAC_HI, FAC_LO); pc('k_c_skirt', KIT_C.trim, cg, 0.1, 1, 0.6);
+    pc('k_c_wall_in', RS.wall, cg, 0.1, h, 0.95).material = ttMat(RS.wall, lowOf(RS.wall, RS.inBase)); if (!ow) pc('k_c_wall_out', RS.wall, cg, 0.1, h, 0.95).material = ttMat(FAC_HI, FAC_LO); pc('k_c_skirt', KIT_C.trim, cg, 0.1, 1, 0.6);
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; cg.add(rim); pc('k_c_rim', RS.rim || KIT_C.rim, rim, 0, 1, 0.72);
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; cg.add(base); pc('k_c_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
     return cg; }
@@ -1405,7 +1405,7 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
     // whole kit wall stands 2 cm proud of the outer wall instead: no shared plane left, whatever the GPU.
     const pr = ow ? 0.02 : 0, px = cx - n[0] * pr, pz = cz - n[1] * pr;
     const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(px, y, pz); m.rotation.y = yaw; m.scale.set(len, sy, 1); par.add(m); return m; };
-    pc('k_wall_in', paint, parent, 0.1, h, 0.95).material = ttMat(paint, paint === S.wall && S.inBase ? S.inBase : darkHex(paint, 0.12)); if (!ow) pc('k_wall_out', paint, parent, 0.1, h, 0.95).material = ttMat(FAC_HI, FAC_LO); /* inside: the room's two tones; outside: one shared corridor façade */ pc('k_skirt', KIT_C.trim, parent, 0.1, 1, 0.6);
+    pc('k_wall_in', paint, parent, 0.1, h, 0.95).material = ttMat(paint, lowOf(paint, paint === S.wall ? S.inBase : null)); if (!ow) pc('k_wall_out', paint, parent, 0.1, h, 0.95).material = ttMat(FAC_HI, FAC_LO); /* inside: the room's two tones; outside: one shared corridor façade */ pc('k_skirt', KIT_C.trim, parent, 0.1, 1, 0.6);
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; parent.add(rim); pc('k_rim', S.rim || KIT_C.rim, rim, 0, 1, 0.72); parent.userData.rim = rim;
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; parent.add(base); pc('k_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
     if (S.ao && parent.parent) aoStrip(parent.parent, cx, cz, len, n, 0.12);
