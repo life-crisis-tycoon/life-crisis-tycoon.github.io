@@ -1144,8 +1144,11 @@ for (const k of ['detox', 'lab', 'parent', 'moving', 'jjim', 'yoga', 'lucha', 'a
   const c = new THREE.Color(st.wall), h = {}; c.getHSL(h); const tone = (s2, l2) => '#' + new THREE.Color().setHSL(h.h, Math.min(1, s2), l2).getHexString(); // a bit more colour inside, a door in the deep version of the room's hue
   const dc = tone(h.s * 0.55 + 0.25, 0.42); Object.assign(st, { v2: true, chunky: true, ao: true, wall: tone(h.s * 1.25, h.l * 0.9), inBase: tone(h.s * 0.9, h.l * 0.72), door: dc, panel: dc, pop: '#E3B341' }); }
 Object.assign(ROOM_STYLE.staffroom, { model: 'staffroom_kit', kit: true, wall: '#9A7D66', inBase: '#76604E', door: '#7E5F47', panel: '#7E5F47', pop: '#E9785F', wood: ['#C98E52', '#B97E45'], floor: '#C98E52' }); // the painting: warm taupe walls, wooden floor
+Object.assign(ROOM_STYLE.lucha, { model: 'lucha_kit', kit: true, wall: '#D9346E', inBase: '#1E9C8E', door: '#1FA39A', panel: '#1FA39A', pop: '#F2B33D', wood: ['#2F2C35', '#3A3640'], floor: '#2F2C35' }); // magenta walls over a teal skirting, black rubber floor
+Object.assign(ROOM_STYLE.ahwa, { model: 'ahwa_kit', kit: true, wall: '#E2B77E', inBase: '#2E8C86', door: '#2E8C86', panel: '#2E8C86', pop: '#C9873A', wood: ['#E6CFA8', '#D9BF94'], floor: '#E6CFA8' }); // sand plaster, teal tile skirting, pale tiles
+Object.assign(ROOM_STYLE.jjim, { model: 'jjim_kit', kit: true, wall: '#C98A4E', inBase: '#9C6436', door: '#9A6234', panel: '#9A6234', pop: '#F2B33D', wood: ['#E9B949', '#E0AE3F'], floor: '#E9B949' }); // warm wood walls, the heated yellow ondol floor
 Object.assign(ROOM_STYLE.yoga, { model: 'yoga_kit', kit: true, wall: '#F1E2C4', inBase: '#D6BE98', door: '#8A5A36', panel: '#B48CE8', pop: '#B48CE8', wood: ['#D59D5F', '#C68C50'], floor: '#D59D5F' }); // cream terrace walls, wooden deck // the Tripo pieces of the break-room and yoga paintings
-for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga', 'shop', 'detox', 'garage']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
+for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga', 'shop', 'detox', 'garage', 'lucha', 'ahwa', 'jjim']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 // one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
 function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
@@ -1902,6 +1905,67 @@ function yogaKit(g, cx, cz, room) {
   else L.push({ p: 'k_lemon', h: 1.1, x: rx - 0.55, z: D / 2 - 0.45, rot: 0 }, { p: 'k_lantern', h: 0.4, x: lx + 0.3, z: bz + 0.3, rot: 0, solid: false });
   kitRoom(g, cx, cz, room, 'yoga_kit', L, YOGA_DIMS, F);
 }
+const LUCHA_DIMS = {"k_ring":[0.9277,0.5801,0.998],"k_gong":[0.8926,0.998,0.6504],"k_maskshelf":[0.584,0.998,0.2715],"k_bag":[0.291,0.998,0.6426],"k_trophy":[0.8809,0.998,0.4512],"k_bench":[0.998,0.7793,0.5684],"k_pouf":[0.9941,0.9941,0.998],"k_agave":[0.9941,0.998,0.9863],"k_cactus":[0.502,0.998,0.498]};
+const AHWA_DIMS = {"k_counter":[0.998,0.4082,0.3105],"k_samovar":[0.7715,0.998,0.6074],"k_dallah":[0.2441,0.998,0.3105],"k_files":[0.998,0.5723,0.6504],"k_sofa":[0.998,0.502,0.416],"k_table":[0.998,0.8496,0.998],"k_chair":[0.5684,0.998,0.5293],"k_backgammon":[0.998,0.1426,0.998],"k_tray":[0.998,0.3066,0.7949],"k_stamp":[0.9082,0.5684,0.998],"k_fern":[0.998,0.8184,0.9863]};
+const JJIM_DIMS = {"k_kiln":[0.998,0.8535,0.998],"k_mat":[0.6074,0.1582,0.998],"k_sheep":[0.9316,0.6504,0.998],"k_lowtable":[0.998,0.377,0.9434],"k_eggs":[0.998,0.5098,0.998],"k_sikhye":[0.998,0.7871,0.998],"k_towels":[0.998,0.7598,0.8262],"k_lockers":[0.8223,0.998,0.416],"k_bamboo":[0.4863,0.998,0.4355],"k_pouf":[0.9941,0.9941,0.998]};
+// Lucha gym, Mexico (from the lucha painting): the ring at the back with the coach standing in it, pink poufs in a row for the clients watching,
+// the mask shelf, a punching bag on the wall, the ¡GRITA! gong, the trophy cabinet, a towel bench and the painted pots (agave, cactus)
+function luchaKit(g, cx, cz, room) {
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = w < 5 || D < 5, H = Math.PI / 2, L = [], bz = -D / 2, fz = D / 2, lx = -w / 2, rx = w / 2;
+  const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
+  const rl = S ? 1.85 : w >= 6 ? 2.5 : 2.2, rd = rl * 0.998 / 0.998, rz = bz + rd / 2 + 0.3; // ring (len = its longer side)
+  L.push({ p: 'k_ring', len: rl, x: 0, z: rz, rot: 0 });
+  room.staffSpot = (() => { const q = W(-rl * 0.12, rz - 0.05); return { x: q.x, z: q.z, rot: F.rho, sit: false, y: 0.36 * rl * 0.58 }; })(); // the coach on the canvas
+  const n = seatsN(room), sp = Math.min(0.95, (w - 1.0) / n), pz = rz + rd / 2 + (S ? 0.6 : 0.75);
+  for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * sp; L.push({ p: 'k_pouf', h: 0.44, x, z: pz, rot: 0, tint: '#E2457A' }); const q = W(x, pz); room.spots.push({ x: q.x, z: q.z, rot: Math.PI + F.rho, sit: true, y: 0.06, busy: null }); }
+  const side = (w - rl) / 2; // room left beside the ring
+  if (side > 0.7) L.push({ p: 'k_maskshelf', h: S ? 1.25 : 1.5, x: lx + side / 2, z: bz + 0.25, rot: 0 });
+  if (side > 0.7) L.push(S ? { p: 'k_cactus', h: 0.7, x: rx - side / 2, z: bz + 0.35, rot: 0 } : { p: 'k_gong', h: 1.25, x: rx - side / 2, z: bz + 0.45, rot: -0.35 });
+  if (!S) { L.push({ p: 'k_bag', h: 1.35, wall: 'left', u: 0.3, hang: true, y: 0.75 });
+    L.push({ p: 'k_bench', len: 1.1, wall: 'left', u: fz - 1.2 - 0.6 }, { p: 'k_agave', h: 0.7, x: rx - 0.45, z: fz - 0.45, rot: 0 }, { p: 'k_cactus', h: 0.85, x: lx + 0.4, z: fz - 0.4, rot: 0 });
+    if (w >= 6) L.push({ p: 'k_trophy', len: 1.0, wall: 'right', u: 0.6 }); }
+  else L.push({ p: 'k_agave', h: 0.6, x: rx - 0.35, z: fz - 0.4, rot: 0 });
+  kitRoom(g, cx, cz, room, 'lucha_kit', L, LUCHA_DIMS, F);
+}
+// Ahwa, the Cairo café (from the ahwa painting): the carved counter at the back with the copper samovar, the coffee pots and the paperwork stamp on it
+// (the host works behind it), the files shelf on the wall, a red cushioned bench along the wall, round copper tables with carved chairs and a backgammon board, ferns
+function ahwaKit(g, cx, cz, room) {
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = w < 5 || D < 5, H = Math.PI / 2, L = [], bz = -D / 2, fz = D / 2, lx = -w / 2, rx = w / 2;
+  const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
+  const seat = (x, z, rot) => { const q = W(x, z); room.spots.push({ x: q.x, z: q.z, rot: rot + F.rho, sit: true, y: 0.05, busy: null }); };
+  const cl = S ? 1.7 : 2.2, cd = cl * 0.3105 / 0.998, ch = cl * 0.4082 / 0.998, ccx = S ? 0.3 : 0.5, ccz = bz + 0.7 + cd / 2; // counter, an aisle behind it
+  L.push({ p: 'k_counter', len: cl, x: ccx, z: ccz, rot: 0 });
+  L.push({ p: 'k_samovar', h: 0.5, x: ccx - cl / 2 + 0.3, z: ccz - 0.02, rot: 0, y: ch, solid: false }, { p: 'k_stamp', len: 0.38, x: ccx + 0.1, z: ccz, rot: 0.2, y: ch, solid: false }, { p: 'k_dallah', h: 0.42, x: ccx + cl / 2 - 0.25, z: ccz, rot: 0, y: ch, solid: false });
+  L.push({ p: 'k_files', len: S ? 0.6 : 0.75, x: ccx + cl / 2 + (S ? 0.35 : 0.45), z: bz + 0.3, rot: 0 }); // the files sideboard beside the counter (not hung: windows sit on the back wall)
+  room.staffSpot = (() => { const q = W(ccx + 0.1, bz + 0.38); return { x: q.x, z: q.z, rot: F.rho, sit: false, y: 0 }; })(); // behind the counter, facing the room
+  const n = seatsN(room), sl = S ? 1.45 : 1.75, sd = sl * 0.416 / 0.998, sz0 = S ? 0.45 : 0.3; // the cushioned bench on the left wall: 2 clients
+  L.push({ p: 'k_sofa', len: sl, x: lx + sd / 2 + 0.06, z: sz0, rot: H }); for (const o of [-0.36, 0.36]) seat(lx + sd / 2 + 0.1, sz0 + o * sl / 1.75, H);
+  const tl = S ? 0.6 : 0.7, th = tl * 0.8496 / 0.998;
+  L.push({ p: 'k_table', len: tl, x: lx + sd + 0.55, z: sz0, rot: 0 }, { p: 'k_tray', len: 0.38, x: lx + sd + 0.55, z: sz0, rot: 0, y: th, solid: false });
+  if (n > 2) { const tx = S ? 1.0 : rx - 1.35, tz = S ? 0.9 : 0.9; L.push({ p: 'k_table', len: tl, x: tx, z: tz, rot: 0 }, { p: 'k_backgammon', len: 0.42, x: tx, z: tz, rot: 0.3, y: th, solid: false });
+    L.push({ p: 'k_chair', h: 0.9, x: tx - 0.62, z: tz, rot: H }); seat(tx - 0.62, tz, H);
+    if (n > 3) { L.push({ p: 'k_chair', h: 0.9, x: tx + 0.62, z: tz, rot: -H }); seat(tx + 0.62, tz, -H); } }
+  if (!S) L.push({ p: 'k_fern', h: 0.85, x: rx - 0.45, z: bz + 0.45, rot: 0 }, { p: 'k_fern', h: 0.75, x: lx + 0.42, z: fz - 0.42, rot: 0 });
+  else L.push({ p: 'k_fern', h: 0.65, x: rx - 0.35, z: fz - 0.4, rot: 0 });
+  kitRoom(g, cx, cz, room, 'ahwa_kit', L, AHWA_DIMS, F);
+}
+// Jjimjilbang, Seoul (from the jjimjilbang painting): the domed clay kiln (hanjeungmak) glowing in the back corner, straw mats on the heated yellow floor where
+// the clients lie with a sheep-towel pillow, the attendant on a pouf by the low table with the baked eggs and sikhye, the towel shelf, the lockers, bamboo
+function jjimKit(g, cx, cz, room) {
+  const F = kitFrame(room, true), w = F.w, D = F.D, S = w < 5 || D < 5, H = Math.PI / 2, L = [], bz = -D / 2, fz = D / 2, lx = -w / 2, rx = w / 2;
+  const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
+  const kh = S ? 1.2 : 1.5, kw = kh / 0.8535; L.push({ p: 'k_kiln', h: kh, x: lx + kw / 2 + 0.08, z: bz + kw / 2 + 0.08, rot: 0.35, glow: false });
+  const tl = S ? 0.7 : 0.85, tx = rx - tl / 2 - (S ? 0.25 : 0.45), tz = bz + 0.55, th = tl * 0.377 / 0.998; // low table, back right
+  L.push({ p: 'k_lowtable', len: tl, x: tx, z: tz, rot: 0 }, { p: 'k_eggs', len: 0.3, x: tx - 0.15, z: tz, rot: 0, y: th, solid: false }, { p: 'k_sikhye', len: 0.28, x: tx + 0.2, z: tz, rot: 0, y: th, solid: false });
+  L.push({ p: 'k_pouf', h: 0.38, x: tx - tl / 2 - 0.35, z: tz + 0.45, rot: 0, solid: false });
+  room.staffSpot = (() => { const q = W(tx - tl / 2 - 0.35, tz + 0.45); return { x: q.x, z: q.z, rot: F.rho, sit: true, y: 0.04 }; })(); // the attendant on the pouf, watching the mats
+  const n = seatsN(room), ml = S ? 1.45 : 1.6, sp = Math.min(1.15, (w - 0.6) / n), mz = S ? 0.55 : 0.45;
+  for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * sp; L.push({ p: 'k_mat', len: ml, x, z: mz, rot: 0, solid: false }, { p: 'k_sheep', len: 0.42, x, z: mz - ml / 2 + 0.25, rot: 0, solid: false });
+    const q = W(x, mz + 0.05); room.spots.push({ x: q.x, z: q.z, rot: F.rho, sit: true, lie: true, y: 0.05, busy: null }); }
+  if (!S) { L.push({ p: 'k_lockers', h: 1.4, wall: 'right', u: 0.9 }, { p: 'k_towels', len: 0.9, wall: 'back', u: (lx + kw + 0.2 + tx - tl / 2) / 2 }, { p: 'k_bamboo', h: 1.2, x: lx + 0.4, z: fz - 0.45, rot: 0 }); }
+  else L.push({ p: 'k_bamboo', h: 0.95, x: lx + 0.35, z: fz - 0.4, rot: 0 });
+  kitRoom(g, cx, cz, room, 'jjim_kit', L, JJIM_DIMS, F);
+}
 const KITK = new Proxy({}, { get: (o, kit) => { const st = Object.values(ROOM_STYLE).find((x) => x && x.model === kit); return st && st.kscale || 1; } }); // per-kit piece scale (diorama look)
 function kitRoom(g, cx, cz, room, kit, items, dims, F = kitFrame(room, false)) {
   const w = F.w, D = F.D, lx = -w / 2, rx = w / 2, bz = -D / 2, fz = D / 2, H = Math.PI / 2, out = [], rep = [], door = F.door;
@@ -2327,6 +2391,7 @@ const furniture = {
     room.spots.push({ x: cx, z: cz + 0.3 * K, rot: Math.PI, sit: true, y: 0.02, busy: null });
   },
   jjim(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.jjim && ROOM_STYLE.jjim.kit && PROPS_ON) { jjimKit(g, cx, cz, room); return; }
     for (const ox of bedXs(room, 1.0)) { const m = rbox(1.0, 0.08, 1.9, '#E9785F', 0.03); put(m, cx + ox, 0.16, cz - 1.0 * K, g); put(rbox(0.5, 0.12, 0.3, '#FFFFFF', 0.05), cx + ox, 0.25, cz - 1.75 * K, g); room.spots.push({ x: cx + ox, z: cz - 0.9 * K, rot: 0, sit: true, lie: true, y: 0.05, busy: null }); }
     const bk = grp(cx + 2.0 * K, cz + 1.0 * K, 0, g); put(cyl(0.35, 0.28, 0.3, '#A0794E'), 0, 0.25, 0, bk); for (let i = 0; i < 6; i++) { const e = sph(0.09, '#F4E2C4'); e.scale.y = 1.3; put(e, -0.15 + (i % 3) * 0.15, 0.45, -0.07 + Math.floor(i / 3) * 0.14, bk); }
     const st = grp(cx - 2.2 * K, cz - 2.6 * K, 0, g); put(rbox(1.2, 1.6, 0.5, '#C2703A', 0.06), 0, 0.85, 0, st); put(rbox(1.0, 0.4, 0.05, '#FFB067', 0.02, { e: '#FFB067', ei: 0.8 }), 0, 1.2, 0.26, st);
@@ -2340,6 +2405,7 @@ const furniture = {
     plant(cx - 2.3 * K, cz - 2.3 * K, 0.9, '#FFFFFF', g); plant(cx + 2.3 * K, cz - 2.3 * K, 0.9, '#FFFFFF', g);
   },
   lucha(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.lucha && ROOM_STYLE.lucha.kit && PROPS_ON) { luchaKit(g, cx, cz, room); return; }
     const rz = cz - 0.7 * K, rs = 1.5 * K; put(rbox(rs * 2, 0.3, rs * 2, '#2F3A52', 0.05), cx, 0.25, rz, g); put(rbox(rs * 2 - 0.1, 0.04, rs * 2 - 0.1, '#5AB8F0', 0.02), cx, 0.42, rz, g);
     for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) put(cyl(0.06, 0.06, 1.1, ['#D63A7A', '#F7C531', '#5AB8F0', '#7ACB4E'][(px + 1) + (pz + 1) / 2]), cx + px * rs, 0.95, rz + pz * rs, g);
     for (const h of [0.75, 1.05]) { put(rbox(rs * 2, 0.03, 0.03, '#F4EFE6', 0.01), cx, h, rz - rs, g); put(rbox(rs * 2, 0.03, 0.03, '#F4EFE6', 0.01), cx, h, rz + rs, g); put(rbox(0.03, 0.03, rs * 2, '#F4EFE6', 0.01), cx - rs, h, rz, g); put(rbox(0.03, 0.03, rs * 2, '#F4EFE6', 0.01), cx + rs, h, rz, g); }
@@ -2349,6 +2415,7 @@ const furniture = {
     room.staffSpot = { x: cx, z: rz + 0.3, rot: 0, sit: false, y: 0.22 };
   },
   ahwa(g, cx, cz, room, K = 1) {
+    if (ROOM_STYLE.ahwa && ROOM_STYLE.ahwa.kit && PROPS_ON) { ahwaKit(g, cx, cz, room); return; }
     const ct = grp(cx, cz - 2.4 * K, 0, g); put(rbox(2.4, 0.95, 0.6, '#8A5A32', 0.06), 0, 0.58, 0, ct); put(rbox(2.5, 0.08, 0.7, '#E8D3B0', 0.03), 0, 1.08, 0, ct);
     put(cyl(0.16, 0.2, 0.3, '#C9A54A', { m: 0.6, r: 0.3 }), -0.6, 1.27, 0, ct); put(sph(0.1, '#C9A54A', { m: 0.6, r: 0.3 }), -0.6, 1.45, 0, ct); for (let i = 0; i < 4; i++) put(cyl(0.05, 0.04, 0.1, '#F4EFE6'), 0.1 + i * 0.22, 1.17, 0.05, ct);
     const tables = [[-0.9, -0.5], [0.9, -0.5], [-0.9, 1.0], [0.9, 1.0]], n = seatsN(room);
