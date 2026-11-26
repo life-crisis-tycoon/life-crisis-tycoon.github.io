@@ -38,6 +38,9 @@ const PROBLEMS = {
   moving: { e: '📦', room: 'moving', fee: 260 }, newcity: { e: '🗺️', room: 'moving', fee: 240 },
   tummy: { e: '🤢', room: 'pharmacy', fee: 170 }, headache: { e: '🤕', room: 'pharmacy', fee: 160 }, screeneyes: { e: '🥲', room: 'pharmacy', fee: 150 },
   filter: { e: '🤳', room: 'glowup', fee: 280 }, haircut: { e: '💇', room: 'glowup', fee: 220 }, botoxfomo: { e: '💉', room: 'glowup', fee: 260 },
+  hoesik: { e: '🍻', room: 'jjim', fee: 280, city: 'seoul' }, networking: { e: '🤝', room: 'yoga', fee: 310, city: 'newyork' }, // one more local ailment for Seoul and New York
+  backpain: { e: '🪑', room: 'pharmacy', fee: 180, lvl: 4 }, hayfever: { e: '🌼', room: 'pharmacy', fee: 160, lvl: 6 }, // pharmacy, later in the career: from São Paulo / from Mexico on
+  quitall: { e: '🎒', room: 'career', fee: 290, lvl: 1 }, firstjob: { e: '📄', room: 'career', fee: 240, lvl: 1 }, // not in the London tutorial
   topper: { e: '📚', room: 'career', fee: 260, city: 'mumbai' }, sharmaji: { e: '🏆', room: 'therapy', fee: 290, city: 'mumbai' }, wedding: { e: '💸', room: 'wedding', fee: 320, city: 'mumbai' }, train: { e: '🚆', room: 'nap', fee: 220, city: 'mumbai' },
   overtime: { e: '🌃', room: 'jjim', fee: 280, city: 'seoul' }, hagwon: { e: '✏️', room: 'therapy', fee: 290, city: 'seoul' }, beauty: { e: '🪞', room: 'glowup', fee: 300, city: 'seoul' }, nunchi: { e: '👀', room: 'social', fee: 250, city: 'seoul' },
   commute: { e: '🚗', room: 'nap', fee: 240, city: 'saopaulo' }, novela: { e: '📺', room: 'detox', fee: 230, city: 'saopaulo' }, saudade: { e: '🥹', room: 'roda', fee: 280, city: 'saopaulo' },
@@ -160,6 +163,7 @@ const DAY_LEN = 90, RENT_EVERY = 7, BILL_K = 2.5, WAGE_K = 2.0, ELEC_K = 1.5, //
   // weekly bills; amounts scaled from the old 4-day cycle so the economy keeps its balance
   ANNEX_COST = 8000, QUICK_LEN = 180;
 let RENT = 2400;
+const lvlOk = (k) => !PROBLEMS[k].lvl || ((CITIES[(S && S.city) || 'london'] || {}).lvl || 0) >= PROBLEMS[k].lvl;
 const isMystK = (k) => PROBLEMS[k] && PROBLEMS[k].myst && !S.research.done.includes('m_' + k);
 const pn = (k) => (isMystK(k) ? '???' : t('p.' + k)), rn = (k) => t('r.' + k), roleN = (k) => t('role.' + k), trN = (n) => t('t.' + n), dayN = (d) => t('day.n', { d });
 
@@ -2713,9 +2717,9 @@ const barBg = new THREE.SpriteMaterial({ color: '#14213D', depthTest: false }), 
 function barMat(c) { return barFg[c] || (barFg[c] = new THREE.SpriteMaterial({ color: c, depthTest: false })); }
 let spawnKid = false, famNext = false; // kids never come alone: they follow a parent (famNext)
 function spawnVisitor(prob, em, vip, look0) {
-  if (!prob && S.ad && S.ad.room && RNG() < 0.5) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].room === S.ad.room));
+  if (!prob && S.ad && S.ad.room && RNG() < 0.5) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].room === S.ad.room && lvlOk(k) && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london'))));
   if (!prob && unlocked('lab') && S.mode === 'career' && RNG() < 0.12) prob = rnd(Object.keys(PROBLEMS).filter((k) => PROBLEMS[k].myst && unlocked(PROBLEMS[k].room)));
-  const cityOk = (k) => !PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london');
+  const cityOk = (k) => (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london')) && lvlOk(k);
   if (!prob) { const pool = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].fam && !PROBLEMS[k].epi && cityOk(k) && unlocked(PROBLEMS[k].room)); const w = pool.map((k) => (hasRoom(PROBLEMS[k].room) ? 3 : 1) * (PROBLEMS[k].city ? (cityOf().sig === k ? 4 : 2) : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); prob = pool[pool.length - 1]; for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) { prob = pool[i]; break; } } }
   const vm = look0 ? null : vip && VIS.sp_influencer ? 'sp_influencer' : pickVis(spawnKid, PROBLEMS[prob] && PROBLEMS[prob].room === 'nap'); // the influencer has her own model
   const look = look0 || { vm, kid: famNext || ['toddler', 'schoolrun', 'tablet', 'homework', 'sugar'].includes(prob) ? pickVis(true) || 'v25' : null, skin: rnd(SKIN), hair: rnd(HAIR), style: rnd(STYLES), shirt: rnd(SHIRTS), pants: rnd(['#3B4A6B', '#2F3A52', '#5E6B3A', '#7A5A3A', '#2A2A2E', '#8A9AB0']), tall: 0.85 + RNG() * 0.35, wide: 0.85 + RNG() * 0.4, glasses: RNG() < 0.25, nose: RNG() < 0.5, shoes: rnd(['#2A2A2E', '#F4EFE6', '#E9785F']) };
@@ -3954,7 +3958,7 @@ function emFail(E) {
 }
 // which care rooms this emergency will send people to: the ones you have (staffed or not), and any you'd still need to build
 function emRoomsHtml(E) {
-  const city = S.city || 'london', ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && ROOMS[PROBLEMS[pk].room] && !PROBLEMS[pk].myst && (!PROBLEMS[pk].city || PROBLEMS[pk].city === city);
+  const city = S.city || 'london', ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && ROOMS[PROBLEMS[pk].room] && !PROBLEMS[pk].myst && (!PROBLEMS[pk].city || PROBLEMS[pk].city === city) && lvlOk(pk);
   let need = [], maybe = false;
   if (E.mix) { const bias = (E.bias || []).filter(ok).map((pk) => PROBLEMS[pk].room); need = [...new Set(bias.concat(Object.keys(PROBLEMS).filter((pk) => ok(pk) && hasRoom(PROBLEMS[pk].room)).map((pk) => PROBLEMS[pk].room)))];
     maybe = !!E.stars && Object.keys(PROBLEMS).some((pk) => ok(pk) && !hasRoom(PROBLEMS[pk].room) && unlocked(PROBLEMS[pk].room)); }
@@ -3986,9 +3990,9 @@ function emergencyUpdate(dt) {
   const E = S.em; if (!E) return;
   E.t -= dt; E.spawnT -= dt;
   if (E.left > 0 && E.spawnT <= 0) { E.spawnT = E.gap || 3; E.left--; const D = EMERGENCIES[E.k];
-    const ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && (!PROBLEMS[pk].city || PROBLEMS[pk].city === (S.city || 'london'));
+    const ok = (pk) => PROBLEMS[pk] && PROBLEMS[pk].room && hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && (!PROBLEMS[pk].city || PROBLEMS[pk].city === (S.city || 'london')) && lvlOk(pk);
     let pool = D.probs; if (D.mix) { const b = (D.bias || []).filter(ok); pool = b.length && RNG() < 0.6 ? b : Object.keys(PROBLEMS).filter(ok);
-      if (D.stars && RNG() < 0.2) { const city = S.city || 'london', miss = Object.keys(PROBLEMS).filter((pk) => PROBLEMS[pk].room && ROOMS[PROBLEMS[pk].room] && !hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && !PROBLEMS[pk].myst && (!PROBLEMS[pk].city || PROBLEMS[pk].city === city) && unlocked(PROBLEMS[pk].room)); if (miss.length) pool = miss; } } // ~20 % come with a problem you have no room for
+      if (D.stars && RNG() < 0.2) { const city = S.city || 'london', miss = Object.keys(PROBLEMS).filter((pk) => PROBLEMS[pk].room && ROOMS[PROBLEMS[pk].room] && !hasRoom(PROBLEMS[pk].room) && !isMystK(pk) && !PROBLEMS[pk].myst && (!PROBLEMS[pk].city || PROBLEMS[pk].city === city) && lvlOk(pk) && unlocked(PROBLEMS[pk].room)); if (miss.length) pool = miss; } } // ~20 % come with a problem you have no room for
     spawnVisitor(rnd(pool.length ? pool : ['hustle']), true); }
   if (E.got >= E.need) { incCnt('emwin'); addKudos(5); S.cash += E.reward || 2500; floatAt(new THREE.Vector3(2, 1.5, 4), '🎉 +' + money(E.reward || 2500)); vb('em', 0 + 8); S.em = null; emNext(); toast(t('em.win'), 3500); chat(t('from.hq'), t('em.win'), '🎉'); }
   else if (E.t <= 0 || E.got + E.left + R.visitors.filter((u) => u.em && !u.cured && !['exit', 'angry'].includes(u.state)).length < E.need) emFail(E); // out of time, or too many already gone
@@ -4103,7 +4107,7 @@ function openBuild() {
   // grouped: reception · care rooms (with the problems each one treats) · comfort for visitors · for the team
   const cat = (k) => (ROOMS[k].staffOnly || ROOMS[k].train || k === 'lab' ? 'staff' : ROOMS[k].shop || ROOMS[k].loo || k === 'cafe' ? 'comfort' : 'care');
   const hdr = (k) => `<div class="lbl" style="margin:12px 0 6px">${t('bc.' + k)}</div>`;
-  const treats = (k) => { const ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && !PROBLEMS[p].epi && (!PROBLEMS[p].city || PROBLEMS[p].city === (S.city || 'london'))); return ps.length ? `<div style="font-size:12px;color:#2D3748;margin-top:2px"><b>${t('build.treats')}</b> ${ps.map((p) => PROBLEMS[p].e + ' ' + t('p.' + p)).join(' · ')}</div>` : ''; };
+  const treats = (k) => { const ps = Object.keys(PROBLEMS).filter((p) => PROBLEMS[p].room === k && !PROBLEMS[p].myst && !PROBLEMS[p].epi && (!PROBLEMS[p].city || PROBLEMS[p].city === (S.city || 'london')) && lvlOk(p)); return ps.length ? `<div style="font-size:12px;color:#2D3748;margin-top:2px"><b>${t('build.treats')}</b> ${ps.map((p) => PROBLEMS[p].e + ' ' + t('p.' + p)).join(' · ')}</div>` : ''; };
   const nOwn = (k) => S.rooms.filter((r) => r.type === k).length;
   const roomRow = (k, r) => { const ok = unlocked(k);
     return `<div class="opt w" style="${ok ? '' : 'opacity:.55'}"><div class="oi" style="background:${r.pill}22">${ok ? r.e : '🔒'}</div><div class="ot"><b>${rn(k)}</b>${ok && nOwn(k) ? ` <span class="own" style="background:#E7EEF7;color:#2D3748;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800;white-space:nowrap">${t('build.have', { n: nOwn(k) })}</span>` : ''}<div>${t('r.' + k + '.d')}</div><div>${ok ? t('build.from', { m: money(roomCost(k, 's')) }) + (r.role ? ' · ' + t('build.needs', { role: roleN(r.role) }) : '') : t('lock.at', { n: UNLOCK[k] })}</div></div>${ok ? `<button class="btn g" data-room="${k}">${t('build.btn')}</button>` : ''}</div>`; };
@@ -4369,7 +4373,7 @@ function openGoals() {
   if (!todo) h += `<div class="msg">${t('goals.none')}</div>`;
   if (S.daily) h += `<div style="margin-top:10px;font-weight:800;font-size:14px">🎯 ${ct('ui.daily')} : ${dailyText()} → +${money(S.daily.m)} ${S.daily.won ? '✅' : S.daily.fail ? '❌' : ''}</div>`;
   { // problem guide: every problem this city can bring, and the room that fixes it
-    const c = S.city || 'london', ps = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && (!PROBLEMS[k].city || PROBLEMS[k].city === c));
+    const c = S.city || 'london', ps = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && (!PROBLEMS[k].city || PROBLEMS[k].city === c) && lvlOk(k));
     const byRoom = {}; for (const k of ps) (byRoom[PROBLEMS[k].room] = byRoom[PROBLEMS[k].room] || []).push(k);
     h += `<details style="margin-top:12px"><summary class="lbl" style="cursor:pointer">📖 ${t('guide.title')}</summary><p class="sub">${t('guide.sub')}</p>` + Object.entries(byRoom).map(([r, ks]) => `<div class="w" style="border-radius:14px;padding:8px 12px;margin-bottom:6px"><b>${ROOMS[r] ? ROOMS[r].e : ''} ${rn(r)}</b>${hasRoom(r) ? '' : ` <span style="color:#B45309;font-size:12px">· ${t('guide.notBuilt')}</span>`}${ks.map((k) => `<div data-pi="${k}" style="font-size:13px;margin-top:4px;cursor:pointer"><b>${PROBLEMS[k].e} ${t('p.' + k)} ℹ️</b><div style="color:var(--muted);font-weight:700">${t('pd.' + k)}</div></div>`).join('')}</div>`).join('') + `<p class="sub">❓ ${t('guide.myst')}</p></details>`;
   }
@@ -4598,7 +4602,7 @@ function dayTick(dt) {
       if (hot.length) { hot.sort((a, b) => (b.em ? 2 : 0) + (b.vip ? 1 : 0) - (a.em ? 2 : 0) - (a.vip ? 1 : 0) || a.pat - b.pat); const v = hot[0]; for (const u of hot) u.asked = true; S.askWaitT = now;
         chat(t('from.review') + ' · ' + v.name + ', ' + v.age, hot.length > 1 ? t('ct.w.many', { n: hot.length, who: v.name }) : t('ct.w.one'), '⏳', { act: { k: 'wait', id: v.id } }); } } } // every few seconds: an idle carer moves to a busier room of their speciality
   if (S.inspectAt > 0 && S.t >= S.inspectAt && !R.inspector) { S.inspectAt = -1; spawnInspector(); }
-  if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && hasRoom(PROBLEMS[k].room)); if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
+  if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && hasRoom(PROBLEMS[k].room) && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london')) && lvlOk(k)); /* a VIP only brings a problem of this city */ if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
   if (S.crewAt > 0 && S.t >= S.crewAt && !modalPaused) { S.crewAt = -1; crewVisit(); }
   if (S.evAt > 0 && S.t >= S.evAt && !S.ev && !modalPaused) { S.evAt = -1; startEvent(); }
   if (S.raiseAt > 0 && S.t >= S.raiseAt && !modalPaused) { S.raiseAt = -1; raiseRequest(); }
