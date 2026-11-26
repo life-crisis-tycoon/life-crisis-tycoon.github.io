@@ -93,9 +93,13 @@ html[data-lang=ko] body,html[data-lang=ko] h1,html[data-lang=ko] h2,html[data-la
 #hud.on{display:block}
 #hud .top{position:absolute;top:0;left:0;right:0;padding:10px 10px 0;display:flex;flex-direction:column;gap:8px}
 .stats{display:flex;gap:6px}
-.stat{flex:1;border-radius:14px;padding:4px 9px;pointer-events:auto}
+.stat{flex:1;border-radius:14px;padding:4px 9px;pointer-events:auto;min-width:0;overflow:hidden}
 .stat small{display:block;font-size:10.5px;font-weight:900;color:var(--muted)}
 .stat b{font-family:'Fredoka';font-weight:600;font-size:17px;white-space:nowrap}
+.stat b{display:block;overflow:hidden;text-overflow:clip}
+/* narrow phones: the 3 cards shrink (and cut their text) so the pause/speed buttons always stay whole on screen */
+@media (max-width:430px){.stats{gap:4px}.stat{padding:4px 7px}.stat b{font-size:clamp(13px,4vw,16px)}.stat small{font-size:clamp(9px,2.6vw,10.5px)}#speedbar button{width:clamp(38px,11vw,46px)}}
+#hud .top{max-width:100vw;box-sizing:border-box}
 .bar{height:6px;border-radius:6px;background:var(--line);margin-top:4px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--green);width:0}
 #speed{pointer-events:auto;width:46px;border-radius:14px;font-family:'Fredoka';font-weight:700;font-size:15px}
