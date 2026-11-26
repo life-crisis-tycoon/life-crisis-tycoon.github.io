@@ -8,9 +8,9 @@ import { CASE_TXT, CASES } from './cases.js';
 import { batchNode } from './batch.js';
 import { CHAR, loadCharacters, canGLB, makeGLBAvatar, updateCharacters, loadFull, slimTextures, MOBILE, trainClips } from './chars.js';
 import { TV, t, tList, setLang, detectLang, getLang, LANGS, DICT } from './i18n.js';
-import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30, EXTRA31, EXTRA32, EXTRA33, EXTRA34 } from './i18n_mgr.js';
+import { EXTRA, EXTRA2, EXTRA3, EXTRA4, EXTRA5, EXTRA6, EXTRA7, EXTRA8, EXTRA9, EXTRA10, EXTRA11, EXTRA12, EXTRA13, EXTRA14, EXTRA15, EXTRA16, EXTRA17, EXTRA18, EXTRA19, EXTRA20, EXTRA21, EXTRA22, EXTRA23, EXTRA24, EXTRA25, EXTRA26, EXTRA27, EXTRA28, EXTRA29, EXTRA30, EXTRA31, EXTRA32, EXTRA33, EXTRA34, EXTRA35 } from './i18n_mgr.js';
 import { EPI } from './i18n_epi.js';
-for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l], EXTRA30[l], EXTRA31[l], EXTRA32[l], EXTRA33[l], EXTRA34[l]);
+for (const l in EXTRA) Object.assign(DICT[l], EXTRA[l], EXTRA2[l], EXTRA3[l], EXTRA4[l], EXTRA5[l], EXTRA6[l], EXTRA7[l], EXTRA8[l], EXTRA9[l], EXTRA10[l], EXTRA11[l], EXTRA12[l], EXTRA13[l], EXTRA14[l], EXTRA15[l], EXTRA16[l], EXTRA17[l], EXTRA18[l], EXTRA19[l], EXTRA20[l], EXTRA21[l], EXTRA22[l], EXTRA23[l], EXTRA24[l], EXTRA25[l], EXTRA26[l], EXTRA27[l], EXTRA28[l], EXTRA29[l], EXTRA30[l], EXTRA31[l], EXTRA32[l], EXTRA33[l], EXTRA34[l], EXTRA35[l]);
 for (const l in EPI) if (DICT[l]) Object.assign(DICT[l], EPI[l]);
 const AU = makeAudio();
 
@@ -128,11 +128,11 @@ const CITIES = {
   saopaulo: { lvl: 4, region: 'rg.americas', unlock: 'seoul', cash: 12000, rent: 2500, rain: 0.3, waves: true, sig: 'saudade', pin: [29.9, 78.6], desc: 'sp.desc', tag: 'sp.tag', brief: 'sp.brief', rules: [['🚗', 'sp.r1'], ['🥁', 'sp.r2'], ['📺', 'sp.r3']], chips: [['b', 'sp.c1'], ['b', 'sp.c2'], ['r', 'sp.c3']], start: 'sp.landlord',
     goals: [[['helped', 200], ['vibes', 65, 2], ['roda', 15]], [['helped', 450], ['succ', 70, 3], ['value', 75000], ['roda', 50]], [['helped', 900], ['vibes', 80, 3], ['succ', 80, 3], ['value', 150000], ['emwin', 3], ['bestday', 30]]] },
   cairo: { lvl: 5, region: 'rg.africa', unlock: 'saopaulo', cash: 12000, rent: 2500, sig: 'paperwork', rain: 0.05, hot: true, evening: true, pin: [55.1, 42.7], desc: 'cr.desc', tag: 'cr.tag', brief: 'cr.brief', rules: [['🥵', 'cr.r1'], ['🌆', 'cr.r2'], ['📑', 'cr.r3']], chips: [['b', 'cr.c1'], ['b', 'cr.c2'], ['r', 'cr.c3']], start: 'cr.landlord',
-    goals: [[['helped', 220], ['vibes', 65, 2], ['tea', 15]], [['helped', 500], ['succ', 70, 3], ['value', 80000], ['tea', 50]], [['helped', 1000], ['vibes', 82, 3], ['succ', 80, 3], ['value', 160000], ['emwin', 3], ['bestday', 30]]] },
+    goals: [[['helped', 220], ['vibes', 65, 2], ['tea', 15]], [['helped', 500], ['succ', 70, 3], ['value', 80000], ['tea', 50]], [['helped', 1300], ['vibes', 82, 3], ['succ', 80, 3], ['value', 210000], ['emwin', 3], ['bestday', 30]]] },
   mexico: { lvl: 6, region: 'rg.americas', unlock: 'cairo', cash: 12000, rent: 2600, rain: 0.25, quake: true, altitude: true, sig: 'coraje', pin: [13.4, 35.1], desc: 'mx.desc', tag: 'mx.tag', brief: 'mx.brief', rules: [['🚨', 'mx.r1'], ['⛰️', 'mx.r2'], ['🤼', 'mx.r3']], chips: [['b', 'mx.c1'], ['b', 'mx.c2'], ['r', 'mx.c3']], start: 'mx.landlord',
-    goals: [[['helped', 240], ['vibes', 65, 2], ['lucha', 15]], [['helped', 550], ['succ', 75, 3], ['value', 85000], ['lucha', 55]], [['helped', 1100], ['vibes', 82, 3], ['succ', 80, 3], ['value', 170000], ['emwin', 4], ['bestday', 32], ['quake', 25]]] },
+    goals: [[['helped', 240], ['vibes', 65, 2], ['lucha', 15]], [['helped', 550], ['succ', 75, 3], ['value', 85000], ['lucha', 55]], [['helped', 1600], ['vibes', 82, 3], ['succ', 80, 3], ['value', 245000], ['emwin', 4], ['bestday', 32], ['quake', 35]]] },
   newyork: { lvl: 7, region: 'rg.americas', unlock: 'mexico', cash: 14000, rent: 3600, rain: 0.3, tips: true, impatient: true, sig: 'grind', pin: [23.8, 20.9], desc: 'ny.desc', tag: 'ny.tag', brief: 'ny.brief', rules: [['💸', 'ny.r1'], ['⏱️', 'ny.r2'], ['🧘', 'ny.r3']], chips: [['b', 'ny.c1'], ['b', 'ny.c2'], ['r', 'ny.c3']], start: 'ny.landlord',
-    goals: [[['helped', 260], ['vibes', 68, 2], ['yoga', 20]], [['helped', 600], ['succ', 75, 3], ['value', 110000], ['yoga', 60]], [['helped', 1200], ['vibes', 86, 3], ['succ', 85, 3], ['value', 220000], ['emwin', 4], ['bestday', 34]]] },
+    goals: [[['helped', 260], ['vibes', 68, 2], ['yoga', 20]], [['helped', 600], ['succ', 75, 3], ['value', 110000], ['yoga', 60]], [['helped', 1900], ['vibes', 86, 3], ['succ', 85, 3], ['value', 350000], ['emwin', 4], ['bestday', 34]]] },
 };
 const LOCKED_PINS = [];
 const metric = (s, m) => (m === 'value' ? centreValue(s) : m === 'succ' ? succRate(s) : m === 'bestday' ? Math.max(s.bestDay || 0, s.dServ || 0) : m === 'nightbest' ? Math.max(s.bestNight || 0, s.nServ || 0) : m === 'helped' ? s.served : m === 'vibes' ? s.vibes : m === 'cash' ? s.cash : (s.cnt || {})[m] || 0);
@@ -4345,7 +4345,8 @@ function openRoomMenu(id) {
   const room = R.rooms[id]; if (!room || placingR || moving) return;
   const r = room.def, Z = SIZES[r.size], role = ROOMS[r.type].role, refund = Math.round(roomCost(r.type, r.size) / 2);
   let h = `<h2>${ROOMS[r.type].e} ${rn(r.type)}${roomNo(room)}</h2><p class="sub">${t('room.sizeL', { s: t('sz.' + r.size) })} · ${Z.W}×${Z.D}${role ? ' · ' + t('room.staffN', { a: room.staff.filter(Boolean).length, b: room.staff.length, role: roleN(role) }) : ''}</p>`;
-  { const ix = incOf(id); if (ix) h += `<div class="opt w" style="border-color:#FF9F43"><div class="oi" style="background:#FFE9D2">${INC[ix.k].e}</div><div class="ot"><b>${t('inc.' + ix.k, { room: rn(r.type) })}</b><div>${t('inc.' + ix.k + 'D')} ${ix.techT != null ? '🧰 ' + t('inc.techComing') : t('inc.how', { left: incLeft(ix) })}</div></div>${ix.techT == null ? `<button class="btn y" id="rmExpress" ${S.cash < expressCost(ix) ? 'disabled' : ''}>🧰 ${money(expressCost(ix))}</button>` : ''}</div>`; }
+  { const ix = incOf(id); if (ix && ix.k === 'smash') h += `<div class="opt w" style="border-color:#E53E3E"><div class="oi" style="background:#FFE0E0">🔨</div><div class="ot"><b>${t('inc.smash', { room: rn(r.type) })}</b><div>${ix.rep ? '🧰 ' + t('inc.repairing', { left: incLeft(ix) }) : t('inc.smashD')}</div></div>${ix.rep ? '' : `<button class="btn y" id="rmRepair" ${S.cash < repairCost(r) ? 'disabled' : ''}>🧰 ${money(repairCost(r))}</button>`}</div>`;
+    else if (ix) h += `<div class="opt w" style="border-color:#FF9F43"><div class="oi" style="background:#FFE9D2">${INC[ix.k].e}</div><div class="ot"><b>${t('inc.' + ix.k, { room: rn(r.type) })}</b><div>${t('inc.' + ix.k + 'D')} ${ix.techT != null ? '🧰 ' + t('inc.techComing') : t('inc.how', { left: incLeft(ix) })}</div></div>${ix.techT == null ? `<button class="btn y" id="rmExpress" ${S.cash < expressCost(ix) ? 'disabled' : ''}>🧰 ${money(expressCost(ix))}</button>` : ''}</div>`; }
   { const wk = roomWeek(id), wg = Math.round(room.staff.filter(Boolean).reduce((a, x) => a + ((x.data && x.data.wage) || 0), 0) * WAGE_K), dd = room.def.dirt || 0;
     if (ROOMS[r.type].role || r.type === 'cafe') h += `<div class="receipt" style="margin-bottom:8px"><div><span>☀️ ${t('room.today')}</span><b>+${money(((S.rEarn || {})[id] || {})[S.day] || 0)}</b></div><div><span>💵 ${t('room.week')}</span><b>+${money(wk)}</b></div>${wg ? `<div><span>👥 ${t('room.wages')}</span><span>-${money(wg)}</span></div><div style="font-weight:800"><span>${t('room.net')}</span><span style="color:${wk - wg >= 0 ? '#1E8A3A' : 'var(--red)'}">${wk - wg >= 0 ? '+' : '-'}${money(Math.abs(wk - wg))}</span></div>` : ''}${S.day < 7 ? `<div style="font-size:12px;color:var(--muted)">${t('room.weekNote', { d: S.day })}</div>` : ''}</div>`;
     if (dd >= 0.35) h += `<div class="msg" style="margin-bottom:8px">🧽 ${t('room.dirty', { p: Math.round(dd * 100) })}</div>`; }
@@ -4356,6 +4357,7 @@ function openRoomMenu(id) {
   openSheet(h);
   $('rmMove').onclick = () => { closeSheet(); startPlace({ type: r.type, size: r.size }, r); };
   { const xb = $('rmExpress'); if (xb) xb.onclick = () => { if (incExpress(id)) openRoomMenu(id); }; }
+  { const xb = $('rmRepair'); if (xb) xb.onclick = () => { if (incRepair(id)) openRoomMenu(id); }; }
   $('rmDemo').onclick = () => { closeSheet(); demolish(r.id); };
   const hb = $('rmHire'); if (hb) hb.onclick = () => openHire(role);
   bindRoomQueue(room);
@@ -4827,6 +4829,7 @@ function dayTick(dt) {
   if (S.inspectAt > 0 && S.t >= S.inspectAt && !R.inspector) { S.inspectAt = -1; spawnInspector(); }
   if (S.vipAt > 0 && S.t >= S.vipAt) { S.vipAt = -1; const ok = Object.keys(PROBLEMS).filter((k) => !PROBLEMS[k].myst && !PROBLEMS[k].epi && hasRoom(PROBLEMS[k].room) && (!PROBLEMS[k].city || PROBLEMS[k].city === (S.city || 'london')) && lvlOk(k) && !isNewK(k)); /* a VIP only brings a problem of this city */ if (ok.length) { spawnVisitor(rnd(ok), false, true); say('vip', t('vip.arrive'), 0); chat(t('from.hq'), t('vip.arrive'), '👑'); toast('👑 ' + t('vip.arrive'), 3000); } }
   if (S.crewAt > 0 && S.t >= S.crewAt && !modalPaused) { S.crewAt = -1; crewVisit(); }
+  crewTick(dt);
   if (S.evAt > 0 && S.t >= S.evAt && !S.ev && !modalPaused) { S.evAt = -1; startEvent(); }
   if (S.raiseAt > 0 && S.t >= S.raiseAt && !modalPaused) { S.raiseAt = -1; raiseRequest(); }
   if (S.lifeAt > 0 && S.t >= S.lifeAt && !modalPaused) { S.lifeAt = -1; lifeEvent(); }
@@ -4849,9 +4852,10 @@ function dayTick(dt) {
     for (const st of S.staff) if (st.wfh && S.day % 5 === 0 && !(st.awayT > 0)) { st.awayT = DAY_LEN * 0.95; chat(st.name + ' · ' + roleN(st.role), t('life.wfhOn'), '🏠'); }
     poachCheck();
     if (S.day >= 3 && Math.random() < (['popular', 'adored'].includes(vibeTier()) ? 0.6 : 0.35)) S.vipAt = 15 + Math.random() * 30;
-    if (S.mode === 'career' && S.stars >= 2 && S.day >= 10) { if (!S.crewNext) S.crewNext = S.day + 2 + Math.floor(Math.random() * 4); else if (S.day >= S.crewNext) { S.crewNext = S.day + crewGap(); S.crewAt = 20 + Math.random() * 25; } }
-    if (S.crewAngry && S.day >= S.crewAngry) { S.crewAngry = 0; if (Math.random() < 0.65) vandalism(); }
-    if (S.crewReport && S.day >= S.crewReport) { S.crewReport = 0; S.crewNext = S.day + crewGap() + 7; chat(t('crew.name'), t('crew.police'), '🚓'); }
+    // the protection racket: first visit a few days after the 2nd star, then about every 15 days (8 days after an arrest, angrier); never after the 3rd star
+    if (S.crewReport) { S.crewReport = 0; S.crewNext = S.day + 8; S.crewMad = 1; } // a report from an older version: treated as an arrest
+    if (S.mode === 'career' && S.stars >= 2 && S.stars < 3 && S.day >= 10 && !S.crewRaid) { if (!S.crewNext) S.crewNext = S.day + 3 + Math.floor(Math.random() * 4); else if (S.day >= S.crewNext) { S.crewNext = S.day + crewGap(); S.crewAt = 20 + Math.random() * 25; } }
+    if (S.crewAngry && S.day >= S.crewAngry) { S.crewAngry = 0; crewNight(); }
     if (S.day > 1 && (S.day - 1) % 12 === 0) setTimeout(() => showWrapped(true), 400);
     if (S.mode === 'career' && !S.annexNote && annexRent()) { S.annexNote = 1; chat(t('from.landlord'), t('lot.rentNote', { m: money(annexRent()) }), '🏠'); }
     decorDaily();
@@ -4947,7 +4951,8 @@ function updateHUD() { navResearch();
   { const tr = vibeTrend(); $('hVibes').innerHTML = '<span class="stars">★</span> ' + Math.round(S.vibes) + '% ' + (S.mode === 'career' ? `<span style="font-size:13px">${TIER_FX[vibeTier()].e}</span>` + (tr > 0.5 ? '<span style="color:#1E8A3A;font-size:13px">▲</span>' : tr < -0.5 ? '<span style="color:#E53E3E;font-size:13px">▼</span>' : '') : ''); }
   const ec = $('emchip');
   ec.onclick = S.epi && !S.em ? openEpi : null; ec.style.cursor = S.epi && !S.em ? 'pointer' : '';
-  if (!S.em && S.epi) { ec.style.display = 'block'; ec.style.borderLeftColor = '#7F68C9'; ec.textContent = epiHud(); }
+  if (!S.em && S.crewRaid) { ec.style.display = 'block'; ec.style.borderLeftColor = '#3B6FD8'; const s2 = Math.max(0, Math.ceil(S.crewRaid.t - S.crewRaid.el)); ec.textContent = '🚓 ' + t('crew.hud', { t: Math.floor(s2 / 60) + ':' + String(s2 % 60).padStart(2, '0') }); }
+  else if (!S.em && S.epi) { ec.style.display = 'block'; ec.style.borderLeftColor = '#7F68C9'; ec.textContent = epiHud(); }
   else if (!S.em && S.ev) { ec.style.display = 'block'; ec.style.borderLeftColor = '#FF9F43'; ec.textContent = EVENTS[S.ev.k].e + ' ' + (S.ev.k === 'leak' ? t('ev.leak', { room: rn((R.rooms[S.ev.room] || {}).type || 'budget') }) : t('ev.hud', { name: t('ev.' + S.ev.k), t: Math.ceil(S.ev.t) + 's' })); }
   else if (!S.em && S.ad) { ec.style.display = 'block'; ec.style.borderLeftColor = '#16963C'; ec.textContent = ADS[S.ad.k].e + ' ' + t('mk.active', { name: t('mk.' + S.ad.k), t: Math.ceil(S.ad.t) + 's' }); }
   else if (S.em) { ec.style.borderLeftColor = ''; const s = Math.max(0, Math.ceil(S.em.t)); ec.style.display = 'block'; ec.textContent = '🚨 ' + t('em.hud', { name: t('em.' + S.em.k), a: S.em.got, b: S.em.need, t: Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') }); ec.style.color = s <= 30 ? '#E53E3E' : ''; ec.style.fontWeight = s <= 30 ? '900' : ''; }
@@ -4957,7 +4962,7 @@ function updateHUD() { navResearch();
 // the street sends more people to a bigger centre: every staffed treatment room past the 3rd adds 6 % more arrivals (up to +80 %), and the building holds more at once
 let flowCache = { t: -1, n: 0 };
 function staffedRooms() { const now = performance.now(); if (now - flowCache.t > 1000) { flowCache = { t: now, n: Object.values(R.rooms).filter((r) => ROOMS[r.type].role && !ROOMS[r.type].shop && r.type !== 'cafe' && r.type !== 'lab' && !ROOMS[r.type].train && r.staff.some(Boolean)).length }; } return flowCache.n; }
-const flowMul = () => (S.mode === 'career' ? Math.min(1.8, 1 + 0.06 * Math.max(0, staffedRooms() - 3)) : 1);
+const flowMul = () => (S.mode === 'career' ? Math.min(1.8, 1 + 0.06 * Math.max(0, staffedRooms() - 3)) : 1) * (S.rumorEnd && nowAbs() < S.rumorEnd ? 0.7 : 1); // 'word is out' after a raid: 30 % fewer arrivals
 const visCap = () => (S.mode === 'career' ? Math.min(36, 18 + Math.round(1.5 * Math.max(0, staffedRooms() - 3))) : 18);
 const PAPERS = [];
 function tossPaper(from, to) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat('#FFFFFF', { r: 0.9 })); m.position.set(from.x, 1.0, from.z); scene.add(m); PAPERS.push({ m, t: 0, a: { x: from.x, z: from.z }, b: to }); }
@@ -5471,7 +5476,7 @@ function repairGen() { const c = 350; if (!S.genBroken || S.cash < c) return fal
 // ---------------- building incidents (from city 2): a room is out of action for 1–2 days ----------------
 // The maintenance crew can only make it safe — they cannot repair it. Wait it out, or pay a technician for an express repair.
 const INC_MESH = new Map(); // room id → warning sign / puddle (never saved)
-const INC = { leak: { e: '💧', closes: true }, elec: { e: '⚡', spd: 0.45 }, ceiling: { e: '🧱', closes: true } };
+const INC = { leak: { e: '💧', closes: true }, elec: { e: '⚡', spd: 0.45 }, ceiling: { e: '🧱', closes: true }, smash: { e: '🔨', closes: true } }; // smash: broken by the crew, closed until you pay the repair, then 1 day of work
 const nowAbs = () => S.day * DAY_LEN + S.t;
 const incOf = (id) => (S.inc || []).find((x) => x.room === id);
 const incSpd = (room) => { const x = incOf(room.id); return x && INC[x.k].spd ? INC[x.k].spd : 1; };
@@ -5488,6 +5493,7 @@ function incStart() {
 function incVisual(x) {
   const room = R.rooms[x.room]; if (!room || INC_MESH.has(x.room)) return; const g = new THREE.Group(); g.position.set(room.cx + 0.6, 0, room.cz + 0.6);
   if (x.k === 'leak') { put(cyl(0.55, 0.55, 0.02, '#7FC7F0'), 0, 0.14, 0, g); const d = put(cyl(0.0, 0.08, 0.2, '#7FC7F0'), 0, 2.4, 0, g); g.userData.drip = d; }
+  else if (x.k === 'smash') { for (let i = 0; i < 9; i++) put(rbox(0.16 + RNG() * 0.14, 0.03, 0.1 + RNG() * 0.12, i % 3 ? '#BFE3F2' : '#8A6A4E', 0.01), (RNG() - 0.5) * 1.6, 0.13, (RNG() - 0.5) * 1.6, g).rotation.y = RNG() * 3; }
   else if (x.k === 'ceiling') { for (let i = 0; i < 5; i++) put(rbox(0.22, 0.08, 0.18, '#CFC6B8', 0.03), (RNG() - 0.5) * 0.9, 0.16, (RNG() - 0.5) * 0.9, g); }
   put(rbox(0.5, 0.5, 0.04, '#FFD23F', 0.05), 0, 0.55, 0, g).rotation.z = Math.PI / 4; put(rbox(0.06, 0.5, 0.06, '#3A3F47', 0.01), 0, 0.25, 0, g);
   scene.add(g); INC_MESH.set(x.room, g);
@@ -5507,6 +5513,7 @@ function incTick(dt) {
     if (nowAbs() >= x.end) incEnd(x, false);
   }
 }
+function incRepair(id) { const x = incOf(id); if (!x || x.k !== 'smash' || x.rep) return false; const r = S.rooms.find((q) => q.id === id), c = repairCost(r); if (S.cash < c) { toast(t('build.noCash')); return false; } S.cash -= c; x.rep = 1; x.end = nowAbs() + DAY_LEN; toast('🧰 ' + t('inc.repairing', { left: incLeft(x) })); save(); return true; }
 function incExpress(id) { const x = incOf(id); if (!x) return false; if (x.techT != null) { incEnd(x, true); save(); return true; } /* already paid in an older version: finish it now */ const c = expressCost(x); if (S.cash < c) { toast(t('build.noCash')); return false; } S.cash -= c; incEnd(x, true); { const room = R.rooms[id]; if (room) floatAt({ x: room.cx, y: 1.6, z: room.cz }, '🧰✅'); } toast('🧰 ' + t('inc.fixedX', { room: rn((S.rooms.find((q) => q.id === id) || {}).type) })); save(); return true; } // paid express repair: fixed and reopened right away
 // ---------------- mandatory events ----------------
 const EVENTS = { power: { dur: 25, e: '⚡' }, wifi: { dur: 40, e: '📶' }, leak: { dur: 45, e: '💧' }, noise: { dur: 40, e: '🔨' }, heat: { dur: 50, e: '🥵' } };
@@ -5590,22 +5597,64 @@ function showWrapped(auto) {
 
 // ---------------- the "protection fee" crew (fictional) ----------------
 // crew comes back about every 3 weeks of game days; a bit more often the further you progress
-function crewGap() { return Math.max(15, 21 - 3 * Math.max(0, S.stars - 2) - cityOf().lvl * 2) + Math.floor(Math.random() * 5) - 2; }
+function crewGap() { return 14 + Math.floor(Math.random() * 4); }
+// what refusing would cost in plain money: repairing the 2 best-earning rooms + one day of what they earn. The crew asks 1.3× that
+// (+25 % each time you paid before, ×2 when they come back after an arrest), so paying is the safe but dearer choice
+const repairCost = (r) => Math.round(roomCost(r.type, r.size) / 4 / 50) * 50;
+const roomDayEarn = (id) => { const e = (S.rEarn || {})[id] || {}; let a = 0, n = 0; for (let d = S.day - 1; d >= Math.max(1, S.day - 3); d--) { a += e[d] || 0; n++; } return n ? a / n : 0; };
+function crewFee() {
+  const rs = S.rooms.filter((r) => !ROOMS[r.type].staffOnly).map((r) => repairCost(r) + roomDayEarn(r.id)).sort((a, b) => b - a).slice(0, 2);
+  const base = 1.3 * rs.reduce((a, x) => a + x, 0) * (1 + 0.25 * (S.crewPaidN || 0)) * (S.crewMad ? 2 : 1);
+  return Math.max(500, Math.round(base / 50) * 50);
+}
+function crewSpawn() {
+  for (const a of R.crew || []) scene.remove(a.av); R.crew = [];
+  for (let i = 0; i < 3; i++) { const av = visPerson(['v08', 'v15', 'v22'][i], { skin: rnd(SKIN), hair: '#1C120C', style: 'short', shirt: '#2A2A2E', pants: '#2A2A2E', cap: '#2A2A2E', glasses: true, tall: 1.05 + i * 0.05, wide: 1.1 }); av.position.set(2 + i * 0.8, 0.1, 8.2); av.rotation.y = Math.PI; scene.add(av); R.crew.push({ av, path: [], ph: 0 }); }
+}
+function crewLeave() { const g = R.crew || []; R.crew = []; for (const c of g) { c.path = findPath(c.av.position, { x: 2.5 + Math.random(), z: 11 }); c.out = true; } R.crewOut = (R.crewOut || []).concat(g); }
 function crewVisit() {
-  const fee = Math.max(500, Math.round(Math.max(0, S.cash) * 0.08 / 50) * 50);
-  R.crew = []; for (let i = 0; i < 3; i++) { const av = visPerson(['v08', 'v15', 'v22'][i], { skin: rnd(SKIN), hair: '#1C120C', style: 'short', shirt: '#2A2A2E', pants: '#2A2A2E', cap: '#2A2A2E', glasses: true, tall: 1.05 + i * 0.05, wide: 1.1 }); av.position.set(2 + i * 0.8, 0.1, 8.2); av.rotation.y = Math.PI; scene.add(av); R.crew.push(av); }
-  modal(`<div style="font-size:46px">🕶️🕶️🕶️</div><h2>${t('crew.title')}</h2><p>${t('crew.p', { m: money(fee) })}</p>
+  const fee = crewFee(); crewSpawn();
+  modal(`<div style="font-size:46px">🕶️🕶️🕶️</div><h2>${t('crew.title')}</h2><p>${t(S.crewMad ? 'crew.p2' : 'crew.p', { m: money(fee) })}</p>
   <button class="btn g" id="cPay" style="width:100%;margin-top:8px">${t('crew.pay', { m: money(fee) })}</button>
   <div class="row2" style="margin-top:8px"><button class="btn y" id="cRef">${t('crew.refuse')}</button><button class="btn w" id="cRep">🚓 ${t('crew.report')}</button></div>`);
-  const bye = () => { closeModal(); setTimeout(() => { for (const a of R.crew || []) scene.remove(a); R.crew = []; }, 4000); };
-  $('cPay').onclick = () => { S.cash -= fee; chat(t('crew.name'), t('crew.paid'), '🕶️'); bye(); };
+  const bye = () => { closeModal(); crewLeave(); save(); };
+  $('cPay').onclick = () => { S.cash -= fee; S.crewPaidN = (S.crewPaidN || 0) + 1; S.crewMad = 0; chat(t('crew.name'), t('crew.paid'), '🕶️'); bye(); };
   $('cRef').onclick = () => { S.crewAngry = S.day + 1; chat(t('crew.name'), t('crew.refused'), '🕶️'); bye(); };
-  $('cRep').onclick = () => { S.crewReport = S.day + 2; if (Math.random() < 0.3) S.crewAngry = S.day + 1; chat(t('from.hq'), t('crew.reported'), '🚓'); bye(); };
+  // the police: they are still here, so they start smashing rooms until the police arrive (40–60 s, shown on screen; a room every 20 s, at most 3)
+  $('cRep').onclick = () => { closeModal(); S.crewRaid = { t: 40 + Math.floor(Math.random() * 21), el: 0, n: 0, mad: !!S.crewMad }; chat(t('crew.name'), t('crew.raid'), '🚓'); toast('🚓 ' + t('crew.raid'), 3200); save(); };
 }
-function vandalism() {
-  for (let i = 0; i < 6; i++) dropLitter(0.8 + Math.random() * 5.2, 0.8 + Math.random() * 5.2);
-  for (let i = 0; i < 2; i++) dropPuddle(1 + Math.random() * 4.5, 1 + Math.random() * 4.5, crnd(['#FF8FAB', '#B57BE8', '#5AB8F0']));
-  vb('crew', 0 - 5); chat(t('crew.name'), t('crew.vandal'), '🖍️'); toast('🖍️ ' + t('crew.vandal'), 3200);
+function smashPool() { return S.rooms.filter((r) => !ROOMS[r.type].staffOnly && R.rooms[r.id] && !(incOf(r.id) && incOf(r.id).k === 'smash')); }
+function smashRoom(r, quiet) {
+  const x0 = incOf(r.id); if (x0) S.inc = S.inc.filter((y) => y !== x0); { const mm = INC_MESH.get(r.id); if (mm) { scene.remove(mm); INC_MESH.delete(r.id); } }
+  const x = { k: 'smash', room: r.id, end: 1e12 }; (S.inc = S.inc || []).push(x); incVisual(x); R.rooms[r.id].closed = true;
+  AU.sfx('err'); if (!quiet) { toast('🔨 ' + t('crew.smash', { room: rn(r.type) }), 2600); const rm = R.rooms[r.id]; floatAt({ x: rm.cx, y: 1.4, z: rm.cz }, '💥', true); }
+}
+function crewAfter(mad) { // a raid by an angry crew also scares the team and the neighbourhood
+  if (!mad) return;
+  const pool = S.staff.filter((st) => !(st.awayT > 0)).sort(() => Math.random() - 0.5).slice(0, 1 + (Math.random() < 0.5 ? 1 : 0));
+  for (const st of pool) { st.awayT = DAY_LEN * 2; chat(st.name + ' · ' + roleN(st.role), t('crew.trauma'), '😰'); }
+  S.rumorEnd = nowAbs() + DAY_LEN * 3; chat(t('from.hq'), t('crew.rumor'), '📉');
+}
+function crewNight() { // refused: they came back overnight
+  const n = S.crewMad ? 3 : 2, pool = smashPool().sort(() => Math.random() - 0.5).slice(0, n);
+  for (const r of pool) smashRoom(r, true);
+  if (pool.length) { chat(t('crew.name'), t('crew.night', { n: pool.length, rooms: pool.map((r) => rn(r.type)).join(', ') }), '🔨', { act: { k: 'inc', room: pool[0].id } }); toast('🔨 ' + t('crew.night', { n: pool.length, rooms: pool.map((r) => rn(r.type)).join(', ') }), 4000); }
+  crewAfter(S.crewMad);
+}
+function crewTick(dt) {
+  for (const c of (R.crewOut || []).slice()) if (stepWalker(c, dt, 2.4)) { scene.remove(c.av); R.crewOut = R.crewOut.filter((y) => y !== c); }
+  const X = S.crewRaid; if (!X) return;
+  if (!R.crew || !R.crew.length) crewSpawn(); // after a reload
+  X.el += dt;
+  const iv = X.mad ? 12 : 20, first = X.mad ? 5 : 10, due = Math.min(3, X.el >= first ? 1 + Math.floor((X.el - first) / iv) : 0);
+  // the crew walks to the next room to smash
+  if (X.tgt == null) { const r = rnd(smashPool()); if (r) { X.tgt = r.id; const d = doorPt(r, -0.8); R.crew.forEach((c, i) => { c.path = findPath(c.av.position, { x: d.x + (i - 1) * 0.6, z: d.z }); }); } }
+  for (const c of R.crew) { if (c.path.length) { stepWalker(c, dt, 3.2); c.idle = 0; } else if (!c.idle) { c.idle = 1; poseStand(c.av.userData.p); } }
+  if (due > X.n && X.tgt != null) { const r = S.rooms.find((q) => q.id === X.tgt); X.n++; X.tgt = null; if (r && R.rooms[r.id]) smashRoom(r); }
+  if (X.el >= X.t) { // the police arrive and take them away
+    S.crewRaid = null; S.crewMad = 1; S.crewNext = S.day + 8; crewLeave();
+    chat(t('crew.name'), t('crew.arrest'), '🚓'); toast('🚓 ' + t('crew.arrest'), 3500); crewAfter(X.mad); save();
+  }
 }
 
 // ---------------- marketing ----------------
@@ -5799,7 +5848,7 @@ $('mvRot').onclick = () => { moving.r = (moving.r + Math.PI / 4) % (Math.PI * 2)
 // ---------------- flow ----------------
 function resetRuntime() {
   if (R.mgr) { scene.remove(R.mgr.av); R.mgr = null; } hideTut();
-  for (const c of R.crew || []) scene.remove(c); R.crew = [];
+  for (const c of (R.crew || []).concat(R.crewOut || [])) scene.remove(c.av || c); R.crew = []; R.crewOut = [];
   for (const v of R.visitors) { scene.remove(v.av); scene.remove(v.hud); } for (const rs of R.staff) scene.remove(rs.av);
   for (const sp of messIcons.values()) scene.remove(sp); messIcons.clear(); for (const rs of R.staff) if (rs.broom) { scene.remove(rs.broom); rs.broom = null; }
   for (const l of R.litter) scene.remove(l.mesh); for (const r of R.rats) scene.remove(r.mesh); if (R.inspector) scene.remove(R.inspector.av);
@@ -6293,6 +6342,6 @@ async function startShowcase() {
 }
 if (new URLSearchParams(location.search).get('showcase')) setTimeout(() => startShowcase().catch((e) => console.warn(e)), 600);
 
-window.__dbg = { epi: { epiDay: () => epiDay(), openEpi: () => openEpi(), startCourse: (st) => startCourse(st), sendPharm: (st) => sendPharm(st), sendHome: (st) => sendHome(st), infect: (d) => infect(d), staff: () => openStaffList("all"), verdict: () => epiVerdict(), sickAtWork: () => sickAtWork() }, settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, pickMess, prioMess, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, vandalism, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; wallSnap(placingD); decorShow(); }, decorValid, decorKeepsPaths, lotAccess, modelsReady: async (c) => { for (let i = 0; i < 150 && CHAR.status !== 'ready' && CHAR.status !== 'fallback' && CHAR.status !== 'off'; i++) await new Promise((r) => setTimeout(r, 200)); if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return false; await Promise.all(Object.keys(visPool(c)).concat(EXTRA_VIS, ['v25', 'v26', 'v27', 'v28', 'anims']).map((k) => loadFull(k).catch(() => null))); return true; }, /* the demo waits for every real character before anyone walks in */ gridDims: () => [GW, GH], makeGrid, get placingD() { return placingD; }, doorPt, roomRect, inFloor, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
+window.__dbg = { epi: { epiDay: () => epiDay(), openEpi: () => openEpi(), startCourse: (st) => startCourse(st), sendPharm: (st) => sendPharm(st), sendHome: (st) => sendHome(st), infect: (d) => infect(d), staff: () => openStaffList("all"), verdict: () => epiVerdict(), sickAtWork: () => sickAtWork() }, settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, pickMess, prioMess, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, crewNight, crewFee, incRepair, incOf, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; wallSnap(placingD); decorShow(); }, decorValid, decorKeepsPaths, lotAccess, modelsReady: async (c) => { for (let i = 0; i < 150 && CHAR.status !== 'ready' && CHAR.status !== 'fallback' && CHAR.status !== 'off'; i++) await new Promise((r) => setTimeout(r, 200)); if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return false; await Promise.all(Object.keys(visPool(c)).concat(EXTRA_VIS, ['v25', 'v26', 'v27', 'v28', 'anims']).map((k) => loadFull(k).catch(() => null))); return true; }, /* the demo waits for every real character before anyone walks in */ gridDims: () => [GW, GH], makeGrid, get placingD() { return placingD; }, doorPt, roomRect, inFloor, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
 requestAnimationFrame(loop);
 try { window.__dbg.dioramaView = dioramaView; } catch (e) {}
