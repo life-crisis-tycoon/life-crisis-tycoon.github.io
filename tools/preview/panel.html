@@ -19,11 +19,11 @@ function show(){const type=sel.value;history.replaceState(null,'','?room='+type+
  const r=d.S.rooms[d.S.rooms.length-1];if(r){const v=d.view;v.tx=r.x;v.tz=r.z;v.half=7;d.placeCam()}}
 // DEMO (?demo=lagos): a centre already running, real characters only (it waits for every model before opening the doors)
 async function demo(){const city=q.get('demo')==='1'?'lagos':q.get('demo');$('pv').style.display='none';
- try{d.closeModal()}catch(e){}d.startNew(city);try{d.closeModal()}catch(e){}const S=d.S;S.tut=-1;S.cash=1e6;S.stars=1;d.setSpeed(0);
+ try{d.closeModal()}catch(e){}d.startNew(city);try{d.closeModal()}catch(e){}const S=d.S;S.tut=-1;S.cash=1e6;S.stars=1;d.setSpeed(0);S.annex='owned';S.annex2='owned';try{d.buildAnnexLot()}catch(e){}
  const rooms=[['budget','m'],['nap','m'],['pharmacy','s'],['detox','s'],['therapy','s'],['social','m'],['lab','m'],['cafe','s'],['toilet','s'],['staffroom','s']];
  if(city==='lagos')rooms.splice(1,0,['garage','m']);S.dev=['social','parent','career','moving','glowup'];
  for(const [type,size] of rooms){d.startPlace({type,size});const pr=d.placingR;let ok=false;
-  if(pr){outer:for(const a of [0,1,2,3])for(let z=-2;z>=-24;z-=2)for(let x=-18;x<=16;x+=2){pr.x=x+0.5;pr.z=z+0.5;pr.a=a*Math.PI/2;if(d.placeValid(pr)){ok=true;break outer}}}
+  if(pr){outer:for(const a of [0,1])for(let z=-2;z>=-26;z--)for(let x=-20;x<=20;x++){pr.x=x;pr.z=z;pr.a=a*Math.PI/2;if(d.placeValid(pr)){ok=true;break outer}}}
   if(ok){d.placeShow();d.endPlace(true)}else d.endPlace(false);try{d.closeSheet()}catch(e){}}
  for(const role of ['coach','coach','guide','guide','guide','pharmacist','therapist','researcher','host','maint'])try{d.openHire(role);d.hire(0,role);d.closeSheet()}catch(e){}
  const P=d.PROBLEMS,all=Object.keys(P).filter(k=>!P[k].myst&&!P[k].epi&&(!P[k].city||P[k].city===city));S.known=all.filter(k=>!['lonely','gloom','subs'].includes(k));
