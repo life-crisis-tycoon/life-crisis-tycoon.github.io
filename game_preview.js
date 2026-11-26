@@ -209,7 +209,7 @@ scene.add(sun); sun.target.position.set(-1, 0, 2); scene.add(sun.target);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
 const view = { tx: -0.6, tz: -1.6, half: 15.5, yaw: Math.PI / 4, pitch: 0.72, yawT: null };
 const CLOSE_HALF = 10; // zoomed in closer than this = dollhouse view: everything between the camera and what you look at drops to hip height
-const PITCH_MIN = 0.26; // ~15° above the ground: the lowest, most cinematic side view
+const PITCH_MIN = 0.06; // ~3° above the ground: down to the people's own eye level
 const DIO_PITCH = 0.56; // ~32°: the diorama angle the camera eases into as you pinch-zoom in
 const camPitch = () => { const f = Math.min(1, Math.max(0, (CLOSE_HALF + 3 - view.half) / 6)); return view.pitch > DIO_PITCH ? view.pitch + (DIO_PITCH - view.pitch) * f : view.pitch; }; // zooming in lowers the camera toward the diorama view; a lower tilt chosen by the player is kept
 let PR_BASE = null; // pixel ratio chosen by the graphics level / speed watcher; close up we draw at the screen's full sharpness
@@ -942,6 +942,7 @@ function glbSwap(g, name, o = {}) {
     const sl = o.len ? o.len / Math.max(sz.x, sz.z) : null, sh = o.h ? o.h / sz.y : null;
     const k = sl || sh || 1; m.scale.set(k, sh && sl ? sh : k, k);
     if (/rug|carpet|playmat|jute/i.test(name) && sz.y * m.scale.y > (o.rugH || 0.035)) m.scale.y = (o.rugH || 0.035) / sz.y; // a rug is walked on: flat, so feet stay above it
+    if (/rug|carpet|playmat|jute/i.test(name)) m.traverse((c) => { if (c.isMesh && c.material && c.material.side !== THREE.FrontSide) { c.material = c.material.clone(); c.material.side = THREE.FrontSide; } }); // squashed flat, its underside showed through the weave as dark patches: only the top side is drawn
     if (o.fit) { const fx = o.fit[0] / sz.x, fz = o.fit[1] / sz.z; m.scale.set(fx, o.h ? sh : Math.min(fx, fz) * (o.hk || 1), fz); } // fit a footprint [w, d] (group axes); height follows the narrower side unless h is given
     let rid; g.traverse((c) => { if (c.userData.roomId != null && rid == null) rid = c.userData.roomId; });
     for (const c of g.children.slice()) if (!(o.keep && o.keep(c))) g.remove(c);
@@ -1989,7 +1990,7 @@ function rodaKit(g, cx, cz, room) {
   const W = (x, z) => { const q = F.T(x, z); return { x: cx + q.x, z: cz + q.z }; };
   const rr = S ? 0.75 : Math.min(1.1, w / 2 - 1.1), rcz = S ? -0.05 : 0.1, R = rr + 0.42; // rug, then the ring of stools
   L.push({ p: 'k_rug', len: rr * 2, x: 0, z: rcz, rot: 0, solid: false });
-  const n = seatsN(room), m = n + 1, a0 = Math.PI * 0.62, a1 = Math.PI * 2.38; // stools round the rug, leaving the door side (front) open
+  const n = S ? seatsN(room) : 6, m = n + 1, a0 = Math.PI * 0.62, a1 = Math.PI * 2.38; // regular size: a bigger circle (6 clients, still one musician) // stools round the rug, leaving the door side (front) open
   for (let i = 0; i < m; i++) { const a = a0 + (a1 - a0) * i / (m - 1), x = Math.cos(a) * R, z = rcz - Math.sin(a) * R, face = Math.atan2(-x, rcz - z); // facing the middle
     L.push({ p: 'k_stool', h: 0.44, x, z, rot: 0, solid: false, tint: ['#F2C14E', '#F4D88A', '#EFC56B'][i % 3] });
     const q = W(x, z); if (i === 0) { room.staffSpot = { x: q.x, z: q.z, rot: face + F.rho, sit: true, y: 0.05 }; L.push({ p: 'k_surdo', h: 0.6, x: x - Math.cos(a) * 0.05 - 0.55, z: z + 0.15, rot: 0 }); }
@@ -2197,11 +2198,11 @@ function socialKit(g, cx, cz, room) {
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.social.model, L, SOCIAL_DIMS);
   const tb = grp(cx, cz + tz, 0, g); put(cyl(0.45, 0.45, 0.05, '#F4F1EC', { r: 0.25 }), 0, 0.76, 0, tb); put(cyl(0.05, 0.05, 0.62, '#C9A24A', { m: 0.6, r: 0.3 }), 0, 0.43, 0, tb); put(cyl(0.26, 0.3, 0.05, '#C9A24A', { m: 0.6, r: 0.3 }), 0, 0.14, 0, tb); // marble table on a brass foot
   for (const [gx, gz, c] of [[-0.24, 0.1, '#F2A3A8'], [0.26, 0.14, '#8E1F38']]) { const gl = grp(gx, gz, 0, tb); put(cyl(0.006, 0.006, 0.1, '#FFFFFF', { op: 0.7 }), 0, 0.84, 0, gl); put(cyl(0.045, 0.02, 0.07, c, { op: 0.75 }), 0, 0.92, 0, gl); }
-  for (const s of seats) room.spots.push({ x: cx + s.x, z: cz + s.z, rot: Math.atan2(-s.x, tz - s.z), sit: true, y: 0, busy: null });
+  for (const s of seats) { const dx = s.x, dz = s.z - tz, d = Math.hypot(dx, dz) || 1; room.spots.push({ x: cx + s.x + dx / d * 0.12, z: cz + s.z + dz / d * 0.12, rot: Math.atan2(-s.x, tz - s.z), sit: true, y: 0, busy: null }); } // a sitter's hips land in front of the point: set it back so they sit in the middle of the pouf, not on its edge
   { const lg = wallHung(g, cx, cz, room, 0, -1, 0, 2.15), nb = Math.max(6, Math.round(w * 2)); // string lights along the back wall
     for (let i = 0; i < nb; i++) { const t = i / (nb - 1), x = (t - 0.5) * (w - 0.6), y = -0.18 * Math.sin(t * Math.PI * 2) ** 2; put(sph(0.045, '#FFE7A8', { e: '#FFD27A', ei: 1.4 }), x, y - 0.05, 0.08, lg); put(cyl(0.004, 0.004, (w - 0.6) / (nb - 1), '#5A4A3A'), x, y + 0.02, 0.06, lg).rotation.z = Math.PI / 2; } }
   // the guide hosts the circle from the sofa (it used to be decor nobody sat on); fallback: standing beside the poufs
-  const sf = at && at.k_sofa; room.staffSpot = sf ? { x: sf.x + Math.sin(sf.rot) * 0.1, z: sf.z + Math.cos(sf.rot) * 0.1, rot: sf.rot, sit: true, y: 0 } : { x: cx + (S ? -1.15 : -1.55), z: cz + tz + (S ? 0.9 : 1.2), rot: Math.atan2(1.4, -1.0), sit: false, y: 0 };
+  const sf = at && at.k_sofa; room.staffSpot = sf ? { x: sf.x + Math.sin(sf.rot) * 0.2, z: sf.z + Math.cos(sf.rot) * 0.2, rot: sf.rot, sit: true, y: 0 } : { x: cx + (S ? -1.15 : -1.55), z: cz + tz + (S ? 0.9 : 1.2), rot: Math.atan2(1.4, -1.0), sit: false, y: 0 };
 }
 // Wedding Calm Bureau (Mumbai; layout = the wedding bureau painting): carved desk with the planner behind it, two red armchairs on a red rug, the lehenga on its mannequin, marigolds, the flower arch in the corner
 function weddingKit(g, cx, cz, room) {
@@ -5282,7 +5283,18 @@ function decorMesh(k) {
   if (k === 'radiator') { for (let i = -3; i <= 3; i++) put(rbox(0.12, 0.7, 0.14, '#F4F2EE', 0.04), i * 0.14, 0.55, 0, g); put(rbox(1.05, 0.06, 0.16, '#E3E0DA', 0.02), 0, 0.92, 0, g); for (const x of [-0.42, 0.42]) put(cyl(0.025, 0.025, 0.2, '#8A8E96'), x, 0.12, 0, g); put(sph(0.05, '#E9785F', { e: '#E9785F', ei: 0.8 }), 0.48, 0.7, 0.08, g); glbSwap(g, 'radiator', { len: 1.1 }); }
   if (k === 'aircon') { put(rbox(0.55, 1.5, 0.4, '#F4F2EE', 0.08), 0, 0.8, 0, g); for (let i = 0; i < 5; i++) put(rbox(0.42, 0.03, 0.02, '#BFC6CE', 0.01), 0, 1.15 + i * 0.07, 0.21, g); put(rbox(0.4, 0.06, 0.02, '#5AB8F0', 0.01, { e: '#5AB8F0', ei: 0.9 }), 0, 0.55, 0.21, g); glbSwap(g, 'aircon', { h: 1.15 }); }
   if (k === 'neon') { put(rbox(1.3, 0.5, 0.08, '#2F3A52', 0.04), 0, 1.7, 0, g); put(rbox(1.1, 0.12, 0.05, '#FF8FAB', 0.02, { e: '#FF8FAB', ei: 1.5 }), 0, 1.75, 0.05, g); put(cyl(0.03, 0.03, 1.5, '#2F3A52'), 0, 0.8, 0, g); }
-  if (k === 'vending') { put(rbox(0.9, 1.8, 0.7, '#E9785F', 0.06), 0, 0.95, 0, g); put(rbox(0.6, 1.0, 0.04, '#BFE6F6', 0.02, { e: '#BFE6F6', ei: 0.4 }), -0.08, 1.15, 0.36, g); for (let i = 0; i < 6; i++) put(cyl(0.05, 0.05, 0.16, ['#FFD25E', '#7ACB4E', '#5AB8F0'][i % 3]), -0.25 + (i % 3) * 0.17, 0.85 + Math.floor(i / 3) * 0.35, 0.3, g); }
+  if (k === 'vending') { // a real drinks machine: red cabinet, lit sign on top, a glass window with 4 shelves of cans and bottles, the coin/card panel and buttons on the right, the pick-up flap at the bottom
+    const RED = '#C9302C', DK = '#2B2F36';
+    put(rbox(0.95, 1.9, 0.78, RED, 0.06, { r: 0.45 }), 0, 1.0, 0, g); put(rbox(0.99, 0.08, 0.82, DK, 0.03), 0, 0.09, 0, g); // body on a dark plinth
+    put(rbox(0.85, 0.2, 0.03, '#FFF4E0', 0.02, { e: '#FFE7B8', ei: 0.9 }), 0, 1.78, 0.39, g); put(rbox(0.5, 0.06, 0.01, RED, 0.005), -0.1, 1.78, 0.405, g); // lit brand panel
+    put(rbox(0.64, 1.2, 0.04, DK, 0.03), -0.1, 1.06, 0.38, g); put(rbox(0.58, 1.12, 0.02, '#CFE9F5', 0.01, { e: '#BFE6F6', ei: 0.35, op: 0.55 }), -0.1, 1.06, 0.41, g); // window
+    const C = ['#E53E3E', '#2E9E5B', '#F2C14E', '#3B82F6', '#F07C9A', '#FFFFFF'];
+    for (let r = 0; r < 4; r++) { const y = 0.6 + r * 0.27; put(rbox(0.56, 0.02, 0.3, '#9AA3AE', 0.005), -0.1, y, 0.24, g);
+      for (let c = 0; c < 5; c++) { const col = C[(r * 2 + c) % C.length], x = -0.34 + c * 0.12; if ((r + c) % 2) put(cyl(0.035, 0.035, 0.13, col, { m: 0.5, r: 0.35 }), x, y + 0.075, 0.27, g); else { put(cyl(0.032, 0.036, 0.15, col, { r: 0.3 }), x, y + 0.085, 0.27, g); put(cyl(0.015, 0.015, 0.04, '#F4F4F4'), x, y + 0.18, 0.27, g); } } }
+    put(rbox(0.22, 1.2, 0.03, '#3A3F47', 0.02), 0.33, 1.06, 0.395, g); // control panel
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 2; c++) put(rbox(0.05, 0.04, 0.02, '#E9ECEF', 0.008), 0.29 + c * 0.08, 1.38 - r * 0.07, 0.415, g);
+    put(rbox(0.12, 0.08, 0.02, '#7ACB4E', 0.01, { e: '#7ACB4E', ei: 0.7 }), 0.33, 1.55, 0.415, g); put(rbox(0.04, 0.1, 0.02, '#111', 0.005), 0.33, 1.06, 0.415, g); put(rbox(0.12, 0.07, 0.02, '#111', 0.01), 0.33, 0.9, 0.415, g); // display, coin slot, card reader
+    put(rbox(0.6, 0.2, 0.06, DK, 0.03), -0.1, 0.3, 0.38, g); put(rbox(0.54, 0.12, 0.02, '#4A505A', 0.02), -0.1, 0.31, 0.415, g); } // pick-up flap
   if (k === 'sofa') { put(rbox(2.0, 0.42, 0.85, '#FF8FAB', 0.15), 0, 0.3, 0, g); put(rbox(2.0, 0.62, 0.26, '#FF8FAB', 0.12), 0, 0.62, -0.32, g); for (const sx of [-1.0, 1.0]) put(rbox(0.24, 0.55, 0.85, '#F07C9A', 0.1), sx, 0.42, 0, g); glbSwap(g, 'sofa', { len: 2.2, h: 0.8 }); }
   if (k === 'bench2' || k === 'bench3') benchMesh(g, DECOR[k].len);
   if (false) { put(rbox(0.8, 0.5, 0.9, '#3B4A6B', 0.15), 0, 0.35, 0, g); put(rbox(0.8, 0.9, 0.25, '#3B4A6B', 0.12), 0, 0.85, -0.35, g); put(rbox(0.3, 0.15, 0.6, '#B57BE8', 0.06), 0.45, 0.65, 0, g); }
@@ -5354,6 +5366,8 @@ let decorWhy = null; const why = (k) => { decorWhy = k; return false; }; // why 
 function decorValid(x, z, id, k = placingD ? placingD.k : 'plant', r = placingD ? placingD.mesh.rotation.y : 0) { // the whole footprint, rotated, must be clear
   const [hx, hz] = DECOR_HALF(k), c = Math.cos(r), sn = Math.sin(r), pts = [[0, 0]];
   for (const u of [-hx, 0, hx]) for (const w of [-hz, hz]) pts.push([u, w]);
+  if (DECOR[k] && DECOR[k].flat) { // a doormat is walked on: the queue line, the desk and room doors don't matter, only the floor (its middle) and other mats
+    if (!inFloor(x, z)) return why('out'); if ((S.decor || []).some((d) => d.id !== id && d.k === k && Math.hypot(d.x - x, d.z - z) < 1.2)) return why('item'); decorWhy = null; return true; }
   for (const [u, w] of pts) { const px = x + u * c + w * sn, pz = z - u * sn + w * c;
     if (!inFloor(px, pz)) return why('out');
     if (S.rooms.some((rm) => { const q = roomRect(rm); return px > q.x0 - 0.02 && px < q.x1 + 0.02 && pz > q.z0 - 0.02 && pz < q.z1 + 0.02; })) return why('room'); // flush against a room's outside wall is fine
@@ -5416,7 +5430,7 @@ function buildExtras() {
   // (no 'your placed items' list: tap an item in the HQ to move or sell it)
   if (S.gen) h += `<div class="opt w"><div class="oi" style="background:#FFF3CF">⛽</div><div class="ot"><b>${t('gen.status', { f: genFuel(), tank: GEN_TANK, n: genCap() })}${S.genBroken ? ' · 💥 ' + t('gen.brokenShort') : ''}</b><div>${t('gen.info')}</div></div>${S.genBroken ? `<button class="btn y" id="genFix" ${S.cash < 350 ? 'disabled' : ''}>🔧 ${money(350)}</button>` : genFuel() < GEN_TANK ? `<button class="btn g" id="genFuel" ${S.cash < (GEN_TANK - genFuel()) * fuelPrice() ? 'disabled' : ''}>⛽ ${money((GEN_TANK - genFuel()) * fuelPrice())}</button>` : ''}${!S.genBig ? `<button class="btn w" id="genBig" ${S.cash < 3500 ? 'disabled' : ''}>⚡ ${money(3500)}</button>` : ''}</div>`;
   h += `<div class="lbl" style="margin:12px 0 6px">🪴 ${t('dc.title')} · ✨ ${kudos()} ${t('kd.name')}</div><p class="sub">${t('kd.info')}</p>`;
-  for (const [k, D] of Object.entries(DECOR)) if (k !== 'sofa') h += `<div class="opt w"><div class="oi" style="background:${D.kd ? '#FFF3CF' : '#DDF3E2'}">${D.e}</div><div class="ot"><b>${t('dc.' + k)} · ${D.kd ? '✨' + D.kd : money(D.cost)}</b><div>${t('dc.' + k + 'D')}</div></div><button class="btn ${D.kd ? 'y' : 'g'}" data-dec="${k}" ${D.kd ? (kudos() < D.kd ? 'disabled' : '') : (S.cash < D.cost ? 'disabled' : '')}>${t('build.btn')}</button></div>`;
+  for (const [k, D] of Object.entries(DECOR)) if (k !== 'sofa' && k !== 'neon') h += `<div class="opt w"><div class="oi" style="background:${D.kd ? '#FFF3CF' : '#DDF3E2'}">${D.e}</div><div class="ot"><b>${t('dc.' + k)} · ${D.kd ? '✨' + D.kd : money(D.cost)}</b><div>${t('dc.' + k + 'D')}</div></div><button class="btn ${D.kd ? 'y' : 'g'}" data-dec="${k}" ${D.kd ? (kudos() < D.kd ? 'disabled' : '') : (S.cash < D.cost ? 'disabled' : '')}>${t('build.btn')}</button></div>`;
   return h;
 }
 function bindExtras() {
@@ -5790,6 +5804,7 @@ function startGame() {
   knowInit();
   { const big = S.rooms.filter((r) => r.size === 'l'); if (big.length) { let m = 0; for (const r of big) { m += Math.max(0, roomCost(r.type, 'l') - roomCost(r.type, 'm')); r.size = 'm'; } S.cash += m; // large rooms are out of the game: each becomes a regular room in the same place, the price difference refunded
     setTimeout(() => toast('📐 ' + t('sz.lGone', { n: big.length, m: money(m) }), 4500), 1800); } }
+  { const nn = (S.decor || []).filter((d) => d.k === 'neon'); if (nn.length) { S.decor = S.decor.filter((d) => d.k !== 'neon'); S.cash += nn.length * Math.round(DECOR.neon.cost / 2); } } // the 'just breathe' neon is gone from the game: half its price back
   { const n = (S.decor || []).filter((d) => d.k === 'massage').length; if (n) { S.decor = S.decor.filter((d) => d.k !== 'massage'); const pr = profile(); pr.kudos = (pr.kudos || 0) + 15 * n; try { localStorage.setItem('ahq_profile', JSON.stringify(pr)); } catch (e) {} // massage chairs are out of the game: their kudos come back
     setTimeout(() => toast('💆 ' + t('dc.massageGone', { n: 15 * n }), 4500), 2600); } }
   for (const r of S.rooms) buildRoom(r);
