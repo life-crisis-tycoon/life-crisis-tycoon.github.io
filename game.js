@@ -4465,7 +4465,7 @@ canvas.addEventListener('pointermove', (e) => {
   if (placingR && placingR.drag) { placeDrag(e); return; }
   if (moving && moving.drag) { moveDrag(e); return; }
   if (!ptrs.has(e.pointerId)) return; const p = ptrs.get(e.pointerId); const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); view.half = clamp(half0 * pinch0 / d, 5, 22); let da = Math.atan2(b.y - a.y, b.x - a.x) - ang0; da = Math.atan2(Math.sin(da), Math.cos(da)); view.yaw = yaw0 - da; view.pitch = clamp(pitch0 + ((a.y + b.y) / 2 - mid0) * 0.004, PITCH_MIN, 1.15); dragDist = 99; placeCam(); return; }
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); view.half = clamp(half0 * pinch0 / d, 5, 22); let da = Math.atan2(b.y - a.y, b.x - a.x) - ang0; da = Math.atan2(Math.sin(da), Math.cos(da)); view.yaw = yaw0 - da; view.pitch = clamp(pitch0 + ((a.y + b.y) / 2 - mid0) * 0.004, PITCH_MIN, PITCH_TOP); dragDist = 99; placeCam(); return; }
   dragDist += Math.abs(dx) + Math.abs(dy);
   const k = view.half * 2 / innerHeight, rx = dx * k, ry = dy * k * 1.6;
   const cy = Math.cos(view.yaw), sy = Math.sin(view.yaw), ky = 1 / Math.max(0.35, Math.sin(view.pitch)) * 0.62;
@@ -4514,8 +4514,28 @@ function camAnim(rdt) {
 }
 { const wb = $('camWalls'); const paint = () => { wb.textContent = WALLS_UP ? '🧱' : '🔽'; wb.title = t(WALLS_UP ? 'cam.wallsUp' : 'cam.wallsCut'); };
   paint(); wb.onclick = () => { WALLS_UP = !WALLS_UP; try { localStorage.setItem('ahq_walls', WALLS_UP ? 'up' : 'cut'); } catch (e) {} paint(); updateCutaway(); toast(t(WALLS_UP ? 'cam.wallsUp' : 'cam.wallsCut'), 1800); }; }
-$('camL').onclick = () => camRot(-1); $('camR').onclick = () => camRot(1); $('camT').onclick = camTilt;
-addEventListener('keydown', (e) => { if (!inGame) return; if (e.key === 'q' || e.key === 'Q') camRot(-1); if (e.key === 'e' || e.key === 'E') camRot(1); if (e.key === 't' || e.key === 'T') camTilt(); });
+// Two camera buttons (the old ⟲ ⟳ pair becomes one): each is a little joystick.
+//  turn: slide your finger left/right on it to spin the view freely, all the way round; a tap turns it 45°
+//  tilt: slide up/down on it to raise or lower the camera smoothly; a tap jumps between the top view and the normal view
+const PITCH_TOP = 1.3, PITCH_STD = 0.72;
+function camTiltTap() { if (bgMode()) return; const p = view.pitchT ?? view.pitch; view.pitchT = p < (PITCH_TOP + PITCH_STD) / 2 ? PITCH_TOP : PITCH_STD; }
+function camStick(btn, onDrag, onTap) {
+  let st = null;
+  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); try { btn.setPointerCapture(e.pointerId); } catch (er) {} st = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 }; btn.classList.add('held'); });
+  btn.addEventListener('pointermove', (e) => { if (!st || e.pointerId !== st.id) return; const dx = e.clientX - st.x, dy = e.clientY - st.y; st.x = e.clientX; st.y = e.clientY; st.moved += Math.abs(dx) + Math.abs(dy); if (st.moved > 6) { view.yawT = null; view.pitchT = null; onDrag(dx, dy); placeCam(); } });
+  const end = (e) => { if (!st || e.pointerId !== st.id) return; const tap = st.moved <= 6; st = null; btn.classList.remove('held'); if (tap) onTap(); };
+  btn.addEventListener('pointerup', end); btn.addEventListener('pointercancel', end); btn.onclick = null;
+}
+{ const bL = $('camL'), bR = $('camR'), bT = $('camT');
+  if (bR) bR.style.display = 'none';
+  if (bL) { bL.setAttribute('aria-label', 'Rotate (slide left or right)'); bL.title = '↔'; bL.style.touchAction = 'none';
+    bL.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 9a8 4 0 0 1 14 0"/><path d="M19 15a8 4 0 0 1-14 0"/><path d="M16 6l3 3-3 3"/><path d="M8 12l-3 3 3 3"/></svg>';
+    camStick(bL, (dx) => { view.yaw -= dx * 0.016; }, () => camRot(0.5)); }
+  if (bT) { bT.setAttribute('aria-label', 'Tilt (slide up or down)'); bT.title = '↕'; bT.style.touchAction = 'none';
+    bT.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l4-4 4 4"/><path d="M8 17l4 4 4-4"/><path d="M4 12h3M17 12h3"/></svg>';
+    camStick(bT, (dx, dy) => { if (!bgMode()) view.pitch = clamp(view.pitch - dy * 0.006, PITCH_MIN, PITCH_TOP); }, camTiltTap); }
+  const css = document.createElement('style'); css.textContent = '#camCtl button.held{transform:scale(1.15);background:#E6F6EA;border-color:#16963C}'; document.head.appendChild(css); }
+addEventListener('keydown', (e) => { if (!inGame) return; if (e.key === 'q' || e.key === 'Q') camRot(-0.5); if (e.key === 'e' || e.key === 'E') camRot(0.5); if (e.key === 't' || e.key === 'T') camTiltTap(); });
 let lastSpeed = 1;
 function setSpeed(s) {
   speedMul = s; if (s > 0) lastSpeed = s;
