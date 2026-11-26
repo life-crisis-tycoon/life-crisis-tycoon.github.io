@@ -877,7 +877,7 @@ function propModel(name) {
           const merged = geos.length > 1 ? mergeGeometries(geos, false) : geos[0]; if (!merged) { for (const m of list) { const c = m.clone(); c.applyMatrix4(m.matrixWorld); root.add(c); } continue; }
           const mm = new THREE.Mesh(merged, list[0].material); mm.name = list[0].name; root.add(mm); }
         // keep named top-level nodes (the building kit picks modules by name)
-        if (name !== 'desk' && !gl.scene.children.some((c) => /^(bw|gw|ob|sf|chim|k_)/.test(c.name))) gl.scene = root; } // the reception desk keeps its parts too: dressDesk moves its chair and monitor to each station by name
+        if (name !== 'desk' && name !== 'toilet' && !gl.scene.children.some((c) => /^(bw|gw|ob|sf|chim|k_)/.test(c.name))) gl.scene = root; } // the reception desk keeps its parts too: dressDesk moves its chair and monitor to each station by name; the toilet too: merging by material named the porcelain after the hidden basin (no bowl, seat or tank) and the cubicle sides after the walk-through posts
     }
     gl.scene.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.isMeshStandardMaterial) { mt.metalness = 0; mt.roughness = /glass/.test(mt.name) ? 0.2 : 0.8; mt.envMapIntensity = /glass/.test(mt.name) ? 1.2 : 0.6; if (mt.map) mt.map.anisotropy = 4; } } });
     return gl.scene;
