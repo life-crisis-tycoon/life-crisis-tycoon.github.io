@@ -1537,7 +1537,7 @@ function buildRoom(r) {
   // two rooms side by side build their kit walls, corners and crowns in the very same planes: the GPU then flickers between the two
   // colours. Each room gets its own small depth priority (and the kit wins over the plot walls it is pushed against).
   { const off = roomPO(r), po = (o) => { if (o.isMesh && o.material && !Array.isArray(o.material) && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
-      o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off })); } };
+      o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off, onBeforeCompile: o.material.onBeforeCompile, customProgramCacheKey: o.material.customProgramCacheKey })); } }; /* a clone loses the two-tone shader hook: carried over */
     g.traverse((o) => { if (o.userData.kitW) po(o); }); for (const w of wallG) w.traverse(po); }
   // two rooms side by side: each one's wall skin reaches a few cm into the neighbour's wall, so their wall tops (and, cut down, their hip-height tops)
   // met in exactly the same plane and blinked between the two colours on phones. Each room's walls now sit a hair higher or lower (0.6-12 mm, from the
