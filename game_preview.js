@@ -1531,7 +1531,7 @@ function ambience(dt) {
 // people on a bed lie flat on their back, head to the pillow, under a duvet (feet to chest); back upright when they get up
 const LIE_V = new THREE.Vector3(), DUVET_C = ['#9C7BD4', '#E07FA6', '#6FA3D8', '#7FBF8E', '#E9A35B'];
 function napDuvet(col) { // a thick, soft duvet that hides the whole body up to the chest, with the white sheet folded back over its top edge
-  const dv = rbox(1.0, 0.3, 1, col, 0.12, { r: 0.95 }); const f = rbox(1.01, 0.1, 0.13, '#EDE6EF', 0.05, { r: 0.95 }); f.position.set(0, 0.12, -0.44); /* a soft rolled-over sheet edge, not a flat board */ f.castShadow = false; dv.add(f); return dv;
+  const dv = rbox(1.0, 0.3, 1, col, 0.12, { r: 0.95 }); const f = rbox(1.01, 0.1, 0.13, '#EDE6EF', 0.05, { r: 0.95 }); f.position.set(0, 0.12, -0.44); /* a soft rolled-over sheet edge, not a flat board */ const dr = rbox(1.0, 0.34, 0.05, col, 0.025, { r: 0.95 }); dr.position.set(0, -0.12, 0.49); dv.add(dr); /* and it hangs over the foot of the bed */ f.castShadow = false; dv.add(f); return dv;
 }
 const LIE_DV = new Set(); // every duvet in the scene, so one never stays behind when its sleeper is removed mid-nap
 function lieUpdate() {
