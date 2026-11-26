@@ -407,7 +407,7 @@ sty('heatgrump honk', { walk: 'WalkTired', idle: 'IdleHead' }); sty('paperwork',
 sty('boss hustle rent fuel subs flat', { walk: 'WalkQuick', sit: 'SitCross' });
 sty('haircut botoxfomo beauty', { idle: 'IdleMirror', phone: 'IdleMirror' }); sty('lonely ghosted', { walk: 'WalkTired', idle: 'IdleBreath' });
 sty('schoolrun toddler tablet homework sugar', { walk: 'WalkQuick' });
-const styleFor = (prob) => Object.assign({ angry: 'IdleAngry' }, PSTYLE[prob] || {});
+const styleFor = (prob) => { const st = Object.assign({ angry: 'IdleAngry' }, PSTYLE[prob] || {}); delete st.walk; return st; }; // everyone walks normally: the symptom shows only when they stop (waiting, sitting), plus the emoji bubble
 const EXTRA_VIS = ['v16', 'v08', 'v15', 'v22', 'sp_health', 'sp_safety', 'sp_mystery', 'sp_influencer', 'sp_trainer']; // inspector + the "crew"
 function visPerson(key, fb) { if (CHAR.A.full[key]) { const a = person({ vm: key, tall: VIS[key].h / 1.75 }, 'visitor'); if (a.userData.p.glb) return a; } loadFull(key); return person(fb); }
 function preloadVisitors(c) { if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return; for (const k of Object.keys(visPool(c))) loadFull(k); for (const k of EXTRA_VIS.concat(['v25', 'v26', 'v27', 'v28'])) loadFull(k); }
