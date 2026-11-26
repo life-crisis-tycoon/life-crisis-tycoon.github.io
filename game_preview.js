@@ -3774,7 +3774,7 @@ function visitorUpdate(v, dt) {
     case 'toWait': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.spot); posePhone(p); v.state = 'wait'; } break;
     case 'toShop': if (stepWalker(v, dt, walkSpeed)) { settle(v, v.sspot); poseStand(v.av.userData.p); v.state = 'shopping'; v.prog = 0; } break; // looks at the shelves, not at the phone
     case 'shopping': {
-      if (v.paying && !hostHere(v.sspot)) { if ((v.noHostT = (v.noHostT || 0) + dt) > 8) { v.paying = false; v.noHostT = 0; v.sspot.busy = null; v.sspot = null; floatAt(v.av.position, '🤷'); if (v.cured) { setPath(v, exitPath(v)); v.state = 'exit'; } else seatVisitor(v); } break; } // nobody at the till: they wait a moment, then put it back and go
+      if ((v.paying || v.prog >= 0.99) && !hostHere(v.sspot)) { if ((v.noHostT = (v.noHostT || 0) + dt) > 8) { v.paying = false; v.noHostT = 0; v.prog = 0; v.tillWait = 0; v.sspot.busy = null; v.sspot = null; floatAt(v.av.position, '🤷'); if (v.cured) { setPath(v, exitPath(v)); v.state = 'exit'; } else seatVisitor(v); } break; } // nobody at the till: they wait a moment, then put it back and go
       v.prog += dt / (v.paying ? 1.2 : 2.5);
       if (v.prog >= 1 && !v.sspot.till) { // picked an item at a shelf or the table: now pay at the counter (wait a moment if someone is being served)
         const sr = roomOfSpot(v.sspot), till = sr && sr.spots.find((q) => q.till && q.st === v.sspot.st);
