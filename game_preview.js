@@ -1942,7 +1942,7 @@ function garageKit(g, cx, cz, room) {
   L.push({ p: 'k_workbench', len: S ? 1.2 : 1.6, wall: 'back', u: 'R' }, { p: 'k_pegboard', len: S ? 1.0 : 1.3, wall: 'back', u: 'R', hang: true, y: 1.25, gap: 0.12 });
   const tl = S ? 1.5 : 1.9, td = GARAGE_DIMS.k_table[2] / GARAGE_DIMS.k_table[0] * tl;
   const sg = S ? 0.36 : 0.4, st = [[tx, tz - td / 2 - sg, 0], [tx, tz + td / 2 + sg, Math.PI]]; // coach and client face each other across the long side of the table, as in the painting (the small garage pulls the table back to keep the doorway clear)
-  L.push({ p: 'k_table', len: tl, x: tx, z: tz, rot: 0 }, { p: '@stool', h: 1, x: st[0][0], z: st[0][1], rot: st[0][2] }, { p: '@stool', h: 1, x: st[1][0], z: st[1][1], rot: st[1][2] });
+  L.push({ p: 'k_table', len: tl, x: tx, z: tz, rot: 0 }, { p: '@stool', h: LOOK_DAY ? 0.5 : 1, x: st[0][0], z: st[0][1], rot: st[0][2] }, { p: '@stool', h: LOOK_DAY ? 0.5 : 1, x: st[1][0], z: st[1][1], rot: st[1][2] });
   if (!S) { L.push({ p: 'k_rack', h: 1.5, wall: 'right', u: -1.35 }, { p: 'k_boxes', len: 1.2, wall: 'right', u: 0.5 }, { p: 'k_bench', len: 1.15, wall: 'left', u: 0.35 }, { p: 'k_bike', len: 1.45, wall: 'left', u: -1.2, hang: true, y: 0.75, gap: 0.08 }, { p: '@plant', s: 1.5, wall: 'left', u: 'F' }); }
   else L.push({ p: 'k_boxes', len: 0.95, wall: 'right', u: 0.6 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.garage.model, L, GARAGE_DIMS, F);
@@ -2271,8 +2271,8 @@ function napKit(g, cx, cz, room) {
 
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
   if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H, fabric: '#B9A8E0', lift: 0.45 }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
-  if (!S) L.push({ p: 'k_rug', len: 2.5, x: -0.35, z: 0.35, solid: false, onModel: (m) => furShells(m, '#EEEAF2', 12, 0.08) }); // reference: big white cloud rug in the middle of the room, long soft pile // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
-  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? null : '#ECE8F2'; for (const it of L) if (it && it.p === 'k_dresser') it.lift = 0.4; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
+  if (!S) L.push({ p: 'k_rug', len: 2.5, x: -0.35, z: 0.35, solid: false, onModel: (m) => furShells(m, LOOK_DAY ? '#BFA9EA' : '#EEEAF2', 12, 0.08) }); // reference: big white cloud rug in the middle of the room, long soft pile // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
+  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? (LOOK_DAY ? '#B39BE2' : null) : '#ECE8F2'; for (const it of L) if (it && it.p === 'k_dresser') it.lift = 0.4; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   if (!GFX.low && !MOBILE && sp > 1.45) for (let i = 0; i < n - 1; i++) { const pl = new THREE.PointLight('#FFB46A', 1.1, 1.5, 2); pl.position.set(cx + (i + 0.5 - (n - 1) / 2) * sp, 0.55, bz + 0.45); g.add(pl); } // a small pool of lamp light at each bedside, nothing on the sleepers' faces // the warm, dimmed glow of the lamps and the moon
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null, duvetC: ['#FBF8F4', '#F6F2EC', '#FAF7F2'][i % 3] }); // each bed its own duvet shade, as in the painting
