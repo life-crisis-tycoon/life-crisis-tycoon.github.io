@@ -1398,13 +1398,28 @@ function dioCorner(g, RS, q, sx, sz, owA, owB) {
   return cg;
 }
 function wallSegV2(x0, z0, x1, z1, S, parent) {
-  if (S.chunky && parent.userData.q) { const q = parent.userData.q, R = DIO_RC, isC = (x, z) => (Math.abs(x - q.x0) < 1e-3 || Math.abs(x - q.x1) < 1e-3) && (Math.abs(z - q.z0) < 1e-3 || Math.abs(z - q.z1) < 1e-3);
+  if (S.chunky && parent.userData.q && !LOOK_DAY) { const q = parent.userData.q, R = DIO_RC, isC = (x, z) => (Math.abs(x - q.x0) < 1e-3 || Math.abs(x - q.x1) < 1e-3) && (Math.abs(z - q.z0) < 1e-3 || Math.abs(z - q.z1) < 1e-3);
     const ax = Math.abs(z1 - z0) < 1e-6, sg = ax ? Math.sign(x1 - x0) : Math.sign(z1 - z0); // trim the ends that are room corners: the curved corner piece takes over there
     if (isC(x0, z0)) { if (ax) x0 += sg * R; else z0 += sg * R; } if (isC(x1, z1)) { if (ax) x1 -= sg * R; else z1 -= sg * R; } }
   const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (len < 0.05) return;
   const n = (parent.userData && parent.userData.n) || [0, -1], ow = !!parent.userData.outer, IN = ow ? 0.135 : 0.09, OUT = ow ? 0 : 0.06; // n points outside
   const run = (a, b, hh, y, c, r, o, ex = 0) => wbox(parent, alongX, cx, cz, 1, n, -len / 2 - ex, len / 2 + ex, a, b, hh, y, c, r, o);
+  if (LOOK_DAY) { // daylight look: thin square walls in the room colour, one light façade colour outside, a slim cap and a soft warm-white strip; the entrance side is a glass front
+    const paint = parent.userData.wall || S.wall;
+    if (parent.userData.door) {
+      const g = GC.glassM || (GC.glassM = new THREE.MeshPhysicalMaterial({ color: '#EEF4F7', transparent: true, opacity: 0.13, roughness: 0.05, metalness: 0, depthWrite: false }));
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.02, h, alongX ? 0.02 : len), g); pane.position.set(cx, h / 2 + 0.1, cz); pane.renderOrder = 2; parent.add(pane);
+      const fr = DAY.frame; run(-0.02, 0.02, 0.03, 0.115, fr, 0.008, { m: 0.6, r: 0.35 }); run(-0.02, 0.02, 0.035, h + 0.085, fr, 0.008, { m: 0.6, r: 0.35 });
+      for (const e of [-1, 1]) put(rbox(alongX ? 0.035 : 0.04, h, alongX ? 0.04 : 0.035, fr, 0.008, { m: 0.6, r: 0.35 }), alongX ? cx + e * (len / 2 - 0.02) : cx, h / 2 + 0.1, alongX ? cz : cz + e * (len / 2 - 0.02), parent);
+      return;
+    }
+    run(-0.06, 0, h, h / 2 + 0.1, paint, 0.006, { r: 0.92 }); if (!ow) run(0, 0.04, h, h / 2 + 0.1, DAY.ext, 0.006, { r: 0.92 });
+    const cap = new THREE.Group(); cap.position.y = h + 0.1; cap.userData.keepY = true; parent.add(cap); parent.userData.rim = cap;
+    wbox(cap, alongX, cx, cz, 1, n, -len / 2 - 0.01, len / 2 + 0.01, -0.075, ow ? 0.005 : 0.055, 0.035, 0.0175, '#F7EEE9', 0.012, { r: 0.8 });
+    if (len > 0.6) put(rbox(alongX ? len - 0.12 : 0.012, 0.018, alongX ? 0.012 : len - 0.12, '#FFF1D8', 0.004, { e: '#FFF1D8', ei: 0.9 }), cx - n[0] * 0.066, h + 0.03, cz - n[1] * 0.066, parent);
+    return;
+  }
   if (S.chunky && RKIT) { // kit wall: paint layer, outer layer (a shade deeper), skirting; crown and plinth keep their shape under the cutaway
     const yaw = Math.atan2(n[0], n[1]), paint = parent.userData.wall || S.wall;
     // against the building's outer wall the kit lining's painted face would sit exactly in the plane of that wall's inner face (both 12 cm in from
@@ -1510,15 +1525,16 @@ function buildRoom(r) {
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
   const ca0 = Math.cos(r.a), sa0 = Math.sin(r.a), loc = (nx, nz) => Math.round(nx * ca0 - nz * sa0) + ',' + Math.round(nx * sa0 + nz * ca0); // world side -> room-local side
+  const doorSide = (sg, d) => { sg.userData.door = !!d; return sg; };
   const wallG = [], V2 = !!(RS && RS.v2); const side = (nx, nz, ow) => { const sg = new THREE.Group(); g.add(sg); sg.userData.n = [nx, nz]; sg.userData.outer = !!ow; sg.userData.q = q; if (RS && RS.wallSide) sg.userData.wall = RS.wallSide[loc(nx, nz)]; sg.userData.p = [nx ? (nx < 0 ? q.x0 : q.x1) : mx, nz ? (nz < 0 ? q.z0 : q.z1) : mz]; wallG.push(sg); return sg; };
-  { const o = outer(mx, q.z0 - 0.3, -1); if (!o || V2) wallWithGap(q.x0, q.z0, q.x1, q.z0, near(dp.z, q.z0) ? dp.x : 0, side(0, -1, o), RS); }
-  { const o = outer(mx, q.z1 + 0.3, 1); if (!o || V2) wallWithGap(q.x0, q.z1, q.x1, q.z1, near(dp.z, q.z1) ? dp.x : 0, side(0, 1, o), RS); }
-  { const o = outer(q.x0 - 0.3, mz, 0); if (!o || V2) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, side(-1, 0, o), RS); }
-  { const o = outer(q.x1 + 0.3, mz, 0); if (!o || V2) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, side(1, 0, o), RS); }
-  if (RS && RS.chunky) { const ow = (nx, nz) => { const w = wallG.find((o) => o.userData.n[0] === nx && o.userData.n[1] === nz); return !w || w.userData.outer; };
+  { const o = outer(mx, q.z0 - 0.3, -1); if (!o || V2) wallWithGap(q.x0, q.z0, q.x1, q.z0, near(dp.z, q.z0) ? dp.x : 0, doorSide(side(0, -1, o), near(dp.z, q.z0)), RS); }
+  { const o = outer(mx, q.z1 + 0.3, 1); if (!o || V2) wallWithGap(q.x0, q.z1, q.x1, q.z1, near(dp.z, q.z1) ? dp.x : 0, doorSide(side(0, 1, o), near(dp.z, q.z1)), RS); }
+  { const o = outer(q.x0 - 0.3, mz, 0); if (!o || V2) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, doorSide(side(-1, 0, o), near(dp.x, q.x0)), RS); }
+  { const o = outer(q.x1 + 0.3, mz, 0); if (!o || V2) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, doorSide(side(1, 0, o), near(dp.x, q.x1)), RS); }
+  if (RS && RS.chunky && !LOOK_DAY) { const ow = (nx, nz) => { const w = wallG.find((o) => o.userData.n[0] === nx && o.userData.n[1] === nz); return !w || w.userData.outer; };
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) wallG.push(dioCorner(g, RS, q, sx, sz, ow(sx, 0), ow(0, sz))); }
   if (RS && RS.v2) { const opts = [[0, -1, mx, q.z0, 0, near(dp.z, q.z0)], [-1, 0, q.x0, mz, Math.PI / 2, near(dp.x, q.x0)], [0, 1, mx, q.z1, 0, near(dp.z, q.z1)], [1, 0, q.x1, mz, Math.PI / 2, near(dp.x, q.x1)]];
-    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || (sg.userData.outer && !RS.winOuter) || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
+    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (LOOK_DAY || !sg || (sg.userData.outer && !RS.winOuter) || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
       const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = RKIT && !RS.archWin ? kitWin(g, wx + (nz ? off : 0), wz + (nx ? off : 0), nx, nz) : archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, RKIT ? 0.3 : 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
   const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(staffN(r.type, r.size)).fill(null), cx: r.x, cz: r.z, door, g };
@@ -1558,7 +1574,30 @@ function buildRoom(r) {
   R.rooms[r.id] = room; if (S && S.rooms) rebuildGrid(); for (const rr of Object.values(R.rooms)) rr.linePts = null;
 }
 // 2026 rooms: round-topped doorway (arched cream frame, flush leaf with a rounded top, brass knob, icon plate)
+function buildDayDoor(r, g, RS, H, dp) {
+  const fr = DAY.frame, fo = { m: 0.6, r: 0.35 }, W = DOOR_W + 0.1;
+  for (const sx of [-1, 1]) put(rbox(0.035, H, 0.045, fr, 0.008, fo), sx * W / 2, H / 2 + 0.1, 0, g);
+  const head = put(rbox(W, 0.035, 0.045, fr, 0.008, fo), 0, DOOR_H + 0.1, 0, g);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(W, H - DOOR_H, 0.02), GC.glassM || (GC.glassM = new THREE.MeshPhysicalMaterial({ color: '#EEF4F7', transparent: true, opacity: 0.13, roughness: 0.05, depthWrite: false }))); top.position.y = DOOR_H + 0.1 + (H - DOOR_H) / 2; g.add(top);
+  const piv = grp(-DOOR_W / 2, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.02;
+  const pane = new THREE.Mesh(new THREE.BoxGeometry(lw, DOOR_H - 0.02, 0.02), GC.glassM); pane.position.set(lw / 2, (DOOR_H - 0.02) / 2, 0); pane.renderOrder = 2; piv.add(pane);
+  for (const e of [0, 1]) put(rbox(e ? 0.03 : lw, e ? DOOR_H - 0.02 : 0.03, 0.03, fr, 0.006, fo), e ? lw - 0.015 : lw / 2, e ? (DOOR_H - 0.02) / 2 : 0.015, 0, piv);
+  for (const fz of [-1, 1]) put(rbox(0.025, 0.42, 0.025, '#5A5652', 0.008, { m: 0.5, r: 0.4 }), lw - 0.14, 1.05, fz * 0.04, piv);
+  // physical sign above the entrance: warm white panel, colour dot, the room's name in charcoal (both faces), fixed to the room so the cutaway never squashes it
+  const name = rn(r.type), key = 'daySign|' + r.type;
+  const tex = GC[key] || (GC[key] = canvasTex(1024, 192, (c, W2) => { const Hc = 192; c.fillStyle = '#FBF7F2'; c.fillRect(0, 0, W2, Hc); c.fillStyle = RS.wall || '#E8A5AD'; c.beginPath(); c.arc(84, Hc / 2, 30, 0, 6.3); c.fill();
+    c.fillStyle = '#2B2A2C'; c.font = '600 92px Nunito, Inter, system-ui, sans-serif'; c.textBaseline = 'middle'; c.fillText(name, 140, Hc / 2 + 4, W2 - 170); }));
+  const sw = 2.2, sh = 0.41, sm = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), sign = new THREE.Group();
+  sign.position.copy(g.position); sign.rotation.y = g.rotation.y; sign.position.y = H + 0.42; g.parent.add(sign);
+  put(rbox(sw + 0.04, sh + 0.04, 0.04, '#FBF7F2', 0.02, { r: 0.6 }), 0, 0, 0, sign);
+  for (const fz of [-1, 1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), sm); pl.position.z = fz * 0.021; if (fz < 0) pl.rotation.y = Math.PI; sign.add(pl); }
+  for (const sx of [-1, 1]) put(rbox(0.015, 0.36, 0.015, fr, 0.004, fo), sx * (sw / 2 - 0.2), -0.36, 0, sign);
+  const d = { g, leaves: [piv], top, head, x: dp.x, z: dp.z, open: 0, kit: false, sign };
+  (world.doors = (world.doors || []).filter((o) => o.g.parent && o.g.parent.parent)).push(d);
+  return d;
+}
 function buildArchDoor(r, g, RS, H, th, dp) {
+  if (LOOK_DAY) return buildDayDoor(r, g, RS, H, dp);
   const R = DOOR_W / 2, yS = DOOR_H - R, fm = '#FBF4E8', fw = 0.11, ow = DOOR_W + 2 * fw;
   let arc;
   if (RKIT && RS.chunky) { arc = KM('k_doorframe', RS.rim || KIT_C.rim, 0.72); g.add(arc); } // kit: one chunky arched frame through the wall, crown colour
@@ -6393,6 +6432,6 @@ async function startShowcase() {
 }
 if (new URLSearchParams(location.search).get('showcase')) setTimeout(() => startShowcase().catch((e) => console.warn(e)), 600);
 
-window.__dbg = { epi: { epiDay: () => epiDay(), openEpi: () => openEpi(), startCourse: (st) => startCourse(st), sendPharm: (st) => sendPharm(st), sendHome: (st) => sendHome(st), infect: (d) => infect(d), staff: () => openStaffList("all"), verdict: () => epiVerdict(), sickAtWork: () => sickAtWork() }, settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, pickMess, prioMess, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, crewNight, crewFee, incRepair, incOf, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; wallSnap(placingD); decorShow(); }, decorValid, decorKeepsPaths, lotAccess, modelsReady: async (c) => { for (let i = 0; i < 150 && CHAR.status !== 'ready' && CHAR.status !== 'fallback' && CHAR.status !== 'off'; i++) await new Promise((r) => setTimeout(r, 200)); if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return false; await Promise.all(Object.keys(visPool(c)).concat(EXTRA_VIS, ['v25', 'v26', 'v27', 'v28', 'anims']).map((k) => loadFull(k).catch(() => null))); return true; }, /* the demo waits for every real character before anyone walks in */ gridDims: () => [GW, GH], makeGrid, get placingD() { return placingD; }, doorPt, roomRect, inFloor, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
+window.__dbg = { renderer,  epi: { epiDay: () => epiDay(), openEpi: () => openEpi(), startCourse: (st) => startCourse(st), sendPharm: (st) => sendPharm(st), sendHome: (st) => sendHome(st), infect: (d) => infect(d), staff: () => openStaffList("all"), verdict: () => epiVerdict(), sickAtWork: () => sickAtWork() }, settle: (o, s) => settle(o, s), buildShell: (c) => buildShell(c), buildAnnexLot: () => { world.shellOwn = null; buildAnnexLot(); }, get gridRid() { return gridRid; }, get gridDoors() { return gridDoors; }, get gridBlk() { return gridBlk; }, ci, crossOK, lengthenDesk, PROBLEMS, ROOMS, CITIES, unlocked, roomCost, billInfo, get GOALS() { return GOALS; }, gameOver, billWarn, openBills, cityVictory, hemi, fill, sun, startShowcase, CHAR, GFX, person, AU, openAudio, staffCover, selectVisitor, openMgr, mgrGo, startPick, endPick, openDesk, splitQueue, roomQ, capOf, get view() { return view; }, camRot, camTilt, placeCam, snapVisitor, save, load, step, closeModal, closeSheet, get S() { return S; }, R, spawnVisitor, hire, startPlace, endPlace, placeShow, get placingR() { return placingR; }, openRoomMenu, demolish, findPath, placeValid, openHire,  startNew, startQuick, offerEmergency, spawnInspector, dropLitter, pickMess, prioMess, dropPuddle, spawnRat, setLang: (l) => { setLang(l); applyStatic(); refreshTitle(); }, pepTalk, lifeEvent, get cnt() { return S.cnt; }, isNight, renderMap, showMap, openBrief, get mapCity() { return mapCity; }, setMapCity: (c) => { mapCity = c; }, crewVisit, crewNight, crewFee, incRepair, incOf, showWrapped, openMarketing, openCreate, startEvent, endEvent, raiseRequest, startDecor, endDecor, decorTo: (x, z) => { placingD.x = x; placingD.z = z; wallSnap(placingD); decorShow(); }, decorValid, decorKeepsPaths, lotAccess, modelsReady: async (c) => { for (let i = 0; i < 150 && CHAR.status !== 'ready' && CHAR.status !== 'fallback' && CHAR.status !== 'off'; i++) await new Promise((r) => setTimeout(r, 200)); if (CHAR.status !== 'ready' || !CHAR.man || !CHAR.man.visitors) return false; await Promise.all(Object.keys(visPool(c)).concat(EXTRA_VIS, ['v25', 'v26', 'v27', 'v28', 'anims']).map((k) => loadFull(k).catch(() => null))); return true; }, /* the demo waits for every real character before anyone walks in */ gridDims: () => [GW, GH], makeGrid, get placingD() { return placingD; }, doorPt, roomRect, inFloor, openDecorMenu, startMove, endMove, moveTo: (x, z) => { moving.x = x; moving.z = z; moveShow(); }, nextSteps, openGoals, setSpeed, get MGR() { return MGR; }, renderer, scene, cam, updateLabels, updateTut, updatePep, updateHUD };
 requestAnimationFrame(loop);
 try { window.__dbg.dioramaView = dioramaView; } catch (e) {}
