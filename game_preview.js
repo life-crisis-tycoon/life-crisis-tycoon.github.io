@@ -282,7 +282,7 @@ function updateCutaway() {
   // Two Point Hospital cutaway: back walls full height (taller than people); walls on the camera side cut to hip height
   // (solid, never see-through); doors always keep their full frame and leaf. The 🧱 button raises every wall when wanted.
   const close = view.half < CLOSE_HALF, fr = (p) => !!p && (p[0] - view.tx) * cx + (p[1] - view.tz) * cz > 0.6; // fr: nearer the camera than the point you look at
-  const up = WALLS_UP, cut = (n, p) => { if (close && fr(p)) return true; if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
+  const up = WALLS_UP, cut = (n, p) => { if (close && fr(p)) return true; if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (LOOK_DAY) return false; /* daylight look: back walls stay full height, as in the benchmark render */ if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
   const tv = new THREE.Vector3(), wp2 = (o) => { o.getWorldPosition(tv); return [tv.x, tv.z]; };
   for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = (!up || close) && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
   for (const w of world.roomCut || []) { w.scale.y = !(LOOK_DAY && w.userData.door) && cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
@@ -1595,7 +1595,7 @@ function dayDress(room) {
   if (D.rug) { const low = boxes.filter((b) => b.max.y < 0.95 && (b.max.x - b.min.x) < 1.1 && (b.max.z - b.min.z) < 1.1); if (low.length) {
     const cx = low.reduce((s2, b) => s2 + (b.min.x + b.max.x) / 2, 0) / low.length, cz = low.reduce((s2, b) => s2 + (b.min.z + b.max.z) / 2, 0) / low.length;
     const tx = GC.dayRug || (GC.dayRug = canvasTex(256, 256, (c, Wc) => { c.fillStyle = D.rug; c.fillRect(0, 0, Wc, Wc); let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); for (let i = 0; i < 9000; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'; c.fillRect(rr() * Wc, rr() * Wc, 1.5, 1.5); } }));
-    const rug = new THREE.Mesh(new THREE.CircleGeometry(1.45, 64), new THREE.MeshStandardMaterial({ map: tx, roughness: 1 })); rug.rotation.x = -Math.PI / 2; rug.position.set(cx, 0.112, cz); rug.receiveShadow = true; room.g.add(rug); } }
+    const rug = new THREE.Mesh(new THREE.CircleGeometry(1.45, 64), new THREE.MeshStandardMaterial({ map: tx, roughness: 1 })); rug.rotation.x = -Math.PI / 2; rug.position.set(cx, 0.133, cz); rug.material.polygonOffset = true; rug.material.polygonOffsetFactor = -1; rug.receiveShadow = true; room.g.add(rug); } }
 }
 function buildDayDoor(r, g, RS, H0, dp) {
   const H = H0 + DAY.glassUp, fr = DAY.frame, fo = { m: 0.6, r: 0.35 }, W = DOOR_W + 0.1;
