@@ -195,7 +195,8 @@ renderer.debug.onShaderError = (gl, prog, vs, fs) => { try { const log = [gl.get
 /* daylight look (preview, ?look=day): soft daylight, neutral tone mapping, colour carried by the materials; one place for its values */
 const LOOK_DAY = /[?&]look=day\b/.test(location.search);
 const DAY = { exposure: 1.0, hemi: ['#FFF8F2', '#D8C9BE', 1.15], sun: ['#FFF5E9', 2.35], fill: ['#F4F0FF', 0.45], env: 0.3, ext: '#F3E5E0', corridor: [237, 221, 216], grout: '#D9C7C2', frame: '#ABA8A5',
-  rooms: { social: { wall: '#ECA4B1', floor: '#F0C8CE' }, lab: { wall: '#B5C8AD', floor: '#E6E6DF' } }, kits: { social_kit: 'social_kit_n', lab_kit: 'lab_kit_n' } };
+  rooms: { social: { wall: '#ECA4B1', floor: '#F0C8CE' }, lab: { wall: '#B5C8AD', floor: '#E6E6DF' }, nap: { wall: '#CBB5DF', floor: '#E5D9EE' }, garage: { wall: '#E9C795', floor: '#E5C5A4' }, budget: { wall: '#A9CDB2', floor: '#DCE6DA' }, therapy: { wall: '#E9B89E', floor: '#EFD9CB' },
+    pharmacy: { wall: '#A9D1C8', floor: '#E3E8E3' }, detox: { wall: '#C5D3A2', floor: '#E7E9D8' }, cafe: { wall: '#EBB89A', floor: '#EFE2D6' }, toilet: { wall: '#B3CBE0', floor: '#E3E8EE' }, parent: { wall: '#AFC8E2', floor: '#EBD3AE' }, career: { wall: '#B5BCE0', floor: '#E4E2EC' } }, kits: { social_kit: 'social_kit_n', lab_kit: 'lab_kit_n' } };
 const BASE_EXPO = LOOK_DAY ? DAY.exposure : 0.92;
 renderer.toneMapping = LOOK_DAY ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = BASE_EXPO;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1586,9 +1587,9 @@ function buildDayDoor(r, g, RS, H, dp) {
   // physical sign above the entrance: warm white panel, colour dot, the room's name in charcoal (both faces), fixed to the room so the cutaway never squashes it
   const name = rn(r.type), key = 'daySign|' + r.type;
   const tex = GC[key] || (GC[key] = canvasTex(1024, 192, (c, W2) => { const Hc = 192; c.fillStyle = '#FBF7F2'; c.fillRect(0, 0, W2, Hc); c.fillStyle = RS.wall || '#E8A5AD'; c.beginPath(); c.arc(84, Hc / 2, 30, 0, 6.3); c.fill();
-    c.fillStyle = '#2B2A2C'; c.font = '600 92px Nunito, Inter, system-ui, sans-serif'; c.textBaseline = 'middle'; c.fillText(name, 140, Hc / 2 + 4, W2 - 170); }));
-  const sw = 2.2, sh = 0.41, sm = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), sign = new THREE.Group();
-  sign.position.copy(g.position); sign.rotation.y = g.rotation.y; sign.position.y = H + 0.42; g.parent.add(sign);
+    c.fillStyle = '#2B2A2C'; c.font = '700 118px Nunito, Inter, system-ui, sans-serif'; c.textBaseline = 'middle'; c.fillText(name, 140, Hc / 2 + 6, W2 - 170); })); tex.anisotropy = 8;
+  const sw = 2.7, sh = 0.5, sm = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), sign = new THREE.Group();
+  sign.position.copy(g.position); sign.rotation.y = g.rotation.y; sign.position.y = H + 0.48; g.parent.add(sign);
   put(rbox(sw + 0.04, sh + 0.04, 0.04, '#FBF7F2', 0.02, { r: 0.6 }), 0, 0, 0, sign);
   for (const fz of [-1, 1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), sm); pl.position.z = fz * 0.021; if (fz < 0) pl.rotation.y = Math.PI; sign.add(pl); }
   for (const sx of [-1, 1]) put(rbox(0.015, 0.36, 0.015, fr, 0.004, fo), sx * (sw / 2 - 0.2), -0.36, 0, sign);
