@@ -194,9 +194,9 @@ renderer.debug.onShaderError = (gl, prog, vs, fs) => { try { const log = [gl.get
   el.textContent = 'Erreur graphique (capture d\'écran pour le support, touche pour fermer) : ' + window.__shaderErr.join(' || '); } catch (e) {} }; // preview: soft, blurred shadows (variance maps)
 /* daylight look (preview, ?look=day): soft daylight, neutral tone mapping, colour carried by the materials; one place for its values */
 const LOOK_DAY = /[?&]look=day\b/.test(location.search);
-const DAY = { exposure: 1.0, hemi: ['#FFF8F2', '#D8C9BE', 1.15], sun: ['#FFF5E9', 2.35], fill: ['#F4F0FF', 0.45], env: 0.3, ext: '#F3E5E0', corridor: [237, 221, 216], grout: '#D9C7C2', frame: '#ABA8A5',
+const DAY = { glassUp: 0.55, exposure: 1.0, hemi: ['#FFF8F2', '#D8C9BE', 1.15], sun: ['#FFF5E9', 2.35], fill: ['#F4F0FF', 0.45], env: 0.3, ext: '#F3E5E0', corridor: [237, 221, 216], grout: '#D9C7C2', frame: '#ABA8A5',
   rooms: { social: { wall: '#ECA4B1', floor: '#F0C8CE' }, lab: { wall: '#B5C8AD', floor: '#E6E6DF' }, nap: { wall: '#CBB5DF', floor: '#E5D9EE' }, garage: { wall: '#E9C795', floor: '#E5C5A4' }, budget: { wall: '#A9CDB2', floor: '#DCE6DA' }, therapy: { wall: '#E9B89E', floor: '#EFD9CB' },
-    pharmacy: { wall: '#A9D1C8', floor: '#E3E8E3' }, detox: { wall: '#C5D3A2', floor: '#E7E9D8' }, cafe: { wall: '#EBB89A', floor: '#EFE2D6' }, toilet: { wall: '#B3CBE0', floor: '#E3E8EE' }, parent: { wall: '#AFC8E2', floor: '#EBD3AE' }, career: { wall: '#B5BCE0', floor: '#E4E2EC' } }, kits: { social_kit: 'social_kit_n', lab_kit: 'lab_kit_n' } };
+    pharmacy: { wall: '#A9D1C8', floor: '#E3E8E3' }, detox: { wall: '#C5D3A2', floor: '#E7E9D8' }, cafe: { wall: '#EBB89A', floor: '#EFE2D6' }, toilet: { wall: '#B3CBE0', floor: '#E3E8EE' }, parent: { wall: '#AFC8E2', floor: '#EBD3AE' }, career: { wall: '#B5BCE0', floor: '#E4E2EC' } }, kits: { social_kit: 'social_kit_n', lab_kit: 'lab_kit_n', nap_kit: 'nap_kit_n' } };
 const BASE_EXPO = LOOK_DAY ? DAY.exposure : 0.92;
 renderer.toneMapping = LOOK_DAY ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = BASE_EXPO;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -285,9 +285,9 @@ function updateCutaway() {
   const up = WALLS_UP, cut = (n, p) => { if (close && fr(p)) return true; if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
   const tv = new THREE.Vector3(), wp2 = (o) => { o.getWorldPosition(tv); return [tv.x, tv.z]; };
   for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = (!up || close) && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
-  for (const w of world.roomCut || []) { w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
+  for (const w of world.roomCut || []) { w.scale.y = !(LOOK_DAY && w.userData.door) && cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
   for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
-  for (const d of world.doors || []) { const c = !d.kit && close && d.g.userData.n && cut(d.g.userData.n, [d.x, d.z]); // close up, a door in a wall that drops to hip height drops with it (frame cut down, leaf and arch hidden)
+  for (const d of world.doors || []) { const c = !LOOK_DAY && !d.kit && close && d.g.userData.n && cut(d.g.userData.n, [d.x, d.z]); // close up, a door in a wall that drops to hip height drops with it (frame cut down, leaf and arch hidden)
     d.g.scale.y = c ? WALL_HIP / ROOM_H : 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = !c; d.cut = !!c; }
   const ep = camPitch(), tan = Math.tan(ep);
   // how far toward the camera the HQ (and its plaza) reaches from the point you look at, capped by the bottom of the screen:
@@ -1177,6 +1177,7 @@ Object.assign(ROOM_STYLE.lucha, { model: 'lucha_kit', kit: true, wall: '#D9346E'
 Object.assign(ROOM_STYLE.ahwa, { model: 'ahwa_kit', kit: true, wall: '#E2B77E', inBase: '#2E8C86', door: '#2E8C86', panel: '#2E8C86', pop: '#C9873A', wood: ['#E6CFA8', '#D9BF94'], floor: '#E6CFA8' }); // sand plaster, teal tile skirting, pale tiles
 Object.assign(ROOM_STYLE.jjim, { model: 'jjim_kit', kit: true, wall: '#C98A4E', inBase: '#9C6436', door: '#9A6234', panel: '#9A6234', pop: '#F2B33D', wood: ['#E9B949', '#E0AE3F'], floor: '#E9B949' }); // warm wood walls, the heated yellow ondol floor
 Object.assign(ROOM_STYLE.yoga, { model: 'yoga_kit', kit: true, wall: '#F1E2C4', inBase: '#D6BE98', door: '#8A5A36', panel: '#B48CE8', pop: '#B48CE8', wood: ['#D59D5F', '#C68C50'], floor: '#D59D5F' }); // cream terrace walls, wooden deck // the Tripo pieces of the break-room and yoga paintings
+if (LOOK_DAY) for (const k in ROOM_STYLE) if (ROOM_STYLE[k] && ROOM_STYLE[k].kit) ROOM_STYLE[k].ao = true;
 if (LOOK_DAY) for (const k in DAY.rooms) { const st = ROOM_STYLE[k], d = DAY.rooms[k]; if (!st) continue; st.wall = d.wall; st.inBase = d.wall; st.floor = d.floor; st.floorM = null; st.floorMap = null; }
 for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga', 'shop', 'detox', 'garage', 'lucha', 'ahwa', 'jjim', 'roda']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 /* polish (preview): every room floor gets a real pattern at real scale (kit floors have UVs in metres): staggered planks with grain,
@@ -1410,12 +1411,13 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
     const paint = parent.userData.wall || S.wall;
     if (parent.userData.door) {
       const g = GC.glassM || (GC.glassM = new THREE.MeshPhysicalMaterial({ color: '#EEF4F7', transparent: true, opacity: 0.13, roughness: 0.05, metalness: 0, depthWrite: false }));
-      const pane = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.02, h, alongX ? 0.02 : len), g); pane.position.set(cx, h / 2 + 0.1, cz); pane.renderOrder = 2; parent.add(pane);
-      const fr = DAY.frame; run(-0.02, 0.02, 0.03, 0.115, fr, 0.008, { m: 0.6, r: 0.35 }); run(-0.02, 0.02, 0.035, h + 0.085, fr, 0.008, { m: 0.6, r: 0.35 });
-      for (const e of [-1, 1]) put(rbox(alongX ? 0.035 : 0.04, h, alongX ? 0.04 : 0.035, fr, 0.008, { m: 0.6, r: 0.35 }), alongX ? cx + e * (len / 2 - 0.02) : cx, h / 2 + 0.1, alongX ? cz : cz + e * (len / 2 - 0.02), parent);
+      const hg = h + DAY.glassUp, pane = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.02, hg, alongX ? 0.02 : len), g); pane.position.set(cx, hg / 2 + 0.1, cz); pane.renderOrder = 2; parent.add(pane);
+      const fr = DAY.frame; run(-0.02, 0.02, 0.03, 0.115, fr, 0.008, { m: 0.6, r: 0.35 }); run(-0.02, 0.02, 0.035, hg + 0.085, fr, 0.008, { m: 0.6, r: 0.35 });
+      for (const e of [-1, 1]) put(rbox(alongX ? 0.03 : 0.035, hg, alongX ? 0.035 : 0.03, fr, 0.008, { m: 0.6, r: 0.35 }), alongX ? cx + e * (len / 2 - 0.015) : cx, hg / 2 + 0.1, alongX ? cz : cz + e * (len / 2 - 0.015), parent);
       return;
     }
     run(-0.06, 0, h, h / 2 + 0.1, paint, 0.006, { r: 0.92 }); if (!ow) run(0, 0.04, h, h / 2 + 0.1, DAY.ext, 0.006, { r: 0.92 });
+    if (parent.parent) aoStrip(parent.parent, cx, cz, len, n, 0.06, 0.45);
     const cap = new THREE.Group(); cap.position.y = h + 0.1; cap.userData.keepY = true; parent.add(cap); parent.userData.rim = cap;
     wbox(cap, alongX, cx, cz, 1, n, -len / 2 - 0.01, len / 2 + 0.01, -0.075, ow ? 0.005 : 0.055, 0.035, 0.0175, '#F7EEE9', 0.012, { r: 0.8 });
     if (len > 0.6) put(rbox(alongX ? len - 0.12 : 0.012, 0.018, alongX ? 0.012 : len - 0.12, '#FFF1D8', 0.004, { e: '#FFF1D8', ei: 0.9 }), cx - n[0] * 0.066, h + 0.03, cz - n[1] * 0.066, parent);
@@ -1575,24 +1577,24 @@ function buildRoom(r) {
   R.rooms[r.id] = room; if (S && S.rooms) rebuildGrid(); for (const rr of Object.values(R.rooms)) rr.linePts = null;
 }
 // 2026 rooms: round-topped doorway (arched cream frame, flush leaf with a rounded top, brass knob, icon plate)
-function buildDayDoor(r, g, RS, H, dp) {
-  const fr = DAY.frame, fo = { m: 0.6, r: 0.35 }, W = DOOR_W + 0.1;
-  for (const sx of [-1, 1]) put(rbox(0.035, H, 0.045, fr, 0.008, fo), sx * W / 2, H / 2 + 0.1, 0, g);
-  const head = put(rbox(W, 0.035, 0.045, fr, 0.008, fo), 0, DOOR_H + 0.1, 0, g);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(W, H - DOOR_H, 0.02), GC.glassM || (GC.glassM = new THREE.MeshPhysicalMaterial({ color: '#EEF4F7', transparent: true, opacity: 0.13, roughness: 0.05, depthWrite: false }))); top.position.y = DOOR_H + 0.1 + (H - DOOR_H) / 2; g.add(top);
-  const piv = grp(-DOOR_W / 2, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.02;
-  const pane = new THREE.Mesh(new THREE.BoxGeometry(lw, DOOR_H - 0.02, 0.02), GC.glassM); pane.position.set(lw / 2, (DOOR_H - 0.02) / 2, 0); pane.renderOrder = 2; piv.add(pane);
-  for (const e of [0, 1]) put(rbox(e ? 0.03 : lw, e ? DOOR_H - 0.02 : 0.03, 0.03, fr, 0.006, fo), e ? lw - 0.015 : lw / 2, e ? (DOOR_H - 0.02) / 2 : 0.015, 0, piv);
-  for (const fz of [-1, 1]) put(rbox(0.025, 0.42, 0.025, '#5A5652', 0.008, { m: 0.5, r: 0.4 }), lw - 0.14, 1.05, fz * 0.04, piv);
-  // physical sign above the entrance: warm white panel, colour dot, the room's name in charcoal (both faces), fixed to the room so the cutaway never squashes it
+function buildDayDoor(r, g, RS, H0, dp) {
+  const H = H0 + DAY.glassUp, fr = DAY.frame, fo = { m: 0.6, r: 0.35 }, W = DOOR_W + 0.1;
+  const gm = GC.glassM || (GC.glassM = new THREE.MeshPhysicalMaterial({ color: '#EEF4F7', transparent: true, opacity: 0.13, roughness: 0.05, depthWrite: false }));
+  for (const sx of [-1, 1]) put(rbox(0.03, H, 0.04, fr, 0.008, fo), sx * W / 2, H / 2 + 0.1, 0, g);
+  const head = put(rbox(W, 0.03, 0.04, fr, 0.008, fo), 0, DOOR_H + 0.1, 0, g);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(W, H - DOOR_H, 0.02), gm); top.position.y = DOOR_H + 0.1 + (H - DOOR_H) / 2; top.renderOrder = 2; g.add(top);
+  // the leaf reads as a pair of glass doors: two panes, a slim centre bar, two vertical pulls
+  const piv = grp(-DOOR_W / 2, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.02, lh = DOOR_H - 0.02;
+  const pane = new THREE.Mesh(new THREE.BoxGeometry(lw, lh, 0.02), gm); pane.position.set(lw / 2, lh / 2, 0); pane.renderOrder = 2; piv.add(pane);
+  for (const [w2, h2, x2, y2] of [[lw, 0.03, lw / 2, 0.015], [lw, 0.025, lw / 2, lh - 0.0125], [0.025, lh, 0.0125, lh / 2], [0.025, lh, lw - 0.0125, lh / 2], [0.03, lh, lw / 2, lh / 2]]) put(rbox(w2, h2, 0.03, fr, 0.006, fo), x2, y2, 0, piv);
+  for (const sx of [-1, 1]) for (const fz of [-1, 1]) put(rbox(0.022, 0.42, 0.022, '#5A5652', 0.008, { m: 0.5, r: 0.4 }), lw / 2 + sx * 0.08, 1.05, fz * 0.035, piv);
+  // physical sign on the glass right above the entrance: warm white panel, colour dot, the room's name in charcoal on both faces
   const name = rn(r.type), key = 'daySign|' + r.type;
   const tex = GC[key] || (GC[key] = canvasTex(1024, 192, (c, W2) => { const Hc = 192; c.fillStyle = '#FBF7F2'; c.fillRect(0, 0, W2, Hc); c.fillStyle = RS.wall || '#E8A5AD'; c.beginPath(); c.arc(84, Hc / 2, 30, 0, 6.3); c.fill();
     c.fillStyle = '#2B2A2C'; c.font = '700 118px Nunito, Inter, system-ui, sans-serif'; c.textBaseline = 'middle'; c.fillText(name, 140, Hc / 2 + 6, W2 - 170); })); tex.anisotropy = 8;
-  const sw = 2.7, sh = 0.5, sm = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), sign = new THREE.Group();
-  sign.position.copy(g.position); sign.rotation.y = g.rotation.y; sign.position.y = H + 0.48; g.parent.add(sign);
-  put(rbox(sw + 0.04, sh + 0.04, 0.04, '#FBF7F2', 0.02, { r: 0.6 }), 0, 0, 0, sign);
-  for (const fz of [-1, 1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), sm); pl.position.z = fz * 0.021; if (fz < 0) pl.rotation.y = Math.PI; sign.add(pl); }
-  for (const sx of [-1, 1]) put(rbox(0.015, 0.36, 0.015, fr, 0.004, fo), sx * (sw / 2 - 0.2), -0.36, 0, sign);
+  const sw = 2.6, sh = 0.48, sm = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), sign = grp(0, 0, 0, g); sign.position.y = DOOR_H + 0.1 + 0.05 + sh / 2;
+  put(rbox(sw + 0.04, sh + 0.04, 0.05, '#FBF7F2', 0.02, { r: 0.6 }), 0, 0, 0, sign);
+  for (const fz of [-1, 1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), sm); pl.position.z = fz * 0.026; if (fz < 0) pl.rotation.y = Math.PI; sign.add(pl); }
   const d = { g, leaves: [piv], top, head, x: dp.x, z: dp.z, open: 0, kit: false, sign };
   (world.doors = (world.doors || []).filter((o) => o.g.parent && o.g.parent.parent)).push(d);
   return d;
@@ -4385,6 +4387,7 @@ function updateLabels() {
     if (needStaff && R.visitors.some((v) => v.state === 'wait' && v.known && needOf(v) === room.type)) say('ns' + room.type, t('room.needs', { room: rn(room.type), role: roleN(ROOMS[room.type].role) }), 50);
     else if (roomQ(room.id).length >= 5) say('q' + room.id, t('pa.queue', { room: rn(room.type) + roomNo(room) }), 90);
     if (!needStaff && !room.closed) el.style.background = ROOMS[room.type].pill; at(el, room.cx, 3.0, q.z0 + 0.3); seen.add('r' + room.id);
+    el.style.display = LOOK_DAY && !(needStaff || room.closed || ix) ? 'none' : '';
   }
   if (S.mode === 'career' && S.garden) { const ok = GARDEN_OK(), o = outsideT(), why = ok ? 'open' : S.rainy && !S.gardenRoof ? 'rain' : o <= (S.gardenHeat ? -2 : 8) ? 'cold' : 'hot'; const [pa] = plazaX(); const el = label('garden', ok ? 'ok' : 'lock', '🌳 ' + t('gd.' + why)); at(el, Math.min(-2, pa + 3), 0.8, 8.4); seen.add('garden'); }
   if (S.mode === 'career') plotOf().lots.forEach((L, i) => { const st = lotSt(i); if (st === 'owned' || !lotOpen(i)) return; const el = label('lot' + i, 'lock', st === 'pending' ? t('lot.pending', { d: lotDay(i) }) : t('lot.expand', { cost: money(lotCost(i)) }), () => tapLot(i)); at(el, (L[0] + L[1]) / 2, 0.6, (L[2] + L[3]) / 2); seen.add('lot' + i); });
