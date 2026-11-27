@@ -192,7 +192,12 @@ renderer.shadowMap.enabled = true; renderer.shadowMap.type = GFX.low || MOBILE ?
 renderer.debug.onShaderError = (gl, prog, vs, fs) => { try { const log = [gl.getProgramInfoLog(prog), gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs)].filter(Boolean).join(' | ').slice(0, 400); window.__shaderErr = (window.__shaderErr || []).concat(log);
   let el = document.getElementById('shaderErr'); if (!el) { el = document.createElement('div'); el.id = 'shaderErr'; el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:96px;z-index:99999;background:#fff3f0;color:#8a1f11;font:12px/1.3 monospace;padding:8px;border-radius:8px;max-height:30vh;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.2)'; el.onclick = () => el.remove(); document.body.appendChild(el); }
   el.textContent = 'Erreur graphique (capture d\'écran pour le support, touche pour fermer) : ' + window.__shaderErr.join(' || '); } catch (e) {} }; // preview: soft, blurred shadows (variance maps)
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
+/* daylight look (preview, ?look=day): soft daylight, neutral tone mapping, colour carried by the materials; one place for its values */
+const LOOK_DAY = /[?&]look=day\b/.test(location.search);
+const DAY = { exposure: 1.0, hemi: ['#FFF8F2', '#D8C9BE', 1.15], sun: ['#FFF5E9', 2.35], fill: ['#F4F0FF', 0.45], env: 0.3, ext: '#F3E5E0', corridor: [237, 221, 216], grout: '#D9C7C2', frame: '#ABA8A5',
+  rooms: { social: { wall: '#ECA4B1', floor: '#F0C8CE' }, lab: { wall: '#B5C8AD', floor: '#E6E6DF' } }, kits: { social_kit: 'social_kit_n', lab_kit: 'lab_kit_n' } };
+const BASE_EXPO = LOOK_DAY ? DAY.exposure : 0.92;
+renderer.toneMapping = LOOK_DAY ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = BASE_EXPO;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#DCE6EC');
@@ -864,7 +869,7 @@ function propModel(name) {
   if (/^pt_/.test(name)) return PROP_CACHE[name] || (PROP_CACHE[name] = Promise.resolve(procTree(name.slice(3)))); // procedural trees (no file)
   return PROP_CACHE[name] || (PROP_CACHE[name] = (async () => {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-    const b64 = (await import('./models/props/' + name + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const b64 = (await import('./models/props/' + (LOOK_DAY && DAY.kits[name] || name) + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js'); // the Meshy props are meshopt-compressed
     const gl = await new Promise((res, rej) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(bin.buffer, '', res, rej)); slimTextures(gl.scene);
     if (/^plant_/.test(name)) gl.scene.traverse((m) => { // potted plants: crisper leaves (faceted shading, more contrast between the soft vertex-colour shades, shadows between leaves)
@@ -905,7 +910,7 @@ function roomPO(r) {
 const FAC_HI = '#F4EEE3', FAC_LO = '#A9B5C3', TT_MOLD = new THREE.Color('#FBF8F2'); /* dado: 55 % of the wall as it stands (at most 85 cm), so a wall cut to hip height still shows both tones */
 const darkHex = (hex, f) => { const c = new THREE.Color(hex); c.offsetHSL(0, 0, -f); return '#' + c.getHexString(); };
 const lowOf = (wall, base) => { const a = {}, b = {}; new THREE.Color(wall).getHSL(a); if (base) new THREE.Color(base).getHSL(b); return base && a.l - b.l >= 0.1 ? base : darkHex(wall, 0.15); }; /* the dado always clearly darker than the paint */
-function ttMat(c, low, r = 0.95, b0 = 0, b1 = 1) { const k = 'tt|' + c + '|' + low + '|' + r + '|' + b0; if (MC[k]) return MC[k]; const m = mat(c, { r }).clone(), lowC = new THREE.Color(low);
+function ttMat(c, low, r = 0.95, b0 = 0, b1 = 1) { if (LOOK_DAY) return mat(c === FAC_HI ? DAY.ext : c, { r: 0.9 }); const k = 'tt|' + c + '|' + low + '|' + r + '|' + b0; if (MC[k]) return MC[k]; const m = mat(c, { r }).clone(), lowC = new THREE.Color(low);
   m.onBeforeCompile = (sh) => { sh.uniforms.uLow = { value: lowC }; sh.uniforms.uMold = { value: TT_MOLD }; sh.uniforms.uB0 = { value: b0 }; sh.uniforms.uB1 = { value: b1 };
     sh.vertexShader = 'varying float vLY;\nvarying float vCut;\nuniform float uB0;\nuniform float uB1;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vLY = (modelMatrix * vec4(transformed, 1.0)).y; float wb = (modelMatrix * vec4(0.0, uB0, 0.0, 1.0)).y, wt = (modelMatrix * vec4(0.0, uB1, 0.0, 1.0)).y; vCut = wb + min(0.85, 0.55 * (wt - wb));');
     sh.fragmentShader = 'varying float vLY;\nvarying float vCut;\nuniform vec3 uLow;\nuniform vec3 uMold;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = vLY < vCut ? uLow : (vLY < vCut + 0.06 ? uMold : diffuseColor.rgb);'); };
@@ -989,8 +994,8 @@ function gardenBuild(g, pa, pb) { // grass, planters and benches on both sides o
 function gardenRain() { const ok = GARDEN_OK(); for (const s of WAIT_SPOTS) if (s.out) s.blocked = !ok; }
 /* polish (preview): corridors in warm sand tiles, 60 cm, with real grout and a little variation from tile to tile (one texture = 2.4 m) */
 const SAND = () => GC.sand || (GC.sand = canvasTex(512, 512, (c, W) => { const t = W / 4; let sd = 11; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
-  c.fillStyle = '#CDBFA6'; c.fillRect(0, 0, W, W);
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const v = Math.round((rr() - 0.5) * 10); c.fillStyle = `rgb(${233 + v},${224 + v},${207 + v})`; c.fillRect(i * t + 2, j * t + 2, t - 4, t - 4);
+  c.fillStyle = LOOK_DAY ? DAY.grout : '#CDBFA6'; c.fillRect(0, 0, W, W);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const v = Math.round((rr() - 0.5) * 10); c.fillStyle = LOOK_DAY ? `rgb(${DAY.corridor[0] + v},${DAY.corridor[1] + v},${DAY.corridor[2] + v})` : `rgb(${233 + v},${224 + v},${207 + v})`; c.fillRect(i * t + 2, j * t + 2, t - 4, t - 4);
     for (let k = 0; k < 260; k++) { c.fillStyle = rr() < 0.5 ? 'rgba(160,140,110,0.10)' : 'rgba(255,252,245,0.22)'; c.fillRect(i * t + 3 + rr() * (t - 6), j * t + 3 + rr() * (t - 6), 1 + rr() * 2, 1 + rr() * 2); }
     c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(i * t + 2, j * t + 2, t - 4, 3); c.fillStyle = 'rgba(120,100,70,0.08)'; c.fillRect(i * t + 2, j * t + t - 5, t - 4, 3); } }));
 function sandMat(w, d) { const k = 'sand|' + w.toFixed(2) + 'x' + d.toFixed(2); if (!MC[k]) { const tx = SAND().clone(); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(w / 2.4, d / 2.4); tx.anisotropy = 4; tx.needsUpdate = true; MC[k] = new THREE.MeshStandardMaterial({ color: '#FFFFFF', map: tx, roughness: 0.78 }); } return MC[k]; }
@@ -1065,6 +1070,7 @@ function buildCityDecor(kind) {
   canvas.style.filter = GR ? GR.filter : '';
   { const big = kind === 'saopaulo' && GR, k = big ? 1.9 : 1; world.ground.scale.set(k, 1, k); const mp = world.ground.material.map; if (mp && big) mp.repeat.set(60 * k, 60 * k); } // São Paulo's rows of towers reach further out // preview: the toy-like punch of the London reference painting
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];
+  if (LOOK_DAY) { hemi.color.set(DAY.hemi[0]); hemi.groundColor.set(DAY.hemi[1]); hemi.intensity = DAY.hemi[2]; sun.color.set(DAY.sun[0]); sun.intensity = DAY.sun[1]; fill.color.set(DAY.fill[0]); fill.intensity = DAY.fill[1]; scene.environmentIntensity = DAY.env; canvas.style.filter = ''; }
   scene.fog = L.fog ? new THREE.Fog(res.bg, L.fog[0], L.fog[1]) : null;
   if (GFX.batch) { const stop = new Set([...res.buildings.map((b) => b.o), ...res.movers.filter((m) => m.o).map((m) => m.o)]); cg.traverse((o) => { if (o.userData.swap) stop.add(o); }); for (const b of res.buildings) batchNode(b.o); batchNode(cg, stop); }
   world.cityB = res.buildings; world.movers = res.movers; moveCity(world.movers, 0); updateCutaway(); placeBackdrop(BG_ON && kind === 'london');
@@ -1170,6 +1176,7 @@ Object.assign(ROOM_STYLE.lucha, { model: 'lucha_kit', kit: true, wall: '#D9346E'
 Object.assign(ROOM_STYLE.ahwa, { model: 'ahwa_kit', kit: true, wall: '#E2B77E', inBase: '#2E8C86', door: '#2E8C86', panel: '#2E8C86', pop: '#C9873A', wood: ['#E6CFA8', '#D9BF94'], floor: '#E6CFA8' }); // sand plaster, teal tile skirting, pale tiles
 Object.assign(ROOM_STYLE.jjim, { model: 'jjim_kit', kit: true, wall: '#C98A4E', inBase: '#9C6436', door: '#9A6234', panel: '#9A6234', pop: '#F2B33D', wood: ['#E9B949', '#E0AE3F'], floor: '#E9B949' }); // warm wood walls, the heated yellow ondol floor
 Object.assign(ROOM_STYLE.yoga, { model: 'yoga_kit', kit: true, wall: '#F1E2C4', inBase: '#D6BE98', door: '#8A5A36', panel: '#B48CE8', pop: '#B48CE8', wood: ['#D59D5F', '#C68C50'], floor: '#D59D5F' }); // cream terrace walls, wooden deck // the Tripo pieces of the break-room and yoga paintings
+if (LOOK_DAY) for (const k in DAY.rooms) { const st = ROOM_STYLE[k], d = DAY.rooms[k]; if (!st) continue; st.wall = d.wall; st.inBase = d.wall; st.floor = d.floor; st.floorM = null; st.floorMap = null; }
 for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga', 'shop', 'detox', 'garage', 'lucha', 'ahwa', 'jjim', 'roda']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
 /* polish (preview): every room floor gets a real pattern at real scale (kit floors have UVs in metres): staggered planks with grain,
    carpet pile, small glazed tiles or terrazzo, in the room's own colours. Rooms that already had their own floor keep it. */
@@ -5598,7 +5605,7 @@ function startEvent() {
 }
 function endEvent() { S.acTemp = false;
   const E = S.ev; if (!E) return;
-  if (E.k === 'power') renderer.toneMappingExposure = 0.92;
+  if (E.k === 'power') renderer.toneMappingExposure = BASE_EXPO;
   if (E.k === 'leak') { const room = R.rooms[E.room]; if (room) room.closed = false; if (E.obj && E.obj.mesh.userData.drip) scene.remove(E.obj.mesh.userData.drip); }
   S.ev = null;
 }
@@ -5924,7 +5931,7 @@ function startGame() {
   for (const m of INC_MESH.values()) scene.remove(m); INC_MESH.clear();
   { const n = (S.decor || []).filter((d) => d.k === 'sofa').length; if (n) { S.decor = S.decor.filter((d) => d.k !== 'sofa'); S.cash += 500 * n; setTimeout(() => toast('🛋️ ' + t('dc.sofaGone', { m: money(500 * n) }), 4000), 1500); } } // sofas are out of the game for now: refunded
   for (const k in world.decor) { scene.remove(world.decor[k]); delete world.decor[k]; } for (const d of S.decor || []) buildDecor(d);
-  if (S.ev) { S.ev = null; } renderer.toneMappingExposure = 0.92;
+  if (S.ev) { S.ev = null; } renderer.toneMappingExposure = BASE_EXPO;
   // the café needs a host now: a save that already had a café gets one (once), so nothing stops working; a short-lived 'barista' role becomes a host
   for (const x of S.staff) if (x.role === 'barista') x.role = 'host';
   if (!S.baristaV) { S.baristaV = 1; if (S.rooms.some((r) => r.type === 'cafe')) { const c = makeCandidate('host'); c.id = S.nextId++; S.staff.push(c); setTimeout(() => chat(c.name + ' · ' + roleN('host'), crnd(tList('hire.hello')), '🍵', { fun: true }), 1500); } }
