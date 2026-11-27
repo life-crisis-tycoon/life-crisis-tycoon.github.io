@@ -194,9 +194,9 @@ renderer.debug.onShaderError = (gl, prog, vs, fs) => { try { const log = [gl.get
   el.textContent = 'Erreur graphique (capture d\'écran pour le support, touche pour fermer) : ' + window.__shaderErr.join(' || '); } catch (e) {} }; // preview: soft, blurred shadows (variance maps)
 /* daylight look (preview, ?look=day): soft daylight, neutral tone mapping, colour carried by the materials; one place for its values */
 const LOOK_DAY = /[?&]look=day\b/.test(location.search);
-const DAY = { glassUp: 0.55, exposure: 1.0, hemi: ['#FFF8F2', '#D8C9BE', 1.15], sun: ['#FFF5E9', 2.35], fill: ['#F4F0FF', 0.45], env: 0.3, ext: '#F3E5E0', corridor: [237, 221, 216], grout: '#D9C7C2', frame: '#ABA8A5',
+const DAY = { dress: { social: { rug: '#F4B9C3', shelf: 1, art: ['#F2B66D', '#E98C7A'] }, lab: { shelf: 1, art: ['#8FC1D9', '#A9C3A6'] }, nap: { art: ['#C9B3E6', '#F6D27A'] }, garage: { shelf: 1, art: ['#F2B66D', '#91B4A0'] } }, glassUp: 0.55, exposure: 1.0, hemi: ['#FFF8F2', '#D8C9BE', 1.15], sun: ['#FFF5E9', 2.35], fill: ['#F4F0FF', 0.45], env: 0.3, ext: '#F3E5E0', corridor: [237, 221, 216], grout: '#D9C7C2', frame: '#ABA8A5',
   rooms: { social: { wall: '#ECA4B1', floor: '#F0C8CE' }, lab: { wall: '#B5C8AD', floor: '#E6E6DF' }, nap: { wall: '#CBB5DF', floor: '#E5D9EE' }, garage: { wall: '#E9C795', floor: '#E5C5A4' }, budget: { wall: '#A9CDB2', floor: '#DCE6DA' }, therapy: { wall: '#E9B89E', floor: '#EFD9CB' },
-    pharmacy: { wall: '#A9D1C8', floor: '#E3E8E3' }, detox: { wall: '#C5D3A2', floor: '#E7E9D8' }, cafe: { wall: '#EBB89A', floor: '#EFE2D6' }, toilet: { wall: '#B3CBE0', floor: '#E3E8EE' }, parent: { wall: '#AFC8E2', floor: '#EBD3AE' }, career: { wall: '#B5BCE0', floor: '#E4E2EC' } }, kits: { social_kit: 'social_kit_n', lab_kit: 'lab_kit_n', nap_kit: 'nap_kit_n' } };
+    pharmacy: { wall: '#A9D1C8', floor: '#E3E8E3' }, detox: { wall: '#C5D3A2', floor: '#E7E9D8' }, cafe: { wall: '#EBB89A', floor: '#EFE2D6' }, toilet: { wall: '#B3CBE0', floor: '#E3E8EE' }, parent: { wall: '#AFC8E2', floor: '#EBD3AE' }, career: { wall: '#B5BCE0', floor: '#E4E2EC' } }, kits: { social_kit: 'social_kit_n', lab_kit: 'lab_kit_n', nap_kit: 'nap_kit_n', garage_kit: 'garage_kit_n' } };
 const BASE_EXPO = LOOK_DAY ? DAY.exposure : 0.92;
 renderer.toneMapping = LOOK_DAY ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = BASE_EXPO;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1574,9 +1574,29 @@ function buildRoom(r) {
     world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
   world.roomCut = (world.roomCut || []).filter((w) => w.parent && w.parent.parent).concat(wallG); updateCutaway();
   g.traverse((m) => { if (m.isMesh) m.userData.roomId = r.id; });
+  if (LOOK_DAY && DAY.dress[r.type]) { setTimeout(() => dayDress(room), 3500); setTimeout(() => dayDress(room), 9000); }
   R.rooms[r.id] = room; if (S && S.rooms) rebuildGrid(); for (const rr of Object.values(R.rooms)) rr.linePts = null;
 }
 // 2026 rooms: round-topped doorway (arched cream frame, flush leaf with a rounded top, brass knob, icon plate)
+/* daylight look: the dressing of the Blender benchmark, placed once the room's furniture is in: two framed prints and a planted wall shelf on the back wall,
+   plants in free back corners, the round rug under the Social Club's lounge. Wall pieces hide with their wall when the cutaway drops it. */
+function dayDress(room) {
+  if (!room.g.parent || room.dressed) return; const r = room.def, Z = SIZES[r.size], D = DAY.dress[r.type], W = Z.W, Dp = Z.D, a = r.a;
+  const boxes = []; room.g.updateMatrixWorld(true);
+  room.g.traverse((m) => { if (!m.isMesh || m.userData.kitW) return; const b = new THREE.Box3().setFromObject(m), sx = b.max.x - b.min.x, sz = b.max.z - b.min.z, sy = b.max.y - b.min.y; if (sy > 0.15 && sx * sz < 3 && sx < 2.5 && sz < 2.5) boxes.push(b); });
+  if (boxes.length < 2) return; room.dressed = true;
+  const free = (p, rad) => !boxes.some((b) => p.x > b.min.x - rad && p.x < b.max.x + rad && p.z > b.min.z - rad && p.z < b.max.z + rad);
+  const dg = grp(r.x, r.z, a, room.g), nW = [Math.round(-Math.sin(a)), Math.round(-Math.cos(a))], hang = (o) => { (world.roomHangs = world.roomHangs || []).push({ o, n: nW, rid: room.id }); return o; };
+  const back = -Dp / 2 + 0.075;
+  D.art.forEach((c, i) => { const f = grp(-W * 0.18 + i * 0.62, back, 0, dg); f.position.y = 1.32 + i * 0.12; put(rbox(i ? 0.42 : 0.6, i ? 0.42 : 0.55, 0.03, '#F7F2EA', 0.01, { r: 0.6 }), 0, 0, 0, f); put(rbox((i ? 0.42 : 0.6) - 0.09, (i ? 0.42 : 0.55) - 0.09, 0.035, c, 0.004, { r: 0.85 }), 0, 0, 0.004, f); hang(f); });
+  if (D.shelf) propModel('nap_wallshelf').then((m) => { if (!room.g.parent) return; const o = m.clone(); o.scale.setScalar(0.8); const sh = grp(W * 0.28, -Dp / 2 + 0.2, 0, dg); sh.position.y = 1.2; sh.add(o); hang(sh); }).catch(() => {});
+  for (const [lx, i] of [[-W / 2 + 0.5, 0], [W / 2 - 0.5, 1]]) { const p = toW(r, lx, -Dp / 2 + 0.5); if (!free(p, 0.3)) continue;
+    propModel(['plant_m', 'nap_plant'][i]).then((m) => { if (!room.g.parent) return; const o = m.clone(); o.scale.setScalar(0.95); const pg = grp(lx, -Dp / 2 + 0.5, i * 1.3, dg); pg.position.y = 0.1; pg.add(o); o.traverse((c) => { if (c.isMesh) c.castShadow = true; }); aoBlob(room.g, p.x, p.z, 0.7, 0.7); }).catch(() => {}); }
+  if (D.rug) { const low = boxes.filter((b) => b.max.y < 0.95 && (b.max.x - b.min.x) < 1.1 && (b.max.z - b.min.z) < 1.1); if (low.length) {
+    const cx = low.reduce((s2, b) => s2 + (b.min.x + b.max.x) / 2, 0) / low.length, cz = low.reduce((s2, b) => s2 + (b.min.z + b.max.z) / 2, 0) / low.length;
+    const tx = GC.dayRug || (GC.dayRug = canvasTex(256, 256, (c, Wc) => { c.fillStyle = D.rug; c.fillRect(0, 0, Wc, Wc); let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); for (let i = 0; i < 9000; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'; c.fillRect(rr() * Wc, rr() * Wc, 1.5, 1.5); } }));
+    const rug = new THREE.Mesh(new THREE.CircleGeometry(1.45, 64), new THREE.MeshStandardMaterial({ map: tx, roughness: 1 })); rug.rotation.x = -Math.PI / 2; rug.position.set(cx, 0.112, cz); rug.receiveShadow = true; room.g.add(rug); } }
+}
 function buildDayDoor(r, g, RS, H0, dp) {
   const H = H0 + DAY.glassUp, fr = DAY.frame, fo = { m: 0.6, r: 0.35 }, W = DOOR_W + 0.1;
   const gm = GC.glassM || (GC.glassM = new THREE.MeshPhysicalMaterial({ color: '#EEF4F7', transparent: true, opacity: 0.13, roughness: 0.05, depthWrite: false }));
