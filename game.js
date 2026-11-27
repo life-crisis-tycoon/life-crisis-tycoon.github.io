@@ -192,7 +192,13 @@ renderer.shadowMap.enabled = true; renderer.shadowMap.type = GFX.low || MOBILE ?
 renderer.debug.onShaderError = (gl, prog, vs, fs) => { try { const log = [gl.getProgramInfoLog(prog), gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs)].filter(Boolean).join(' | ').slice(0, 400); window.__shaderErr = (window.__shaderErr || []).concat(log);
   let el = document.getElementById('shaderErr'); if (!el) { el = document.createElement('div'); el.id = 'shaderErr'; el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:96px;z-index:99999;background:#fff3f0;color:#8a1f11;font:12px/1.3 monospace;padding:8px;border-radius:8px;max-height:30vh;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.2)'; el.onclick = () => el.remove(); document.body.appendChild(el); }
   el.textContent = 'Erreur graphique (capture d\'écran pour le support, touche pour fermer) : ' + window.__shaderErr.join(' || '); } catch (e) {} }; // preview: soft, blurred shadows (variance maps)
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
+/* daylight look (preview, ?look=day): soft daylight, neutral tone mapping, colour carried by the materials; one place for its values */
+const LOOK_DAY = !/[?&]look=classic\b/.test(location.search); // daylight look is the default; ?look=classic shows the previous one
+const DAY = { dress: { social: { rug: '#F4B9C3', shelf: 1, art: ['#F2B66D', '#E98C7A'] }, lab: { shelf: 1, art: ['#8FC1D9', '#A9C3A6'] }, nap: { art: ['#C9B3E6', '#F6D27A'] }, garage: { shelf: 1, art: ['#F2B66D', '#91B4A0'] } }, glassUp: 0.55, exposure: 1.0, hemi: ['#FFF8F2', '#D8C9BE', 1.15], sun: ['#FFF5E9', 2.35], fill: ['#F4F0FF', 0.45], env: 0.3, ext: '#F3E5E0', corridor: [237, 221, 216], grout: '#D9C7C2', frame: '#ABA8A5',
+  rooms: { social: { wall: '#ECA4B1', floor: '#F0C8CE' }, lab: { wall: '#B5C8AD', floor: '#E6E6DF' }, nap: { wall: '#CBB5DF', floor: '#E5D9EE' }, garage: { wall: '#E9C795', floor: '#E5C5A4' }, budget: { wall: '#A9CDB2', floor: '#DCE6DA' }, therapy: { wall: '#E9B89E', floor: '#EFD9CB' },
+    pharmacy: { wall: '#A9D1C8', floor: '#E3E8E3' }, detox: { wall: '#C5D3A2', floor: '#E7E9D8' }, cafe: { wall: '#EBB89A', floor: '#EFE2D6' }, toilet: { wall: '#B3CBE0', floor: '#E3E8EE' }, parent: { wall: '#AFC8E2', floor: '#EBD3AE' }, career: { wall: '#B5BCE0', floor: '#E4E2EC' } }, kits: { social_kit: 'social_kit_n', lab_kit: 'lab_kit_n', nap_kit: 'nap_kit_n', garage_kit: 'garage_kit_n' } };
+const BASE_EXPO = LOOK_DAY ? DAY.exposure : 0.92;
+renderer.toneMapping = LOOK_DAY ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = BASE_EXPO;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#DCE6EC');
@@ -260,12 +266,12 @@ function updateCutaway() {
   // Two Point Hospital cutaway: back walls full height (taller than people); walls on the camera side cut to hip height
   // (solid, never see-through); doors always keep their full frame and leaf. The 🧱 button raises every wall when wanted.
   const close = view.half < CLOSE_HALF, fr = (p) => !!p && (p[0] - view.tx) * cx + (p[1] - view.tz) * cz > 0.6; // fr: nearer the camera than the point you look at
-  const up = WALLS_UP, cut = (n, p) => { if (close && fr(p)) return true; if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
+  const up = WALLS_UP, cut = (n, p) => { if (close && fr(p)) return true; if (up) return false; const f = n[0] * cx + n[1] * cz; if (f > 0.2) return true; if (LOOK_DAY) return false; /* daylight look: back walls stay full height, as in the benchmark render */ if (!p || typeof inFloor !== 'function') return false; return inFloor(p[0] + n[0] * 0.7, p[1] + n[1] * 0.7) || inFloor(p[0] + n[0] * 0.7 + 0.01, p[1] + n[1] * 0.7 + 0.01); };
   const tv = new THREE.Vector3(), wp2 = (o) => { o.getWorldPosition(tv); return [tv.x, tv.z]; };
   for (const w of world.cutWalls || []) { w.visible = true; const n = w.userData.n; w.scale.y = (!up || close) && n[0] * cx + n[1] * cz > 0.2 ? WALL_HIP / W_H : ROOM_H / W_H; }
-  for (const w of world.roomCut || []) { w.scale.y = cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
+  for (const w of world.roomCut || []) { w.scale.y = !(LOOK_DAY && w.userData.door) && cut(w.userData.n, w.userData.p) ? WALL_HIP / ROOM_H : 1; for (const c of w.children) if (c.userData.keepY) c.scale.y = 1 / w.scale.y; }
   for (const h of world.roomHangs || []) { const wp = h.o.getWorldPosition(new THREE.Vector3()); h.o.visible = !cut(h.n, [wp.x, wp.z]); } // wall decor goes with its wall when the wall is cut down
-  for (const d of world.doors || []) { const c = !d.kit && close && d.g.userData.n && cut(d.g.userData.n, [d.x, d.z]); // close up, a door in a wall that drops to hip height drops with it (frame cut down, leaf and arch hidden)
+  for (const d of world.doors || []) { const c = !LOOK_DAY && !d.kit && close && d.g.userData.n && cut(d.g.userData.n, [d.x, d.z]); // close up, a door in a wall that drops to hip height drops with it (frame cut down, leaf and arch hidden)
     d.g.scale.y = c ? WALL_HIP / ROOM_H : 1; for (const o of [d.top, d.head, ...d.leaves]) if (o) o.visible = !c; d.cut = !!c; }
   const ep = camPitch(), tan = Math.tan(ep);
   // how far toward the camera the HQ (and its plaza) reaches from the point you look at, capped by the bottom of the screen:
@@ -848,7 +854,7 @@ function propModel(name) {
   if (/^pt_/.test(name)) return PROP_CACHE[name] || (PROP_CACHE[name] = Promise.resolve(procTree(name.slice(3)))); // procedural trees (no file)
   return PROP_CACHE[name] || (PROP_CACHE[name] = (async () => {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-    const b64 = (await import('./models/props/' + name + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const b64 = (await import('./models/props/' + (LOOK_DAY && DAY.kits[name] || name) + '.js')).default; const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js'); // the Meshy props are meshopt-compressed
     const gl = await new Promise((res, rej) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(bin.buffer, '', res, rej)); slimTextures(gl.scene);
     if (/^plant_/.test(name)) gl.scene.traverse((m) => { // potted plants: crisper leaves (faceted shading, more contrast between the soft vertex-colour shades, shadows between leaves)
@@ -869,7 +875,7 @@ function propModel(name) {
 }
 // room architecture kit, modelled once in Blender (tools/blender/room_kit.py): wall layers, crown, skirting, plinth, rounded corners,
 // arched door frame, window. Loaded before the first room is built; every chunky room is assembled from it (falls back to code walls)
-const KIT_C = { rim: '#E3AD89', trim: '#FBF5EA', plinth: '#F2E7D5', glass: '#A8CFEF' };
+const KIT_C = { rim: '#E3AD89', trim: '#FBF5EA', plinth: '#8E9AA9', glass: '#A8CFEF' }; /* plinth: the façade's dark skirting under its grey-blue dado */
 let RKIT = null;
 try { const gl = await propModel('room_kit'); RKIT = {}; const sc = gl.scene || gl; sc.updateMatrixWorld(true); sc.traverse((o) => { if (o.isMesh) { const g2 = o.geometry.clone(); g2.applyMatrix4(o.matrixWorld); RKIT[o.name] = g2; } }); if (!RKIT.k_wall_in) RKIT = null; } catch (e) { console.warn('[room kit]', e); RKIT = null; }
 const KIT_PO = {};
@@ -884,6 +890,16 @@ function roomPO(r) {
   if (PO_OF[r.id] != null && !used.has(PO_OF[r.id])) return PO_OF[r.id];
   return (PO_OF[r.id] = PO_LIST.find((v) => !used.has(v)) ?? PO_LIST[0]);
 }
+/* polish (preview): walls in two tones like a real interior: a darker dado up to 40 % of the wall, a white moulding, the light paint above.
+   Drawn in the wall's own shader from its local height (kit walls run 0..1), so it follows the cutaway and costs nothing. */
+const FAC_HI = '#F4EEE3', FAC_LO = '#A9B5C3', TT_MOLD = new THREE.Color('#FBF8F2'); /* dado: 55 % of the wall as it stands (at most 85 cm), so a wall cut to hip height still shows both tones */
+const darkHex = (hex, f) => { const c = new THREE.Color(hex); c.offsetHSL(0, 0, -f); return '#' + c.getHexString(); };
+const lowOf = (wall, base) => { const a = {}, b = {}; new THREE.Color(wall).getHSL(a); if (base) new THREE.Color(base).getHSL(b); return base && a.l - b.l >= 0.1 ? base : darkHex(wall, 0.15); }; /* the dado always clearly darker than the paint */
+function ttMat(c, low, r = 0.95, b0 = 0, b1 = 1) { if (LOOK_DAY) return mat(c === FAC_HI ? DAY.ext : c, { r: 0.9 }); const k = 'tt|' + c + '|' + low + '|' + r + '|' + b0; if (MC[k]) return MC[k]; const m = mat(c, { r }).clone(), lowC = new THREE.Color(low);
+  m.onBeforeCompile = (sh) => { sh.uniforms.uLow = { value: lowC }; sh.uniforms.uMold = { value: TT_MOLD }; sh.uniforms.uB0 = { value: b0 }; sh.uniforms.uB1 = { value: b1 };
+    sh.vertexShader = 'varying float vLY;\nvarying float vCut;\nuniform float uB0;\nuniform float uB1;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vLY = (modelMatrix * vec4(transformed, 1.0)).y; float wb = (modelMatrix * vec4(0.0, uB0, 0.0, 1.0)).y, wt = (modelMatrix * vec4(0.0, uB1, 0.0, 1.0)).y; vCut = wb + min(0.85, 0.55 * (wt - wb));');
+    sh.fragmentShader = 'varying float vLY;\nvarying float vCut;\nuniform vec3 uLow;\nuniform vec3 uMold;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = vLY < vCut ? uLow : (vLY < vCut + 0.06 ? uMold : diffuseColor.rgb);'); };
+  m.customProgramCacheKey = () => 'tt4'; return (MC[k] = m); }
 const KM = (name, c, r = 0.9) => { const m = new THREE.Mesh(RKIT[name], mat(c, { r })); m.castShadow = m.receiveShadow = true; m.userData.kitW = true; return m; };
 const INST = {}, INST_NAMES = new Set(['pt_oak', 'pt_lime', 'pt_cherry', 'pt_fir', 'pt_palm', 'pt_flame', 'lon_oak', 'lon_leafy', 'lon_cherry', 'lon_cypress', ...['padaria', 'boteco', 'shops', 'houses', 'mural', 'depot', 'selfbuilt', 'liberdade', 'pixo', 'tower', 'glass', 'wave', 'res_beige', 'res_brick', 'heli', 'favela_a', 'favela_b', 'ipe_y', 'ipe_p', 'palm'].map((n) => 'sp2_' + n), 'lon_plane', 'lon_tree_hq', 'lon_tree_round', 'tree', 'lamp', 'bench', 'postbox', 'phonebox', 'busstop', 'sp_ipe_y', 'sp_ipe_p', 'sp_palm', 'sp_lamp', 'sp_bench', 'sp_light', 'sp_tree_g', 'sp_bin', 'sp_orelhao']);
 function glbInst(g, name, o = {}) {
@@ -960,10 +976,17 @@ function gardenBuild(g, pa, pb) { // grass, planters and benches on both sides o
   WAIT_SPOTS.unshift(...spots); gardenRain();
 }
 function gardenRain() { const ok = GARDEN_OK(); for (const s of WAIT_SPOTS) if (s.out) s.blocked = !ok; }
+/* polish (preview): corridors in warm sand tiles, 60 cm, with real grout and a little variation from tile to tile (one texture = 2.4 m) */
+const SAND = () => GC.sand || (GC.sand = canvasTex(512, 512, (c, W) => { const t = W / 4; let sd = 11; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  c.fillStyle = LOOK_DAY ? DAY.grout : '#CDBFA6'; c.fillRect(0, 0, W, W);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const v = Math.round((rr() - 0.5) * 10); c.fillStyle = LOOK_DAY ? `rgb(${DAY.corridor[0] + v},${DAY.corridor[1] + v},${DAY.corridor[2] + v})` : `rgb(${233 + v},${224 + v},${207 + v})`; c.fillRect(i * t + 2, j * t + 2, t - 4, t - 4);
+    for (let k = 0; k < 260; k++) { c.fillStyle = rr() < 0.5 ? 'rgba(160,140,110,0.10)' : 'rgba(255,252,245,0.22)'; c.fillRect(i * t + 3 + rr() * (t - 6), j * t + 3 + rr() * (t - 6), 1 + rr() * 2, 1 + rr() * 2); }
+    c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(i * t + 2, j * t + 2, t - 4, 3); c.fillStyle = 'rgba(120,100,70,0.08)'; c.fillRect(i * t + 2, j * t + t - 5, t - 4, 3); } }));
+function sandMat(w, d) { const k = 'sand|' + w.toFixed(2) + 'x' + d.toFixed(2); if (!MC[k]) { const tx = SAND().clone(); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(w / 2.4, d / 2.4); tx.anisotropy = 4; tx.needsUpdate = true; MC[k] = new THREE.MeshStandardMaterial({ color: '#FFFFFF', map: tx, roughness: 0.78 }); } return MC[k]; }
 function buildShell(c) {
   if (world.shellG) scene.remove(world.shellG); const g = new THREE.Group(); scene.add(g); world.shellG = g; world.cutWalls = [];
-  const own = ownedLots(c), P = plotOf(c), rs = P.main.concat(P.lots.filter((_, i) => own[i])), fl = mat('#EFEAE0', { r: 0.9 });
-  for (const r of rs) { put(rbox(r[1] - r[0] + 0.3, 0.62, r[3] - r[2] + 0.3, '#E9E1D3', 0.06), (r[0] + r[1]) / 2, -0.25, (r[2] + r[3]) / 2, g); floorPlane(r[0], r[1], r[2], r[3], fl, 0.08, g); }
+  const own = ownedLots(c), P = plotOf(c), rs = P.main.concat(P.lots.filter((_, i) => own[i]));
+  for (const r of rs) { put(rbox(r[1] - r[0] + 0.3, 0.62, r[3] - r[2] + 0.3, '#E9E1D3', 0.06), (r[0] + r[1]) / 2, -0.25, (r[2] + r[3]) / 2, g); floorPlane(r[0], r[1], r[2], r[3], sandMat(r[1] - r[0], r[3] - r[2]), 0.08, g); }
   floorPlane(LOB, 6.5, LOB, 6.5, floorMat(FLOOR_KIND.lobby, 6.5 - LOB, 6.5 - LOB), 0.1, g); // terrazzo lobby (art kit, sheet C #9)
   const [pa, pb] = plazaX(c), pl = new THREE.Mesh(new THREE.BoxGeometry(pb - pa, 0.5, 6), mat('#FFFFFF', { r: 0.9, map: tileTex('#E4E7EB', '#DADFE4', [Math.round((pb - pa) / 2), 3]), mapK: 'p' + c })); pl.position.set((pa + pb) / 2, -0.17, 9.6); pl.receiveShadow = true; g.add(pl);
   if (S && S.garden && S.city === c) gardenBuild(g, pa, pb); else for (let i = WAIT_SPOTS.length - 1; i >= 0; i--) if (WAIT_SPOTS[i].out) WAIT_SPOTS.splice(i, 1);
@@ -985,8 +1008,9 @@ function buildShell(c) {
   let best = null;
   for (const s of segs) {
     const wg = new THREE.Group(); g.add(wg); const nx = s.hz ? 0 : s.n, nz = s.hz ? s.n : 0; wg.userData.n = [nx, nz]; world.cutWalls.push(wg);
-    const col = s.hz ? '#F3EEE6' : '#EDE6F6';
-    if (s.hz) { wallSeg(s.a, s.line, s.b, s.line, W_H, col, wg); wallSeg(s.a, s.line, s.b, s.line, 0.35, col, g); } else { wallSeg(s.line, s.a, s.line, s.b, W_H, col, wg); wallSeg(s.line, s.a, s.line, s.b, 0.35, col, g); }
+    const col = FAC_HI;
+    if (s.hz) { wallSeg(s.a, s.line, s.b, s.line, W_H, col, wg); wallSeg(s.a, s.line, s.b, s.line, 0.35, FAC_LO, g); } else { wallSeg(s.line, s.a, s.line, s.b, W_H, col, wg); wallSeg(s.line, s.a, s.line, s.b, 0.35, FAC_LO, g); }
+    wg.traverse((o) => { if (o.isMesh && o.material && o.material.color && o.material.color.getHexString() === new THREE.Color(FAC_HI).getHexString()) { o.material = ttMat(FAC_HI, FAC_LO, 0.95, -W_H / 2, W_H / 2); o.userData.kitW = true; } }); /* the same dado and moulding as the rooms */
     const L = s.b - s.a, inn = -(T / 2 + 0.03);
     for (let u = s.a + 3.2; u < s.b - 1.5; u += 6.5) { const wx = s.hz ? u : s.line + nx * inn, wz = s.hz ? s.line + nz * inn : u; kitWindow(wg, wx - nx * 0.03, wz - nz * 0.03, s.hz ? 0 : Math.PI / 2); }
     if (s.hz && s.n === -1 && (!best || L > best.L)) best = { s, wg, L };
@@ -1029,6 +1053,7 @@ function buildCityDecor(kind) {
   world.ground.material = mat('#FFFFFF', { r: L.wet ? 0.38 : 0.9, map: groundTex(kind) || tileTex(res.ground[0], res.ground[1], [36, 36]), mapK: 'g' + kind });
   canvas.style.filter = GR ? GR.filter : ''; // preview: the toy-like punch of the London reference painting
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; fill.color.set(L.fill[0]); fill.intensity = L.fill[1];
+  if (LOOK_DAY) { hemi.color.set(DAY.hemi[0]); hemi.groundColor.set(DAY.hemi[1]); hemi.intensity = DAY.hemi[2]; sun.color.set(DAY.sun[0]); sun.intensity = DAY.sun[1]; fill.color.set(DAY.fill[0]); fill.intensity = DAY.fill[1]; scene.environmentIntensity = DAY.env; canvas.style.filter = ''; }
   scene.fog = L.fog ? new THREE.Fog(res.bg, L.fog[0], L.fog[1]) : null;
   if (GFX.batch) { const stop = new Set([...res.buildings.map((b) => b.o), ...res.movers.filter((m) => m.o).map((m) => m.o)]); cg.traverse((o) => { if (o.userData.swap) stop.add(o); }); for (const b of res.buildings) batchNode(b.o); batchNode(cg, stop); }
   world.cityB = res.buildings; world.movers = res.movers; moveCity(world.movers, 0); updateCutaway();
@@ -1112,7 +1137,35 @@ Object.assign(ROOM_STYLE.lucha, { model: 'lucha_kit', kit: true, wall: '#D9346E'
 Object.assign(ROOM_STYLE.ahwa, { model: 'ahwa_kit', kit: true, wall: '#E2B77E', inBase: '#2E8C86', door: '#2E8C86', panel: '#2E8C86', pop: '#C9873A', wood: ['#E6CFA8', '#D9BF94'], floor: '#E6CFA8' }); // sand plaster, teal tile skirting, pale tiles
 Object.assign(ROOM_STYLE.jjim, { model: 'jjim_kit', kit: true, wall: '#C98A4E', inBase: '#9C6436', door: '#9A6234', panel: '#9A6234', pop: '#F2B33D', wood: ['#E9B949', '#E0AE3F'], floor: '#E9B949' }); // warm wood walls, the heated yellow ondol floor
 Object.assign(ROOM_STYLE.yoga, { model: 'yoga_kit', kit: true, wall: '#F1E2C4', inBase: '#D6BE98', door: '#8A5A36', panel: '#B48CE8', pop: '#B48CE8', wood: ['#D59D5F', '#C68C50'], floor: '#D59D5F' }); // cream terrace walls, wooden deck // the Tripo pieces of the break-room and yoga paintings
+if (LOOK_DAY) for (const k in ROOM_STYLE) if (ROOM_STYLE[k] && ROOM_STYLE[k].kit) ROOM_STYLE[k].ao = true;
+if (LOOK_DAY) for (const k in DAY.rooms) { const st = ROOM_STYLE[k], d = DAY.rooms[k]; if (!st) continue; st.wall = d.wall; st.inBase = d.wall; st.floor = d.floor; st.floorM = null; st.floorMap = null; }
 for (const k of ['career', 'pharmacy', 'social', 'wedding', 'therapy', 'glowup', 'budget', 'nap', 'training', 'lab', 'moving', 'parent', 'staffroom', 'yoga', 'shop', 'detox', 'garage', 'lucha', 'ahwa', 'jjim', 'roda']) if (ROOM_STYLE[k]) Object.assign(ROOM_STYLE[k], { chunky: true, ao: true, kscale: ['career', 'social', 'glowup'].includes(k) ? 1.1 : 1 }); // pharmacy, therapy, wedding and nap layouts are already full: bigger pieces would overlap
+/* polish (preview): every room floor gets a real pattern at real scale (kit floors have UVs in metres): staggered planks with grain,
+   carpet pile, small glazed tiles or terrazzo, in the room's own colours. Rooms that already had their own floor keep it. */
+const hexL = (hex, dl, ds = 0) => { const c = new THREE.Color(hex); c.offsetHSL(0, ds, dl); return '#' + c.getHexString(); };
+const FLOOR_PAT = {
+  parquet: (a, b) => canvasTex(512, 512, (c, W) => { let sd = 17; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647), rows = 12, rh = W / rows; /* 2 m square, 16.7 cm boards */
+    const A = new THREE.Color(a), B = new THREE.Color(b);
+    for (let r = 0; r < rows; r++) { let x = -rr() * 240; while (x < W) { const L = 150 + rr() * 150, m = A.clone().lerp(B, rr()), v = (rr() - 0.5) * 0.06; m.offsetHSL(0, 0, v); const col = '#' + m.getHexString();
+        for (const ox of [0, -W, W]) { const x0 = x + ox; if (x0 > W || x0 + L < 0) continue; c.fillStyle = col; c.fillRect(x0, r * rh, L, rh);
+          for (let k = 0; k < 7; k++) { const gy = r * rh + 3 + rr() * (rh - 6); c.strokeStyle = rr() < 0.5 ? 'rgba(90,55,25,0.10)' : 'rgba(255,240,215,0.14)'; c.lineWidth = 0.8 + rr(); c.beginPath(); c.moveTo(x0, gy); c.bezierCurveTo(x0 + L * 0.3, gy + (rr() - 0.5) * 4, x0 + L * 0.7, gy + (rr() - 0.5) * 4, x0 + L, gy + (rr() - 0.5) * 3); c.stroke(); }
+          c.fillStyle = 'rgba(60,35,15,0.28)'; c.fillRect(x0, r * rh, 1.5, rh); }
+        x += L; }
+      c.fillStyle = 'rgba(60,35,15,0.30)'; c.fillRect(0, r * rh, W, 1.5); c.fillStyle = 'rgba(255,245,225,0.12)'; c.fillRect(0, r * rh + 1.5, W, 1.5); } }, [0.5, 0.5]),
+  carpet: (a) => canvasTex(256, 256, (c, W) => { let sd = 23; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); c.fillStyle = a; c.fillRect(0, 0, W, W);
+    for (let i = 0; i < 40; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(0,0,0,0.025)' : 'rgba(255,255,255,0.03)'; c.beginPath(); c.arc(rr() * W, rr() * W, 20 + rr() * 40, 0, 6.3); c.fill(); }
+    for (let i = 0; i < 14000; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.12)'; c.fillRect(rr() * W, rr() * W, 1 + rr() * 1.5, 1 + rr() * 1.5); } }, [1, 1]),
+  check: (a, b) => canvasTex(256, 256, (c, W) => { let sd = 29; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647), n = 4, t = W / n; /* 1.2 m: 30 cm tiles */
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(0, 0, W, W);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { c.fillStyle = (i + j) % 2 ? a : b; c.fillRect(i * t + 1, j * t + 1, t - 2, t - 2); c.fillStyle = `rgba(255,255,255,${0.03 + rr() * 0.06})`; c.fillRect(i * t + 1, j * t + 1, t - 2, t - 2);
+      c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(i * t + 3, j * t + 3, t - 6, 2); } }, [1 / 1.2, 1 / 1.2]),
+  terrazzo: (a) => canvasTex(256, 256, (c, W) => { let sd = 31; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); c.fillStyle = a; c.fillRect(0, 0, W, W);
+    const chips = [hexL(a, -0.18), hexL(a, 0.12), '#FFFFFF', hexL(a, -0.32, 0.1)];
+    for (let i = 0; i < 520; i++) { c.fillStyle = chips[Math.floor(rr() * chips.length)]; c.globalAlpha = 0.55 + rr() * 0.4; c.beginPath(); const x = rr() * W, y = rr() * W, r0 = 1 + rr() * 3.2; c.moveTo(x + r0, y); for (let k = 1; k < 6; k++) { const an = k / 6 * 6.28, rk = r0 * (0.6 + rr() * 0.6); c.lineTo(x + Math.cos(an) * rk, y + Math.sin(an) * rk); } c.fill(); } c.globalAlpha = 1; }, [1 / 1.4, 1 / 1.4]) };
+for (const k in ROOM_STYLE) { const st = ROOM_STYLE[k]; if (!st || !st.kit || !st.chunky || st.floorM || st.floorMap) continue;
+  const kind = k === 'lucha' ? 'carpet' : st.wood ? 'parquet' : FLOOR_KIND[k] === 'herring' ? 'parquet' : FLOOR_KIND[k] || 'carpet', /* lucha: rubber mat */ base = (st.wood && st.wood[0]) || st.floor || '#E8E0D0';
+  const make = kind === 'parquet' ? () => FLOOR_PAT.parquet(st.wood ? st.wood[0] : base, st.wood ? st.wood[1] : hexL(base, -0.05)) : kind === 'check' ? () => FLOOR_PAT.check(hexL(base, 0.1), hexL(base, -0.06)) : kind === 'terrazzo' ? () => FLOOR_PAT.terrazzo(base) : () => FLOOR_PAT.carpet(base);
+  st.floorM = () => mat('#FFFFFF', { map: GC['fp' + k] || (GC['fp' + k] = make()), mapK: 'fp' + k, r: kind === 'carpet' ? 1 : kind === 'parquet' ? 0.7 : 0.45 }); }
 function leaf(r, c, o) { const k = 'L' + r; if (!GC[k]) GC[k] = new THREE.IcosahedronGeometry(r, 1); const m = new THREE.Mesh(GC[k], mat(c, o)); m.castShadow = false; m.receiveShadow = false; return m; }
 // one box of a wall run, in wall coordinates: a0..a1 along the run from (px, pz) (ds = which way along), b0..b1 across it (+ = the side n points to, outside the room)
 function wbox(parent, alongX, px, pz, ds, n, a0, a1, b0, b1, hh, y, c, r, o) {
@@ -1294,7 +1347,7 @@ function dioCorner(g, RS, q, sx, sz, owA, owB) {
   const cg = new THREE.Group(); g.add(cg); cg.userData.n = [sx * Math.SQRT1_2, sz * Math.SQRT1_2]; cg.userData.p = [px, pz]; cg.userData.corner = true;
   if (RKIT) { const kx = cx - (owA ? sx * 0.02 : 0), kz = cz - (owB ? sz * 0.02 : 0); // follows its walls 2 cm proud of the building's outer wall (see wallSegV2)
     const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(kx, y, kz); m.scale.set(sx, sy, sz); par.add(m); return m; };
-    pc('k_c_wall_in', RS.wall, cg, 0.1, h, 0.95); if (!ow) pc('k_c_wall_out', RS.wall, cg, 0.1, h, 0.95); pc('k_c_skirt', KIT_C.trim, cg, 0.1, 1, 0.6);
+    pc('k_c_wall_in', RS.wall, cg, 0.1, h, 0.95).material = ttMat(RS.wall, lowOf(RS.wall, RS.inBase)); if (!ow) pc('k_c_wall_out', RS.wall, cg, 0.1, h, 0.95).material = ttMat(FAC_HI, FAC_LO); pc('k_c_skirt', KIT_C.trim, cg, 0.1, 1, 0.6);
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; cg.add(rim); pc('k_c_rim', RS.rim || KIT_C.rim, rim, 0, 1, 0.72);
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; cg.add(base); pc('k_c_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
     return cg; }
@@ -1307,13 +1360,29 @@ function dioCorner(g, RS, q, sx, sz, owA, owB) {
   return cg;
 }
 function wallSegV2(x0, z0, x1, z1, S, parent) {
-  if (S.chunky && parent.userData.q) { const q = parent.userData.q, R = DIO_RC, isC = (x, z) => (Math.abs(x - q.x0) < 1e-3 || Math.abs(x - q.x1) < 1e-3) && (Math.abs(z - q.z0) < 1e-3 || Math.abs(z - q.z1) < 1e-3);
+  if (S.chunky && parent.userData.q && !LOOK_DAY) { const q = parent.userData.q, R = DIO_RC, isC = (x, z) => (Math.abs(x - q.x0) < 1e-3 || Math.abs(x - q.x1) < 1e-3) && (Math.abs(z - q.z0) < 1e-3 || Math.abs(z - q.z1) < 1e-3);
     const ax = Math.abs(z1 - z0) < 1e-6, sg = ax ? Math.sign(x1 - x0) : Math.sign(z1 - z0); // trim the ends that are room corners: the curved corner piece takes over there
     if (isC(x0, z0)) { if (ax) x0 += sg * R; else z0 += sg * R; } if (isC(x1, z1)) { if (ax) x1 -= sg * R; else z1 -= sg * R; } }
   const alongX = Math.abs(z1 - z0) < 1e-6, len = alongX ? Math.abs(x1 - x0) : Math.abs(z1 - z0), h = S.h, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (len < 0.05) return;
   const n = (parent.userData && parent.userData.n) || [0, -1], ow = !!parent.userData.outer, IN = ow ? 0.135 : 0.09, OUT = ow ? 0 : 0.06; // n points outside
   const run = (a, b, hh, y, c, r, o, ex = 0) => wbox(parent, alongX, cx, cz, 1, n, -len / 2 - ex, len / 2 + ex, a, b, hh, y, c, r, o);
+  if (LOOK_DAY) { // daylight look: thin square walls in the room colour, one light façade colour outside, a slim cap and a soft warm-white strip; the entrance side is a glass front
+    const paint = parent.userData.wall || S.wall;
+    if (parent.userData.door) {
+      const g = GC.glassM || (GC.glassM = new THREE.MeshPhysicalMaterial({ color: '#EEF4F7', transparent: true, opacity: 0.13, roughness: 0.05, metalness: 0, depthWrite: false }));
+      const hg = h + DAY.glassUp, pane = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.02, hg, alongX ? 0.02 : len), g); pane.position.set(cx, hg / 2 + 0.1, cz); pane.renderOrder = 2; parent.add(pane);
+      const fr = DAY.frame; run(-0.02, 0.02, 0.03, 0.115, fr, 0.008, { m: 0.6, r: 0.35 }); run(-0.02, 0.02, 0.035, hg + 0.085, fr, 0.008, { m: 0.6, r: 0.35 });
+      for (const e of [-1, 1]) put(rbox(alongX ? 0.03 : 0.035, hg, alongX ? 0.035 : 0.03, fr, 0.008, { m: 0.6, r: 0.35 }), alongX ? cx + e * (len / 2 - 0.015) : cx, hg / 2 + 0.1, alongX ? cz : cz + e * (len / 2 - 0.015), parent);
+      return;
+    }
+    run(-0.06, 0, h, h / 2 + 0.1, paint, 0.006, { r: 0.92 }); if (!ow) run(0, 0.04, h, h / 2 + 0.1, DAY.ext, 0.006, { r: 0.92 });
+    if (parent.parent) aoStrip(parent.parent, cx, cz, len, n, 0.06, 0.45);
+    const cap = new THREE.Group(); cap.position.y = h + 0.1; cap.userData.keepY = true; parent.add(cap); parent.userData.rim = cap;
+    wbox(cap, alongX, cx, cz, 1, n, -len / 2 - 0.01, len / 2 + 0.01, -0.075, ow ? 0.005 : 0.055, 0.035, 0.0175, '#F7EEE9', 0.012, { r: 0.8 });
+    if (len > 0.6) put(rbox(alongX ? len - 0.12 : 0.012, 0.018, alongX ? 0.012 : len - 0.12, '#FFF1D8', 0.004, { e: '#FFF1D8', ei: 0.9 }), cx - n[0] * 0.066, h + 0.03, cz - n[1] * 0.066, parent);
+    return;
+  }
   if (S.chunky && RKIT) { // kit wall: paint layer, outer layer (a shade deeper), skirting; crown and plinth keep their shape under the cutaway
     const yaw = Math.atan2(n[0], n[1]), paint = parent.userData.wall || S.wall;
     // against the building's outer wall the kit lining's painted face would sit exactly in the plane of that wall's inner face (both 12 cm in from
@@ -1321,7 +1390,7 @@ function wallSegV2(x0, z0, x1, z1, S, parent) {
     // whole kit wall stands 2 cm proud of the outer wall instead: no shared plane left, whatever the GPU.
     const pr = ow ? 0.02 : 0, px = cx - n[0] * pr, pz = cz - n[1] * pr;
     const pc = (name, c, par, y, sy, r) => { const m = KM(name, c, r); m.position.set(px, y, pz); m.rotation.y = yaw; m.scale.set(len, sy, 1); par.add(m); return m; };
-    pc('k_wall_in', paint, parent, 0.1, h, 0.95); if (!ow) pc('k_wall_out', paint, parent, 0.1, h, 0.95); pc('k_skirt', KIT_C.trim, parent, 0.1, 1, 0.6);
+    pc('k_wall_in', paint, parent, 0.1, h, 0.95).material = ttMat(paint, lowOf(paint, paint === S.wall ? S.inBase : null)); if (!ow) pc('k_wall_out', paint, parent, 0.1, h, 0.95).material = ttMat(FAC_HI, FAC_LO); /* inside: the room's two tones; outside: one shared corridor façade */ pc('k_skirt', KIT_C.trim, parent, 0.1, 1, 0.6);
     const rim = new THREE.Group(); rim.position.y = h + 0.1; rim.userData.keepY = true; parent.add(rim); pc('k_rim', S.rim || KIT_C.rim, rim, 0, 1, 0.72); parent.userData.rim = rim;
     if (!ow) { const base = new THREE.Group(); base.userData.keepY = true; parent.add(base); pc('k_plinth', KIT_C.plinth, base, 0.1, 1, 0.85); }
     if (S.ao && parent.parent) aoStrip(parent.parent, cx, cz, len, n, 0.12);
@@ -1419,15 +1488,16 @@ function buildRoom(r) {
   const near = (a, b) => Math.abs(a - b) < 0.05;
   const outer = (x, z, nz) => !inFloor(x, z) && !(nz > 0 && z > 6.5), mx = (q.x0 + q.x1) / 2, mz = (q.z0 + q.z1) / 2;
   const ca0 = Math.cos(r.a), sa0 = Math.sin(r.a), loc = (nx, nz) => Math.round(nx * ca0 - nz * sa0) + ',' + Math.round(nx * sa0 + nz * ca0); // world side -> room-local side
+  const doorSide = (sg, d) => { sg.userData.door = !!d; return sg; };
   const wallG = [], V2 = !!(RS && RS.v2); const side = (nx, nz, ow) => { const sg = new THREE.Group(); g.add(sg); sg.userData.n = [nx, nz]; sg.userData.outer = !!ow; sg.userData.q = q; if (RS && RS.wallSide) sg.userData.wall = RS.wallSide[loc(nx, nz)]; sg.userData.p = [nx ? (nx < 0 ? q.x0 : q.x1) : mx, nz ? (nz < 0 ? q.z0 : q.z1) : mz]; wallG.push(sg); return sg; };
-  { const o = outer(mx, q.z0 - 0.3, -1); if (!o || V2) wallWithGap(q.x0, q.z0, q.x1, q.z0, near(dp.z, q.z0) ? dp.x : 0, side(0, -1, o), RS); }
-  { const o = outer(mx, q.z1 + 0.3, 1); if (!o || V2) wallWithGap(q.x0, q.z1, q.x1, q.z1, near(dp.z, q.z1) ? dp.x : 0, side(0, 1, o), RS); }
-  { const o = outer(q.x0 - 0.3, mz, 0); if (!o || V2) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, side(-1, 0, o), RS); }
-  { const o = outer(q.x1 + 0.3, mz, 0); if (!o || V2) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, side(1, 0, o), RS); }
-  if (RS && RS.chunky) { const ow = (nx, nz) => { const w = wallG.find((o) => o.userData.n[0] === nx && o.userData.n[1] === nz); return !w || w.userData.outer; };
+  { const o = outer(mx, q.z0 - 0.3, -1); if (!o || V2) wallWithGap(q.x0, q.z0, q.x1, q.z0, near(dp.z, q.z0) ? dp.x : 0, doorSide(side(0, -1, o), near(dp.z, q.z0)), RS); }
+  { const o = outer(mx, q.z1 + 0.3, 1); if (!o || V2) wallWithGap(q.x0, q.z1, q.x1, q.z1, near(dp.z, q.z1) ? dp.x : 0, doorSide(side(0, 1, o), near(dp.z, q.z1)), RS); }
+  { const o = outer(q.x0 - 0.3, mz, 0); if (!o || V2) wallWithGap(q.x0, q.z0, q.x0, q.z1, near(dp.x, q.x0) ? dp.z : 0, doorSide(side(-1, 0, o), near(dp.x, q.x0)), RS); }
+  { const o = outer(q.x1 + 0.3, mz, 0); if (!o || V2) wallWithGap(q.x1, q.z0, q.x1, q.z1, near(dp.x, q.x1) ? dp.z : 0, doorSide(side(1, 0, o), near(dp.x, q.x1)), RS); }
+  if (RS && RS.chunky && !LOOK_DAY) { const ow = (nx, nz) => { const w = wallG.find((o) => o.userData.n[0] === nx && o.userData.n[1] === nz); return !w || w.userData.outer; };
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) wallG.push(dioCorner(g, RS, q, sx, sz, ow(sx, 0), ow(0, sz))); }
   if (RS && RS.v2) { const opts = [[0, -1, mx, q.z0, 0, near(dp.z, q.z0)], [-1, 0, q.x0, mz, Math.PI / 2, near(dp.x, q.x0)], [0, 1, mx, q.z1, 0, near(dp.z, q.z1)], [1, 0, q.x1, mz, Math.PI / 2, near(dp.x, q.x1)]];
-    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (!sg || (sg.userData.outer && !RS.winOuter) || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
+    for (const [nx, nz, wx, wz, wr, hasDoor] of opts) { const sg = wallG.find((w) => w.userData.n[0] === nx && w.userData.n[1] === nz); if (LOOK_DAY || !sg || (sg.userData.outer && !RS.winOuter) || hasDoor || (RS.winSide && loc(nx, nz) !== RS.winSide)) continue;
       const off = RS.winOff ?? ((nz ? q.x1 - q.x0 : q.z1 - q.z0) > 4.5 ? 0.9 : 0); const wg = RKIT && !RS.archWin ? kitWin(g, wx + (nz ? off : 0), wz + (nx ? off : 0), nx, nz) : archWindow(g, wx + (nz ? off : 0), wz + (nx ? off : 0), wr, RKIT ? 0.3 : 0.18); wg.userData.whang = [nx, nz]; wg.userData.swap = true; break; } }
   const door = buildDoor(r, g, RS, def); // not cut away: the door keeps its real height so the scale reads right
   const room = { id: r.id, type: r.type, size: r.size, def: r, spots: [], staffSpots: [], staff: new Array(staffN(r.type, r.size)).fill(null), cx: r.x, cz: r.z, door, g };
@@ -1453,7 +1523,7 @@ function buildRoom(r) {
   // two rooms side by side build their kit walls, corners and crowns in the very same planes: the GPU then flickers between the two
   // colours. Each room gets its own small depth priority (and the kit wins over the plot walls it is pushed against).
   { const off = roomPO(r), po = (o) => { if (o.isMesh && o.material && !Array.isArray(o.material) && !o.material.polygonOffset) { const k = o.material.uuid + '|' + off;
-      o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off })); } };
+      o.material = KIT_PO[k] || (KIT_PO[k] = Object.assign(o.material.clone(), { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: off, onBeforeCompile: o.material.onBeforeCompile, customProgramCacheKey: o.material.customProgramCacheKey })); } }; /* a clone loses the two-tone shader hook: carried over */
     g.traverse((o) => { if (o.userData.kitW) po(o); }); for (const w of wallG) w.traverse(po); }
   // two rooms side by side: each one's wall skin reaches a few cm into the neighbour's wall, so their wall tops (and, cut down, their hip-height tops)
   // met in exactly the same plane and blinked between the two colours on phones. Each room's walls now sit a hair higher or lower (0.6-12 mm, from the
@@ -1464,10 +1534,53 @@ function buildRoom(r) {
     world.roomHangs = (world.roomHangs || []).filter((h) => h.o.parent && h.o.parent.parent && R.rooms[h.rid]).concat(hs.map((h) => ({ ...h, rid: r.id }))); }
   world.roomCut = (world.roomCut || []).filter((w) => w.parent && w.parent.parent).concat(wallG); updateCutaway();
   g.traverse((m) => { if (m.isMesh) m.userData.roomId = r.id; });
+  if (LOOK_DAY && DAY.dress[r.type]) { setTimeout(() => dayDress(room), 3500); setTimeout(() => dayDress(room), 9000); }
   R.rooms[r.id] = room; if (S && S.rooms) rebuildGrid(); for (const rr of Object.values(R.rooms)) rr.linePts = null;
 }
 // 2026 rooms: round-topped doorway (arched cream frame, flush leaf with a rounded top, brass knob, icon plate)
+/* daylight look: the dressing of the Blender benchmark, placed once the room's furniture is in: two framed prints and a planted wall shelf on the back wall,
+   plants in free back corners, the round rug under the Social Club's lounge. Wall pieces hide with their wall when the cutaway drops it. */
+function dayDress(room) {
+  if (!room.g.parent || room.dressed) return; const r = room.def, Z = SIZES[r.size], D = DAY.dress[r.type], W = Z.W, Dp = Z.D, a = r.a;
+  const boxes = []; room.g.updateMatrixWorld(true);
+  room.g.traverse((m) => { if (!m.isMesh || m.userData.kitW) return; const b = new THREE.Box3().setFromObject(m), sx = b.max.x - b.min.x, sz = b.max.z - b.min.z, sy = b.max.y - b.min.y; if (sy > 0.15 && sx * sz < 3 && sx < 2.5 && sz < 2.5) boxes.push(b); });
+  if (boxes.length < 2) return; room.dressed = true;
+  const free = (p, rad) => !boxes.some((b) => p.x > b.min.x - rad && p.x < b.max.x + rad && p.z > b.min.z - rad && p.z < b.max.z + rad);
+  const dg = grp(r.x, r.z, a, room.g), nW = [Math.round(-Math.sin(a)), Math.round(-Math.cos(a))], hang = (o) => { (world.roomHangs = world.roomHangs || []).push({ o, n: nW, rid: room.id }); return o; };
+  const back = -Dp / 2 + 0.075;
+  D.art.forEach((c, i) => { const f = grp(-W * 0.18 + i * 0.62, back, 0, dg); f.position.y = 1.32 + i * 0.12; put(rbox(i ? 0.42 : 0.6, i ? 0.42 : 0.55, 0.03, '#F7F2EA', 0.01, { r: 0.6 }), 0, 0, 0, f); put(rbox((i ? 0.42 : 0.6) - 0.09, (i ? 0.42 : 0.55) - 0.09, 0.035, c, 0.004, { r: 0.85 }), 0, 0, 0.004, f); hang(f); });
+  if (D.shelf) propModel('nap_wallshelf').then((m) => { if (!room.g.parent) return; const o = m.clone(); o.scale.setScalar(0.8); const sh = grp(W * 0.28, -Dp / 2 + 0.2, 0, dg); sh.position.y = 1.2; sh.add(o); hang(sh); }).catch(() => {});
+  for (const [lx, i] of [[-W / 2 + 0.5, 0], [W / 2 - 0.5, 1]]) { const p = toW(r, lx, -Dp / 2 + 0.5); if (!free(p, 0.3)) continue;
+    propModel(['plant_m', 'nap_plant'][i]).then((m) => { if (!room.g.parent) return; const o = m.clone(); o.scale.setScalar(0.95); const pg = grp(lx, -Dp / 2 + 0.5, i * 1.3, dg); pg.position.y = 0.1; pg.add(o); o.traverse((c) => { if (c.isMesh) c.castShadow = true; }); aoBlob(room.g, p.x, p.z, 0.7, 0.7); }).catch(() => {}); }
+  if (D.rug) { const low = boxes.filter((b) => b.max.y < 0.95 && (b.max.x - b.min.x) < 1.1 && (b.max.z - b.min.z) < 1.1); if (low.length) {
+    const cx = low.reduce((s2, b) => s2 + (b.min.x + b.max.x) / 2, 0) / low.length, cz = low.reduce((s2, b) => s2 + (b.min.z + b.max.z) / 2, 0) / low.length;
+    const tx = GC.dayRug || (GC.dayRug = canvasTex(256, 256, (c, Wc) => { c.fillStyle = D.rug; c.fillRect(0, 0, Wc, Wc); let sd = 5; const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); for (let i = 0; i < 9000; i++) { c.fillStyle = rr() < 0.5 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'; c.fillRect(rr() * Wc, rr() * Wc, 1.5, 1.5); } }));
+    const rug = new THREE.Mesh(new THREE.CircleGeometry(1.45, 64), new THREE.MeshStandardMaterial({ map: tx, roughness: 1 })); rug.rotation.x = -Math.PI / 2; rug.position.set(cx, 0.133, cz); rug.material.polygonOffset = true; rug.material.polygonOffsetFactor = -1; rug.receiveShadow = true; room.g.add(rug); } }
+}
+function buildDayDoor(r, g, RS, H0, dp) {
+  const H = H0 + DAY.glassUp, fr = DAY.frame, fo = { m: 0.6, r: 0.35 }, W = DOOR_W + 0.1;
+  const gm = GC.glassM || (GC.glassM = new THREE.MeshPhysicalMaterial({ color: '#EEF4F7', transparent: true, opacity: 0.13, roughness: 0.05, depthWrite: false }));
+  for (const sx of [-1, 1]) put(rbox(0.03, H, 0.04, fr, 0.008, fo), sx * W / 2, H / 2 + 0.1, 0, g);
+  const head = put(rbox(W, 0.03, 0.04, fr, 0.008, fo), 0, DOOR_H + 0.1, 0, g);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(W, H - DOOR_H, 0.02), gm); top.position.y = DOOR_H + 0.1 + (H - DOOR_H) / 2; top.renderOrder = 2; g.add(top);
+  // the leaf reads as a pair of glass doors: two panes, a slim centre bar, two vertical pulls
+  const piv = grp(-DOOR_W / 2, 0, 0, g); piv.position.y = 0.1; const lw = DOOR_W - 0.02, lh = DOOR_H - 0.02;
+  const pane = new THREE.Mesh(new THREE.BoxGeometry(lw, lh, 0.02), gm); pane.position.set(lw / 2, lh / 2, 0); pane.renderOrder = 2; piv.add(pane);
+  for (const [w2, h2, x2, y2] of [[lw, 0.03, lw / 2, 0.015], [lw, 0.025, lw / 2, lh - 0.0125], [0.025, lh, 0.0125, lh / 2], [0.025, lh, lw - 0.0125, lh / 2], [0.03, lh, lw / 2, lh / 2]]) put(rbox(w2, h2, 0.03, fr, 0.006, fo), x2, y2, 0, piv);
+  for (const sx of [-1, 1]) for (const fz of [-1, 1]) put(rbox(0.022, 0.42, 0.022, '#5A5652', 0.008, { m: 0.5, r: 0.4 }), lw / 2 + sx * 0.08, 1.05, fz * 0.035, piv);
+  // physical sign on the glass right above the entrance: warm white panel, colour dot, the room's name in charcoal on both faces
+  const name = rn(r.type), key = 'daySign|' + r.type;
+  const tex = GC[key] || (GC[key] = canvasTex(1024, 192, (c, W2) => { const Hc = 192; c.fillStyle = '#FBF7F2'; c.fillRect(0, 0, W2, Hc); c.fillStyle = RS.wall || '#E8A5AD'; c.beginPath(); c.arc(84, Hc / 2, 30, 0, 6.3); c.fill();
+    c.fillStyle = '#2B2A2C'; c.font = '700 118px Nunito, Inter, system-ui, sans-serif'; c.textBaseline = 'middle'; c.fillText(name, 140, Hc / 2 + 6, W2 - 170); })); tex.anisotropy = 8;
+  const sw = 2.6, sh = 0.48, sm = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), sign = grp(0, 0, 0, g); sign.position.y = DOOR_H + 0.1 + 0.05 + sh / 2;
+  put(rbox(sw + 0.04, sh + 0.04, 0.05, '#FBF7F2', 0.02, { r: 0.6 }), 0, 0, 0, sign);
+  for (const fz of [-1, 1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), sm); pl.position.z = fz * 0.026; if (fz < 0) pl.rotation.y = Math.PI; sign.add(pl); }
+  const d = { g, leaves: [piv], top, head, x: dp.x, z: dp.z, open: 0, kit: false, sign };
+  (world.doors = (world.doors || []).filter((o) => o.g.parent && o.g.parent.parent)).push(d);
+  return d;
+}
 function buildArchDoor(r, g, RS, H, th, dp) {
+  if (LOOK_DAY) return buildDayDoor(r, g, RS, H, dp);
   const R = DOOR_W / 2, yS = DOOR_H - R, fm = '#FBF4E8', fw = 0.11, ow = DOOR_W + 2 * fw;
   let arc;
   if (RKIT && RS.chunky) { arc = KM('k_doorframe', RS.rim || KIT_C.rim, 0.72); g.add(arc); } // kit: one chunky arched frame through the wall, crown colour
@@ -1789,7 +1902,7 @@ function garageKit(g, cx, cz, room) {
   L.push({ p: 'k_workbench', len: S ? 1.2 : 1.6, wall: 'back', u: 'R' }, { p: 'k_pegboard', len: S ? 1.0 : 1.3, wall: 'back', u: 'R', hang: true, y: 1.25, gap: 0.12 });
   const tl = S ? 1.5 : 1.9, td = GARAGE_DIMS.k_table[2] / GARAGE_DIMS.k_table[0] * tl;
   const sg = S ? 0.36 : 0.4, st = [[tx, tz - td / 2 - sg, 0], [tx, tz + td / 2 + sg, Math.PI]]; // coach and client face each other across the long side of the table, as in the painting (the small garage pulls the table back to keep the doorway clear)
-  L.push({ p: 'k_table', len: tl, x: tx, z: tz, rot: 0 }, { p: '@stool', h: 1, x: st[0][0], z: st[0][1], rot: st[0][2] }, { p: '@stool', h: 1, x: st[1][0], z: st[1][1], rot: st[1][2] });
+  L.push({ p: 'k_table', len: tl, x: tx, z: tz, rot: 0 }, { p: '@stool', h: LOOK_DAY ? 0.5 : 1, x: st[0][0], z: st[0][1], rot: st[0][2] }, { p: '@stool', h: LOOK_DAY ? 0.5 : 1, x: st[1][0], z: st[1][1], rot: st[1][2] });
   if (!S) { L.push({ p: 'k_rack', h: 1.5, wall: 'right', u: -1.35 }, { p: 'k_boxes', len: 1.2, wall: 'right', u: 0.5 }, { p: 'k_bench', len: 1.15, wall: 'left', u: 0.35 }, { p: 'k_bike', len: 1.45, wall: 'left', u: -1.2, hang: true, y: 0.75, gap: 0.08 }, { p: '@plant', s: 1.5, wall: 'left', u: 'F' }); }
   else L.push({ p: 'k_boxes', len: 0.95, wall: 'right', u: 0.6 });
   kitRoom(g, cx, cz, room, ROOM_STYLE.garage.model, L, GARAGE_DIMS, F);
@@ -2112,14 +2225,14 @@ const NAP_DIMS = {"k_bed": [0.5835, 0.5566, 0.9946], "k_armchair": [0.9434, 0.82
 function napKit(g, cx, cz, room) {
   const w = room.w || 6, D = SIZES[room.sz || 'm'].D, S = D < 5, first = !room.st, last = room.st == null || room.st === (room.nst || 1) - 1, H = Math.PI / 2;
   const n = 3, bw = 0.6 * 1.9, sp = Math.min(1.62, (w - 0.3) / n), bed = 1.9; // beds 1.9 m long (0.6 wide per metre of length in the model)
-  const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp, fabric: '#B9A8E0', lift: 0.45 });
+  const L = []; for (let i = 0; i < n; i++) L.push({ p: 'k_bed', len: bed, wall: 'back', u: (i - (n - 1) / 2) * sp, ...(LOOK_DAY ? {} : { fabric: '#B9A8E0', lift: 0.45 }) }); // daylight look: the reworked bed carries its own baked colours
   if (first) L.push({ p: 'k_moon', h: 0.9, wall: 'back', u: 0, hang: true, y: 1.15, glow: true });
   if (sp > 1.45) for (let i = 0; i < n - 1; i++) L.push({ p: 'k_lamp', h: 0.62, wall: 'back', u: (i + 0.5 - (n - 1) / 2) * sp, solid: false, glow: true }); // target image: a glowing mushroom lamp between the beds
 
   const two = (room.nst || 1) > 1; // large room: the beds fill each half, so no lamp in the corner and the dresser moves past the bed ends
   if (first && !S) L.push(two ? null : { p: '@plant', s: 1.0, v: 'nap_plant', vh: 1.5, wall: 'left', u: 0.42 }, { p: 'k_dresser', h: 0.85, wall: 'left', u: two ? -0.25 : -0.75 }, { p: 'k_armchair', h: 0.9, wall: 'left', u: two ? 1.2 : 1.4, r: -H, fabric: '#B9A8E0', lift: 0.45 }); // monstera between the dresser and the armchair, in view (not by a bed head) // armchair model faces +x
-  if (!S) L.push({ p: 'k_rug', len: 2.5, x: -0.35, z: 0.35, solid: false, onModel: (m) => furShells(m, '#EEEAF2', 12, 0.08) }); // reference: big white cloud rug in the middle of the room, long soft pile // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
-  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? null : '#ECE8F2'; for (const it of L) if (it && it.p === 'k_dresser') it.lift = 0.4; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
+  if (!S) L.push({ p: 'k_rug', len: 2.5, x: -0.35, z: 0.35, solid: false, onModel: (m) => furShells(m, LOOK_DAY ? '#BFA9EA' : '#EEEAF2', 12, 0.08) }); // reference: big white cloud rug in the middle of the room, long soft pile // the owner's cloud rug, with a real fluffy pile // the owner's cloud rug, with its own fluffy texture
+  for (const it of L) if (it && !it.glow && it.p !== 'k_moon') it.tint = it.p === 'k_rug' ? (LOOK_DAY ? '#B39BE2' : null) : '#ECE8F2'; for (const it of L) if (it && it.p === 'k_dresser') it.lift = 0.4; // dimmed room: everything a little darker and warmer, only the lamps and the moon stay bright
   const at = kitRoom(g, cx, cz, room, ROOM_STYLE.nap.model, L, NAP_DIMS), bz = cz - D / 2;
   if (!GFX.low && !MOBILE && sp > 1.45) for (let i = 0; i < n - 1; i++) { const pl = new THREE.PointLight('#FFB46A', 1.1, 1.5, 2); pl.position.set(cx + (i + 0.5 - (n - 1) / 2) * sp, 0.55, bz + 0.45); g.add(pl); } // a small pool of lamp light at each bedside, nothing on the sleepers' faces // the warm, dimmed glow of the lamps and the moon
   for (let i = 0; i < n; i++) room.spots.push({ x: cx + (i - (n - 1) / 2) * sp, z: bz + 0.04 + bed / 2 + 0.1, rot: 0, sit: true, lie: true, y: 0.3, busy: null, duvetC: ['#FBF8F4', '#F6F2EC', '#FAF7F2'][i % 3] }); // each bed its own duvet shade, as in the painting
@@ -4254,6 +4367,7 @@ function updateLabels() {
     if (needStaff && R.visitors.some((v) => v.state === 'wait' && v.known && needOf(v) === room.type)) say('ns' + room.type, t('room.needs', { room: rn(room.type), role: roleN(ROOMS[room.type].role) }), 50);
     else if (roomQ(room.id).length >= 5) say('q' + room.id, t('pa.queue', { room: rn(room.type) + roomNo(room) }), 90);
     if (!needStaff && !room.closed) el.style.background = ROOMS[room.type].pill; at(el, room.cx, 3.0, q.z0 + 0.3); seen.add('r' + room.id);
+    el.style.display = LOOK_DAY && !(needStaff || room.closed || ix) ? 'none' : '';
   }
   if (S.mode === 'career' && S.garden) { const ok = GARDEN_OK(), o = outsideT(), why = ok ? 'open' : S.rainy && !S.gardenRoof ? 'rain' : o <= (S.gardenHeat ? -2 : 8) ? 'cold' : 'hot'; const [pa] = plazaX(); const el = label('garden', ok ? 'ok' : 'lock', '🌳 ' + t('gd.' + why)); at(el, Math.min(-2, pa + 3), 0.8, 8.4); seen.add('garden'); }
   if (S.mode === 'career') plotOf().lots.forEach((L, i) => { const st = lotSt(i); if (st === 'owned' || !lotOpen(i)) return; const el = label('lot' + i, 'lock', st === 'pending' ? t('lot.pending', { d: lotDay(i) }) : t('lot.expand', { cost: money(lotCost(i)) }), () => tapLot(i)); at(el, (L[0] + L[1]) / 2, 0.6, (L[2] + L[3]) / 2); seen.add('lot' + i); });
@@ -5515,7 +5629,7 @@ function startEvent() {
 }
 function endEvent() { S.acTemp = false;
   const E = S.ev; if (!E) return;
-  if (E.k === 'power') renderer.toneMappingExposure = 0.92;
+  if (E.k === 'power') renderer.toneMappingExposure = BASE_EXPO;
   if (E.k === 'leak') { const room = R.rooms[E.room]; if (room) room.closed = false; if (E.obj && E.obj.mesh.userData.drip) scene.remove(E.obj.mesh.userData.drip); }
   S.ev = null;
 }
@@ -5841,7 +5955,7 @@ function startGame() {
   for (const m of INC_MESH.values()) scene.remove(m); INC_MESH.clear();
   { const n = (S.decor || []).filter((d) => d.k === 'sofa').length; if (n) { S.decor = S.decor.filter((d) => d.k !== 'sofa'); S.cash += 500 * n; setTimeout(() => toast('🛋️ ' + t('dc.sofaGone', { m: money(500 * n) }), 4000), 1500); } } // sofas are out of the game for now: refunded
   for (const k in world.decor) { scene.remove(world.decor[k]); delete world.decor[k]; } for (const d of S.decor || []) buildDecor(d);
-  if (S.ev) { S.ev = null; } renderer.toneMappingExposure = 0.92;
+  if (S.ev) { S.ev = null; } renderer.toneMappingExposure = BASE_EXPO;
   // the café needs a host now: a save that already had a café gets one (once), so nothing stops working; a short-lived 'barista' role becomes a host
   for (const x of S.staff) if (x.role === 'barista') x.role = 'host';
   if (!S.baristaV) { S.baristaV = 1; if (S.rooms.some((r) => r.type === 'cafe')) { const c = makeCandidate('host'); c.id = S.nextId++; S.staff.push(c); setTimeout(() => chat(c.name + ' · ' + roleN('host'), crnd(tList('hire.hello')), '🍵', { fun: true }), 1500); } }
